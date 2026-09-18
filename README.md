@@ -8,11 +8,25 @@ Are you sick of agents hallucinating and forgetting work across session or
 markdown files with semi-structured todo lists for agents to work on? Then
 Corvee might be a helpful tool for you and your agents!
 
+<div align="center">
+
+[![GitHub](https://badgen.net/badge/icon/github?icon=github&label)](https://github.com/btschwertfeger/corvee)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+<!-- [![Downloads](https://static.pepy.tech/personalized-badge/corvee?period=total&units=abbreviation&left_color=grey&right_color=orange&left_text=downloads)](https://pepy.tech/project/corvee) -->
+
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![typing-ty](https://img.shields.io/badge/typing-ty-informational)](https://github.com/astral-sh/ty)
 [![CI/CD](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml/badge.svg)](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml)
 [![codecov](https://codecov.io/gh/btschwertfeger/Corvee/branch/master/badge.svg)](https://app.codecov.io/gh/btschwertfeger/Corvee)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-[![Documentation](https://img.shields.io/badge/docs-btschwertfeger.github.io%2FCorvee-blue.svg)](https://btschwertfeger.github.io/Corvee/)
+
+[![OpenSSF Best
+Practices](https://www.bestpractices.dev/projects/14702/badge)](https://www.bestpractices.dev/projects/14702)
+
+[![release](https://img.shields.io/pypi/v/corvee)](https://pypi.org/project/corvee/)
+[![Documentation](https://img.shields.io/badge/docs-btschwertfeger.github.io%2FCorvee-blue.svg)](https://corvee.readthedocs.io/en/latest/)
+
+</div>
 
 Agents lose context between sessions and collide with each other mid-task.
 corvee tracks tasks, todos, decisions, and checked-true facts in a local
@@ -21,7 +35,7 @@ a human) picks up exactly where the last session left off, and multiple
 agents work the same project without silently overwriting each other's
 edits.
 
-See the [documentation site](https://btschwertfeger.github.io/Corvee/) for
+See the [documentation site](https://corvee.readthedocs.io/en/latest/) for
 the full pitch, the [Quickstart](docs/quickstart.md), the
 [Commands](docs/commands.md) reference, the
 [Specification](docs/spec.md), and the [MCP server](docs/mcp.md) for
