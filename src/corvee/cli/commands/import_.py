@@ -6,12 +6,11 @@
 
 import json
 from pathlib import Path
-from typing import cast
 
 import click
 
 from corvee.cli.context import corvee_context
-from corvee.constants import SCOPES, Scope
+from corvee.constants import SCOPES, narrow_scope
 from corvee.db.export_import import import_project
 from corvee.db.tasks import TaskFilter, list_tasks
 from corvee.errors import UsageError
@@ -41,7 +40,7 @@ def import_command(file: str, scope: str, as_json: bool) -> None:
         data = json.loads(Path(file).read_text())
     except json.JSONDecodeError as error:
         raise UsageError("invalid_import_json", f"{file} is not valid JSON: {error}") from error
-    with corvee_context(scope=cast(Scope, scope)) as ctx:
+    with corvee_context(scope=narrow_scope(scope)) as ctx:
         import_project(ctx.conn, data)
-        tasks = list_tasks(ctx.conn, TaskFilter(include_all=True), scope=cast(Scope, scope))
+        tasks = list_tasks(ctx.conn, TaskFilter(include_all=True), scope=narrow_scope(scope))
     emit_tasks([t.to_dict() for t in tasks], as_json=as_json)

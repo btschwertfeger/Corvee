@@ -8,7 +8,7 @@ import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import click
 
@@ -22,6 +22,7 @@ from corvee.constants import (
     SCOPE_FILTERS,
     Scope,
     ScopeFilter,
+    narrow_scope_filter,
 )
 from corvee.db.events import get_last_comment
 from corvee.db.labels import list_labels_with_counts
@@ -166,7 +167,7 @@ def brief(scope_filter: str, as_json: bool) -> None:
     Combines `task mine`, `task ready` and `task list --stale` into one
     read-only call.
     """
-    scope = cast(ScopeFilter, scope_filter)
+    scope = narrow_scope_filter(scope_filter)
     sections = {
         "mine": mine_section(scope),
         "ready": ready_section(scope),

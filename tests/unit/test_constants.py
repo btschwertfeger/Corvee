@@ -4,6 +4,10 @@
 # https://github.com/btschwertfeger
 #
 
+from collections.abc import Callable
+
+import pytest
+
 from corvee.constants import (
     FACT_LIST_FIELDS,
     FACT_LIST_TABLE_DEFAULT_FIELDS,
@@ -14,9 +18,18 @@ from corvee.constants import (
     OPEN_STATES,
     PRIORITIES,
     RELATIONS,
+    SCOPE_FILTERS,
+    SCOPES,
     STATES,
     TASK_TYPES,
     TRANSITIONS,
+    narrow_fact_status,
+    narrow_priority,
+    narrow_relation,
+    narrow_scope,
+    narrow_scope_filter,
+    narrow_state,
+    narrow_task_type,
 )
 
 
@@ -89,6 +102,48 @@ class TestValueSets:
         free-text proof column dropped, in the same order.
         """
         assert tuple(f for f in FACT_LIST_FIELDS if f != "proof") == FACT_LIST_TABLE_DEFAULT_FIELDS
+
+
+class TestNarrowers:
+    """Each narrow_* function stands in for `typing.cast(Literal, value)`
+    everywhere a value's real type is narrower than `str`: it returns the
+    value unchanged for a member of its tuple, and raises for anything else
+    instead of a cast's silent, unchecked trust.
+    """
+
+    @pytest.mark.parametrize(
+        ("narrow", "choices"),
+        [
+            (narrow_state, STATES),
+            (narrow_priority, PRIORITIES),
+            (narrow_task_type, TASK_TYPES),
+            (narrow_relation, RELATIONS),
+            (narrow_fact_status, FACT_STATUSES),
+            (narrow_scope, SCOPES),
+            (narrow_scope_filter, SCOPE_FILTERS),
+        ],
+    )
+    def test_returns_every_valid_value_unchanged(
+        self, narrow: Callable[[str], str], choices: tuple[str, ...]
+    ) -> None:
+        for choice in choices:
+            assert narrow(choice) == choice
+
+    @pytest.mark.parametrize(
+        "narrow",
+        [
+            narrow_state,
+            narrow_priority,
+            narrow_task_type,
+            narrow_relation,
+            narrow_fact_status,
+            narrow_scope,
+            narrow_scope_filter,
+        ],
+    )
+    def test_raises_for_a_value_outside_its_tuple(self, narrow: Callable[[str], str]) -> None:
+        with pytest.raises(AssertionError):
+            narrow("not-a-real-value")
 
 
 class TestTransitions:

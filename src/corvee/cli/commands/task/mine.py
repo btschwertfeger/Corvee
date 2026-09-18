@@ -5,13 +5,13 @@
 #
 
 import sqlite3
-from typing import Any, cast
+from typing import Any
 
 import click
 
 from corvee.actor import resolve_actor
 from corvee.cli.scope import fetch_merged
-from corvee.constants import SCOPE_FILTERS, Scope, ScopeFilter
+from corvee.constants import SCOPE_FILTERS, Scope, narrow_scope_filter
 from corvee.db.events import get_last_comment
 from corvee.db.tasks import TaskRow, mine_tasks
 from corvee.guards.fields import validate_fields
@@ -47,7 +47,7 @@ def mine(scope_filter: str, limit: int | None, fields_csv: str | None, as_json: 
     The session-resume query.
     """
     fields = validate_fields(fields_csv.split(",")) if fields_csv else None
-    pairs = fetch_merged(cast(ScopeFilter, scope_filter), _fetch)
+    pairs = fetch_merged(narrow_scope_filter(scope_filter), _fetch)
     # claimed_at desc, id as the final tiebreak — --limit applies after the
     # merge, never per scope.
     pairs.sort(key=lambda p: p[0].id, reverse=True)

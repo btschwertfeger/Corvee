@@ -4,13 +4,11 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import cast
-
 import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
-from corvee.constants import RELATIONS, Relation
+from corvee.constants import RELATIONS, narrow_relation
 from corvee.db.links import link_tasks
 from corvee.db.tasks import require_tasks
 from corvee.guards.scope import assert_same_scope
@@ -41,7 +39,7 @@ def link(source_ref: str, target_ref: str, relation: str, as_json: bool) -> None
     assert_same_scope(source.scope, target.scope)
     with corvee_context(scope=source.scope) as ctx:
         warnings = link_tasks(
-            ctx.conn, source.id, target.id, cast(Relation, relation), ctx.actor, ctx.session_id
+            ctx.conn, source.id, target.id, narrow_relation(relation), ctx.actor, ctx.session_id
         )
         tasks = require_tasks(ctx.conn, [source.id, target.id], scope=source.scope)
     dicts = []
