@@ -31,8 +31,8 @@ def _schedule_exit(err: ConfigError) -> None:
     server, nothing this process does will ever succeed again, and a
     restart (which most MCP hosts already do on a crashed stdio server)
     picks up the current binary and proceeds normally. `call_later` rather
-    than exiting immediately gives the SDK a moment to finish writing this
-    call's own response to stdout first.
+    than exiting immediately gives the `mcp` SDK a moment to finish writing
+    this call's own response to stdout first.
 
     Prints `err.message` to stderr before scheduling the exit, not after:
     the in-flight tool call's own `isError` result already names this to
@@ -101,14 +101,7 @@ async def run_tool(worker: DbWorker, fn: Callable[[], T]) -> T:
     passes a returned `CallToolResult` through unchanged regardless of the
     function's declared type (`FuncMetadata.convert_result`), which is what
     every tool handler relies on for a clean, prefix-free `isError` result
-    (spec §10.2) -- but the SDK's own schema generation rejects
-    `CallToolResult` inside a declared return-type union, so no type in
-    this codebase can honestly say "`T` or `CallToolResult`" the way the
-    two `# ty: ignore[invalid-return-type]` markers below silently paper
-    over. Centralized here, once, rather than a `cast(T, ...)` at every one
-    of the sixteen call sites: the annotation mismatch is real, but it is
-    cosmetic, not a runtime risk, and this is the one place that needs to
-    say so.
+    (spec §10.2).
     """
     try:
         return await worker.run(fn)
