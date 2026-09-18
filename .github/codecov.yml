@@ -1,0 +1,26 @@
+# -*- coding: utf-8 -*-
+# Coverage is uploaded once per OS in the test matrix (ubuntu, macos, windows),
+# each tagged with its own flag. Carryforward lets Codecov reuse a flag's
+# last-known coverage on commits where that flag is absent, so the reported
+# total does not drop when a partition is skipped (e.g. a flaky failure).
+flag_management:
+  default_rules:
+    carryforward: true
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        informational: true
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: true
+  require_base: no
+  require_head: yes
