@@ -37,7 +37,11 @@ def _fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     touches the real ~/.corvee, in-process or in an e2e subprocess (which
     inherits os.environ).
     """
-    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    fake_home = str(tmp_path / "home")
+    monkeypatch.setenv("HOME", fake_home)
+    # Path.home() on Windows (ntpath.expanduser) reads USERPROFILE before HOME,
+    # so HOME alone leaves the real home directory in effect there.
+    monkeypatch.setenv("USERPROFILE", fake_home)
 
 
 @pytest.fixture
