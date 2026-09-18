@@ -4,7 +4,7 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
@@ -63,7 +63,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return task.to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_unclaim(
@@ -96,7 +96,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return task.to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_comment(
@@ -122,7 +122,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return task.to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_start(ref: TaskRefArg, session_id: SessionIdArg = None) -> dict[str, Any]:
@@ -145,7 +145,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return tasks[0].to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_done(ref: TaskRefArg, session_id: SessionIdArg = None) -> dict[str, Any]:
@@ -167,7 +167,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return tasks[0].to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_cancel(ref: TaskRefArg, session_id: SessionIdArg = None) -> dict[str, Any]:
@@ -191,7 +191,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return tasks[0].to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_review(ref: TaskRefArg, session_id: SessionIdArg = None) -> dict[str, Any]:
@@ -215,7 +215,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return tasks[0].to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_block(
@@ -263,7 +263,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return tasks[0].to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_add(
@@ -320,4 +320,4 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return task.to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)

@@ -4,12 +4,10 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import cast
-
 import click
 
 from corvee.cli.scope import fetch_merged, sort_facts
-from corvee.constants import FACT_LIST_FIELDS, SCOPE_FILTERS, ScopeFilter
+from corvee.constants import FACT_LIST_FIELDS, SCOPE_FILTERS, narrow_scope_filter
 from corvee.db.facts import search_facts
 from corvee.guards.fields import validate_fields
 from corvee.output import emit_facts
@@ -61,7 +59,7 @@ def search(
     # --limit applies after the merge, never per scope.
     facts = sort_facts(
         fetch_merged(
-            cast(ScopeFilter, scope_filter),
+            narrow_scope_filter(scope_filter),
             lambda conn, s: search_facts(
                 conn,
                 text,

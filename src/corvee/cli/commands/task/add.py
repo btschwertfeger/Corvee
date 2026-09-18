@@ -7,7 +7,7 @@
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import click
 
@@ -19,9 +19,9 @@ from corvee.constants import (
     DEFAULT_TASK_TYPE,
     PRIORITIES,
     TASK_TYPES,
-    Priority,
     Scope,
-    TaskType,
+    narrow_priority,
+    narrow_task_type,
 )
 from corvee.db.labels import add_label
 from corvee.db.links import link_tasks
@@ -133,8 +133,8 @@ def _insert_one(
         conn,
         title=item["title"],
         description=item["description"],
-        type_=cast(TaskType, item["type"]),
-        priority=cast(Priority, item["priority"]),
+        type_=narrow_task_type(item["type"]),
+        priority=narrow_priority(item["priority"]),
         actor=actor,
         session_id=session_id,
     )

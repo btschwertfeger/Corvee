@@ -5,7 +5,7 @@
 #
 
 from datetime import UTC, datetime
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
@@ -79,7 +79,7 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 detail["events_omitted"] = omitted
                 return detail
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def brief(
@@ -123,7 +123,7 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 ),
             }
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def fact_search(
@@ -172,7 +172,7 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 "omitted": max(0, len(facts) - limit),
             }
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def task_search(
@@ -225,4 +225,4 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 "omitted": max(0, len(tasks) - limit),
             }
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)

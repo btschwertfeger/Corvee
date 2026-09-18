@@ -31,8 +31,8 @@ def _schedule_exit(err: ConfigError) -> None:
     server, nothing this process does will ever succeed again, and a
     restart (which most MCP hosts already do on a crashed stdio server)
     picks up the current binary and proceeds normally. `call_later` rather
-    than exiting immediately gives the SDK a moment to finish writing this
-    call's own response to stdout first.
+    than exiting immediately gives the `mcp` SDK a moment to finish writing
+    this call's own response to stdout first.
 
     Prints `err.message` to stderr before scheduling the exit, not after:
     the in-flight tool call's own `isError` result already names this to
@@ -81,7 +81,7 @@ def _error_result(err: CorveeError) -> CallToolResult:
     )
 
 
-async def run_tool(worker: DbWorker, fn: Callable[[], T]) -> T | CallToolResult:
+async def run_tool(worker: DbWorker, fn: Callable[[], T]) -> T:
     """Run `fn` (a tool handler's DB work) on the dedicated worker thread and
     map any failure into a clean `isError` result.
 
@@ -94,24 +94,22 @@ async def run_tool(worker: DbWorker, fn: Callable[[], T]) -> T | CallToolResult:
     A successful call's return value passes through unchanged, for the
     SDK's own auto-conversion to build the tool result from.
 
-    Declared to return `T | CallToolResult` rather than just `T`, because
-    the error path above genuinely does return a `CallToolResult`. Every
-    tool function in `mcp/tools_write.py`/`tools_fact.py`/`tools_read.py`
-    nonetheless declares a `T`-only return
-    type (e.g. `-> dict[str, Any]`) for the SDK's own schema generation,
-    which rejects `CallToolResult` inside a declared return-type union --
-    and then wraps its own call to this function in `cast(T, ...)` to tell
-    the type checker to trust that contract rather than the annotation it
-    cannot express. The SDK's result conversion passes a returned
-    `CallToolResult` through unchanged regardless of the function's
-    declared type, so the annotation mismatch is cosmetic, not a runtime
-    risk (spec §10.2).
+    Declared to return `T`, matching every tool function's own declared
+    return type (e.g. `-> dict[str, Any]` in `mcp/tools_write.py`/
+    `tools_fact.py`/`tools_read.py`), even though the two `except` branches
+    below actually return a `CallToolResult`. The SDK's result conversion
+    passes a returned `CallToolResult` through unchanged regardless of the
+    function's declared type (`FuncMetadata.convert_result`), which is what
+    every tool handler relies on for a clean, prefix-free `isError` result
+    (spec §10.2).
     """
     try:
         return await worker.run(fn)
     except CorveeError as err:
         if isinstance(err, ConfigError) and err.code == _SCHEMA_TOO_NEW:
             _schedule_exit(err)
-        return _error_result(err)
+        return _error_result(err)  # ty: ignore[invalid-return-type]
     except Exception as exc:
-        return _error_result(CorveeError("internal_error", str(exc)))
+        return _error_result(
+            CorveeError("internal_error", str(exc))
+        )  # ty: ignore[invalid-return-type]

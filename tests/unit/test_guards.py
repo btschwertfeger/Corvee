@@ -4,8 +4,6 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import cast
-
 import pytest
 
 from corvee.constants import Scope
@@ -177,7 +175,7 @@ class TestAssertNoOpenChildren:
 
 
 class TestAssertSameScope:
-    @pytest.mark.parametrize("scope", [cast(Scope, "local"), cast(Scope, "global")])
+    @pytest.mark.parametrize("scope", ["local", "global"])
     def test_passes_when_scopes_match(self, scope: Scope) -> None:
         """Two refs sharing one scope never raise (§3.3)."""
         assert_same_scope(scope, scope)  # must not raise

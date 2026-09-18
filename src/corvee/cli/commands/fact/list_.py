@@ -5,7 +5,6 @@
 #
 
 from datetime import UTC, datetime
-from typing import cast
 
 import click
 
@@ -15,8 +14,8 @@ from corvee.constants import (
     FACT_LIST_FIELDS,
     FACT_STATUSES,
     SCOPE_FILTERS,
-    FactStatus,
-    ScopeFilter,
+    narrow_fact_status,
+    narrow_scope_filter,
 )
 from corvee.db.facts import FactFilter, list_facts
 from corvee.guards.fields import validate_fields
@@ -84,7 +83,7 @@ def list_command(
     if stale_duration is not None:
         stale_before = timestamp(datetime.now(UTC) - parse_duration(stale_duration))
     filt = FactFilter(
-        status=cast(FactStatus, status) if status else None,
+        status=narrow_fact_status(status) if status else None,
         include_all=include_all,
         updated_since=updated_since,
         verified_by=verified_by,
@@ -93,7 +92,7 @@ def list_command(
     )
     facts = sort_facts(
         fetch_merged(
-            cast(ScopeFilter, scope_filter), lambda conn, s: list_facts(conn, filt, scope=s)
+            narrow_scope_filter(scope_filter), lambda conn, s: list_facts(conn, filt, scope=s)
         )
     )
     if limit is not None:

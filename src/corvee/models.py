@@ -8,9 +8,19 @@ import re
 import sqlite3
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 
-from corvee.constants import FactStatus, Priority, Scope, State, TaskType
+from corvee.constants import (
+    FactStatus,
+    Priority,
+    Scope,
+    State,
+    TaskType,
+    narrow_fact_status,
+    narrow_priority,
+    narrow_state,
+    narrow_task_type,
+)
 from corvee.errors import UsageError
 
 TASK_REF_PREFIX = "TASK-"
@@ -153,9 +163,9 @@ class TaskRow:
             id=row["id"],
             title=row["title"],
             description=row["description"],
-            type=cast(TaskType, row["type"]),
-            priority=cast(Priority, row["priority"]),
-            state=cast(State, row["state"]),
+            type=narrow_task_type(row["type"]),
+            priority=narrow_priority(row["priority"]),
+            state=narrow_state(row["state"]),
             claimed_by=row["claimed_by"],
             claimed_at=row["claimed_at"],
             created_at=row["created_at"],
@@ -201,7 +211,7 @@ class FactRow:
         return cls(
             id=row["id"],
             claim=row["claim"],
-            status=cast(FactStatus, row["status"]),
+            status=narrow_fact_status(row["status"]),
             verified_at=row["verified_at"],
             verified_by=row["verified_by"],
             proof=row["proof"],

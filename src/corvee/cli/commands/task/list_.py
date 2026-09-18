@@ -7,7 +7,6 @@
 import sqlite3
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import cast
 
 import click
 
@@ -19,11 +18,11 @@ from corvee.constants import (
     SCOPE_FILTERS,
     STATES,
     TASK_TYPES,
-    Priority,
     Scope,
-    ScopeFilter,
-    State,
-    TaskType,
+    narrow_priority,
+    narrow_scope_filter,
+    narrow_state,
+    narrow_task_type,
 )
 from corvee.db.tasks import TaskFilter, list_tasks
 from corvee.guards.fields import validate_fields
@@ -144,10 +143,10 @@ def list_command(
     if since_duration is not None:
         updated_since = timestamp(datetime.now(UTC) - parse_duration(since_duration))
     filt = TaskFilter(
-        states=(cast(State, state),) if state else None,
+        states=(narrow_state(state),) if state else None,
         include_all=include_all,
-        type=cast(TaskType, type_) if type_ else None,
-        priority=cast(Priority, priority) if priority else None,
+        type=narrow_task_type(type_) if type_ else None,
+        priority=narrow_priority(priority) if priority else None,
         labels=labels,
         parent_id=parent.id if parent else None,
         blocks_id=blocks.id if blocks else None,
@@ -173,7 +172,7 @@ def list_command(
             return []
         return list_tasks(conn, filt, scope=s)
 
-    tasks = sort_tasks(fetch_merged(cast(ScopeFilter, scope_filter), fetch))
+    tasks = sort_tasks(fetch_merged(narrow_scope_filter(scope_filter), fetch))
     if after_ref is not None:
         tasks = paginate_after(tasks, resolve_cursor(after_ref))
     if limit is not None:

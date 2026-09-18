@@ -4,13 +4,11 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import cast
-
 import click
 
 from corvee.cli.completion import complete_labels, complete_task_ids
 from corvee.cli.scope import fetch_merged, paginate_after, resolve_cursor, sort_tasks
-from corvee.constants import SCOPE_FILTERS, ScopeFilter
+from corvee.constants import SCOPE_FILTERS, narrow_scope_filter
 from corvee.db.tasks import ready_tasks
 from corvee.guards.fields import validate_fields
 from corvee.output import emit_tasks
@@ -57,7 +55,7 @@ def ready(
     # --limit applies after the merge, never per scope.
     tasks = sort_tasks(
         fetch_merged(
-            cast(ScopeFilter, scope_filter),
+            narrow_scope_filter(scope_filter),
             lambda conn, s: ready_tasks(conn, labels=labels, scope=s),
         )
     )

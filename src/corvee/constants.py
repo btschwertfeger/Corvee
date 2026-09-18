@@ -23,6 +23,61 @@ FACT_STATUSES: tuple[FactStatus, ...] = get_args(FactStatus)
 SCOPE_FILTERS: tuple[ScopeFilter, ...] = get_args(ScopeFilter)
 SCOPES: tuple[Scope, ...] = get_args(Scope)
 
+
+# The seven functions below narrow an already-validated `str` to its
+# Literal type, standing in for `typing.cast`, which only tells the type
+# checker to trust the annotation and does nothing at runtime. Each is for
+# a value some earlier boundary (a click.Choice(...) option, a schema.py
+# CHECK constraint, or a JSON batch item already round-tripped through one
+# of the other narrowers) already restricts to the tuple checked here, so
+# raising is a should-never-happen backstop, not user-facing input
+# validation -- MCP tool arguments get their own `UsageError`-raising
+# checks instead (`mcp/tools_common.py::validate_scope_filter`), since a
+# caller there can send any string.
+
+
+def narrow_state(value: str) -> State:
+    if value not in STATES:
+        raise AssertionError(f"unexpected state: {value!r}")
+    return value
+
+
+def narrow_priority(value: str) -> Priority:
+    if value not in PRIORITIES:
+        raise AssertionError(f"unexpected priority: {value!r}")
+    return value
+
+
+def narrow_task_type(value: str) -> TaskType:
+    if value not in TASK_TYPES:
+        raise AssertionError(f"unexpected task type: {value!r}")
+    return value
+
+
+def narrow_relation(value: str) -> Relation:
+    if value not in RELATIONS:
+        raise AssertionError(f"unexpected relation: {value!r}")
+    return value
+
+
+def narrow_fact_status(value: str) -> FactStatus:
+    if value not in FACT_STATUSES:
+        raise AssertionError(f"unexpected fact status: {value!r}")
+    return value
+
+
+def narrow_scope(value: str) -> Scope:
+    if value not in SCOPES:
+        raise AssertionError(f"unexpected scope: {value!r}")
+    return value
+
+
+def narrow_scope_filter(value: str) -> ScopeFilter:
+    if value not in SCOPE_FILTERS:
+        raise AssertionError(f"unexpected scope filter: {value!r}")
+    return value
+
+
 DEFAULT_STATE: State = "open"
 DEFAULT_PRIORITY: Priority = "medium"
 DEFAULT_TASK_TYPE: TaskType = "task"

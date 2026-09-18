@@ -7,7 +7,7 @@
 import sqlite3
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
-from typing import Any, cast
+from typing import Any
 
 from corvee.constants import (
     DEFAULT_PRIORITY,
@@ -19,6 +19,7 @@ from corvee.constants import (
     Scope,
     State,
     TaskType,
+    narrow_state,
 )
 from corvee.db.events import record_comment, record_created, record_field_change
 from corvee.db.like import escape_like
@@ -409,7 +410,7 @@ def _open_children(conn: sqlite3.Connection, task_id: int) -> list[tuple[int, St
         " WHERE l.source_id = ? AND l.relation = 'parent_of'",
         (task_id,),
     ).fetchall()
-    return [(row[0], cast(State, row[1])) for row in rows]
+    return [(row[0], narrow_state(row[1])) for row in rows]
 
 
 def _parent(conn: sqlite3.Connection, task_id: int) -> tuple[int, State] | None:
@@ -419,7 +420,7 @@ def _parent(conn: sqlite3.Connection, task_id: int) -> tuple[int, State] | None:
         " WHERE l.target_id = ? AND l.relation = 'parent_of'",
         (task_id,),
     ).fetchone()
-    return (row[0], cast(State, row[1])) if row is not None else None
+    return (row[0], narrow_state(row[1])) if row is not None else None
 
 
 def cascade_cancel_descendants(
