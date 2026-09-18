@@ -144,3 +144,6 @@ JSON-on-stderr shape and the process exit code.
   check` green, `corvee task comment`/`update --state done`), then commit
   before starting the next one, so each commit maps onto one reviewable
   unit of work and one task's audit trail.
+- When opening a PR, try to set the correct labels from the repo's existing
+  label set (`gh label list`), matching what the change actually is (bug,
+  enhancement, documentation, dependencies, github_actions, ...).
