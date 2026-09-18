@@ -46,11 +46,12 @@ jobs:
           path: dist/
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     needs: [build]
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -64,10 +65,16 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-      - name: Install the built wheel and test dependencies
+      - name: Install the built wheel and test dependencies (Linux or macOS)
+        if: runner.os != 'Windows'
         run: |
           WHEEL="$(find dist -name '*.whl' | head -1)"
           uv pip install --system "${WHEEL}[mcp]" pytest pytest-xdist
+      - name: Install the built wheel and test dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          $WHEEL = (Get-ChildItem -Path dist -Filter "*.whl" | Select-Object -First 1).FullName
+          uv pip install --system "$WHEEL[mcp]" pytest pytest-xdist
       - name: Run tests
         run: pytest -n auto
 
