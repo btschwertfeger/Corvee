@@ -11,7 +11,7 @@ build-backend = "hatchling.build"
 [project]
 name = "corvee"
 dynamic = ["version"]
-description = "A local, multi-agent-aware CLI issue tracker"
+description = "A single-machine, non-git-tracked, persistent, multi-agent-aware CLI task tracker and fact store"
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.11"

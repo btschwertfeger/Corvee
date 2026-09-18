@@ -22,7 +22,8 @@ if TYPE_CHECKING:
     from mcp.server.mcpserver import MCPServer
 
 _BASE_INSTRUCTIONS = (
-    "corvee is a local, multi-agent-aware CLI issue tracker. Use task_show/"
+    "corvee is a single-machine, non-git-tracked, persistent, "
+    "multi-agent-aware CLI task tracker and fact store. Use task_show/"
     "task_search/brief/fact_search to orient, task_add to file new work, "
     "then task_claim/task_start/task_comment/task_done/task_review/"
     "task_cancel/task_block to work a task, releasing it with task_unclaim "

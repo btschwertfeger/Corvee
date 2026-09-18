@@ -91,7 +91,8 @@ agent harness:
     "Overrides $CORVEE_SESSION_ID for every subcommand.",
 )
 def cli(actor: str | None, session_id: str | None) -> None:
-    """corvee: a local, multi-agent-aware CLI issue tracker."""
+    """corvee: a single-machine, non-git-tracked, persistent,
+    multi-agent-aware CLI task tracker and fact store."""
 
 
 cli.add_command(init)

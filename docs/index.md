@@ -1,9 +1,10 @@
 # corvee
 
-A local CLI issue tracker designed for AI coding agents (with humans as a
-secondary user) to track tasks, todos, decisions, and progress within a
-single project/workspace, across sessions, including multiple agents
-working on the same project concurrently.
+A single-machine, non-git-tracked, persistent CLI task tracker and fact
+store designed for AI coding agents (with humans as a secondary user) to
+track tasks, todos, decisions, and progress within a single
+project/workspace, across sessions, including multiple agents working on
+the same project concurrently.
 
 Instead of re-deriving "what was I doing" from chat history, or silently
 overwriting another agent's edit, the agent queries and claims work through
