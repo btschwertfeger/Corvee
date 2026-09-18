@@ -1,7 +1,7 @@
 # corvee
 
 A single-machine, non-git-tracked, persistent CLI task tracker and fact
-store designed for AI coding agents (with humans as a secondary user) to
+store designed for AI agents (with humans as a secondary user) to
 track tasks, todos, decisions, and progress within a single
 project/workspace, across sessions, including multiple agents working on
 the same project concurrently.

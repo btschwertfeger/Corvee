@@ -1,7 +1,7 @@
 # Corvee
 
 > A single-machine, non-git-tracked, persistent, multi-agent-aware CLI task
-> tracker and fact store for AI coding agents, with humans as a secondary
+> tracker and fact store for AI agents, with humans as a secondary
 > user.
 
 Are you sick of agents hallucinating and forgetting work across session or

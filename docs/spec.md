@@ -3,7 +3,7 @@
 ## 1. Purpose
 
 `corvee` is a single-machine, non-git-tracked, persistent CLI task tracker
-designed primarily for AI coding agents (with humans as a secondary user)
+designed primarily for AI agents (with humans as a secondary user)
 to track tasks, todos, decisions, and progress within a single
 project/workspace, across sessions — including multiple agents working on
 the same project concurrently. It solves the
