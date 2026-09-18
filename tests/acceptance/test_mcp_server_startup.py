@@ -12,7 +12,8 @@ import pytest
 pytest.importorskip("mcp")
 
 from corvee.config import ProjectConfig
-from corvee.mcp.server import ServerConfig, build_instructions, build_server, startup_message
+from corvee.mcp.server import build_instructions, build_server, startup_message
+from corvee.mcp.server_config import ServerConfig
 
 
 class TestBuildInstructions:

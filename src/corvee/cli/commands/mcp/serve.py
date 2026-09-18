@@ -76,12 +76,8 @@ def serve(project_root: Path | None, actor: str | None, session_id: str | None) 
     except ImportError as error:
         raise _mcp_extra_not_installed() from error
 
-    from corvee.mcp.server import (
-        ServerConfig,
-        build_server,
-        resolve_server_project,
-        resolve_server_session_id,
-    )
+    from corvee.mcp.server import build_server, resolve_server_project, resolve_server_session_id
+    from corvee.mcp.server_config import ServerConfig
 
     resolved_actor = resolve_actor(actor)
     resolved_session_id = resolve_server_session_id(session_id)

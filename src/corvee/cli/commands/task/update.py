@@ -4,14 +4,19 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import cast
-
 import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
 from corvee.cli.params import StdinOrValue
-from corvee.constants import PRIORITIES, STATES, TASK_TYPES, Priority, State, TaskType
+from corvee.constants import (
+    PRIORITIES,
+    STATES,
+    TASK_TYPES,
+    narrow_priority,
+    narrow_state,
+    narrow_task_type,
+)
 from corvee.db.tasks import apply_update
 from corvee.models import parse_task_refs
 from corvee.output import emit_tasks
@@ -66,9 +71,9 @@ def update(
                 session_id=ctx.session_id,
                 title=title,
                 description=description,
-                type_=cast(TaskType, type_) if type_ else None,
-                priority=cast(Priority, priority) if priority else None,
-                state=cast(State, state) if state else None,
+                type_=narrow_task_type(type_) if type_ else None,
+                priority=narrow_priority(priority) if priority else None,
+                state=narrow_state(state) if state else None,
                 force=force,
                 cascade=cascade,
                 scope=scope,

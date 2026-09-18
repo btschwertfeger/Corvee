@@ -11,7 +11,7 @@ from typing import TypeVar
 from corvee.cli.scope import fetch_merged, scopes_for
 from corvee.constants import Scope, ScopeFilter
 from corvee.errors import ConfigError
-from corvee.mcp.server import ServerConfig
+from corvee.mcp.server_config import ServerConfig
 
 T = TypeVar("T")
 

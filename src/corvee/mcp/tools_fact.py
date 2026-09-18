@@ -4,7 +4,7 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import Annotated, Any, cast
+from typing import Annotated, Any
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
@@ -16,7 +16,7 @@ from corvee.db.facts import insert_fact, require_fact, verify_fact
 from corvee.errors import UsageError
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import require_scope_available
-from corvee.mcp.server import ServerConfig
+from corvee.mcp.server_config import ServerConfig
 from corvee.mcp.tools_common import (
     FactRefArg,
     IsGlobalArg,
@@ -76,7 +76,7 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 )
                 return fact.to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def fact_verify(
@@ -109,7 +109,7 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 )
                 return fact.to_dict()
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)
 
     @app.tool(structured_output=True)
     async def fact_show(ref: FactRefArg) -> dict[str, Any]:
@@ -133,4 +133,4 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 detail["events"] = get_fact_events(ctx.conn, fact.id)
                 return detail
 
-        return cast(dict[str, Any], await run_tool(worker, _fetch))
+        return await run_tool(worker, _fetch)

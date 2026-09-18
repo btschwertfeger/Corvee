@@ -6,12 +6,11 @@
 
 import json
 from pathlib import Path
-from typing import cast
 
 import click
 
 from corvee.cli.context import corvee_context
-from corvee.constants import SCOPES, Scope
+from corvee.constants import SCOPES, narrow_scope
 from corvee.db.export_import import export_project
 
 EPILOG = """\
@@ -33,7 +32,7 @@ Back up the machine-wide global database instead:
 @click.option("--scope", "-s", "scope", type=click.Choice(SCOPES), default="local")
 def export(output_path: str | None, scope: str) -> None:
     """Dump the whole project (or --scope global) as JSON."""
-    with corvee_context(write=False, scope=cast(Scope, scope)) as ctx:
+    with corvee_context(write=False, scope=narrow_scope(scope)) as ctx:
         data = export_project(ctx.conn)
     text = json.dumps(data)
     if output_path:
