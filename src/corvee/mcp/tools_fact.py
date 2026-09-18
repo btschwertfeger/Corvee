@@ -4,7 +4,7 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import Annotated, Any, cast
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
@@ -16,6 +16,7 @@ from corvee.db.facts import insert_fact, require_fact, verify_fact
 from corvee.errors import UsageError
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import require_scope_available
+from corvee.mcp.server_config import ServerConfig
 from corvee.mcp.tools_common import (
     FactRefArg,
     IsGlobalArg,
@@ -26,14 +27,8 @@ from corvee.mcp.tools_common import (
 from corvee.mcp.worker import DbWorker
 from corvee.models import parse_fact_ref
 
-if TYPE_CHECKING:
-    # Deferred: corvee.mcp.server imports this module inside serve(), so
-    # importing ServerConfig back here at module level would be circular.
-    # Only used for type annotations.
-    from corvee.mcp.server import ServerConfig
 
-
-def register_fact_tools(app: MCPServer, config: "ServerConfig", worker: DbWorker) -> None:
+def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the fact tools: `fact_add`, `fact_verify`, `fact_show`
     (spec §10.3). `fact_add`/`fact_verify` write an event; `session_id` is
     optional on each, same default as the write tools above. `fact_show`

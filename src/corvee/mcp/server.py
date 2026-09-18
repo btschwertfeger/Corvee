@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import sys
 import uuid
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +15,7 @@ from corvee import __version__
 from corvee.actor import resolve_session_id
 from corvee.config import ProjectConfig, resolve_project
 from corvee.errors import ConfigError
+from corvee.mcp.server_config import ServerConfig
 from corvee.mcp.worker import DbWorker
 
 if TYPE_CHECKING:
@@ -31,26 +31,6 @@ _BASE_INSTRUCTIONS = (
     "Check an existing fact with fact_show before re-deriving it; record "
     "new or updated ones with fact_add/fact_verify."
 )
-
-
-@dataclass(frozen=True)
-class ServerConfig:
-    """Resolved once at server launch, on the main thread, and threaded
-    explicitly into every tool call from then on -- never re-derived from
-    click's (thread-local) context or the process's cwd once a tool call's
-    DB work moves to the dedicated worker thread (spec §10.1).
-
-    `project` is `None` in global-only mode: no `--project-root` was given,
-    so local scope is unavailable for the server's whole lifetime.
-
-    `session_id` is the server's own default, used by any write tool call
-    that omits its own per-call `session_id` argument (§10.1) -- never
-    silently unset, unlike the CLI's own `session_id: str | None = None`.
-    """
-
-    actor: str
-    project: ProjectConfig | None
-    session_id: str
 
 
 def resolve_server_session_id(session_id: str | None) -> str:

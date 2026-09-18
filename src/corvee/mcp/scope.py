@@ -6,22 +6,17 @@
 
 import sqlite3
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, TypeVar
+from typing import TypeVar
 
 from corvee.cli.scope import fetch_merged, scopes_for
 from corvee.constants import Scope, ScopeFilter
 from corvee.errors import ConfigError
-
-if TYPE_CHECKING:
-    # Deferred: corvee.mcp.server imports the tool modules (which import
-    # this module) inside serve(), so importing ServerConfig back here at
-    # module level would be circular. Only used for type annotations.
-    from corvee.mcp.server import ServerConfig
+from corvee.mcp.server_config import ServerConfig
 
 T = TypeVar("T")
 
 
-def require_scope_available(config: "ServerConfig", scope: str) -> None:
+def require_scope_available(config: ServerConfig, scope: str) -> None:
     """Raise `no_project` (exit 6) if `scope == "local"` and this server has
     no resolved project (global-only mode, §10.1). The one check every
     ref-taking tool, plus every scope-filter-driven one (`brief`,
@@ -36,7 +31,7 @@ def require_scope_available(config: "ServerConfig", scope: str) -> None:
         )
 
 
-def scopes_for_config(config: "ServerConfig", scope_filter: ScopeFilter) -> tuple[Scope, ...]:
+def scopes_for_config(config: ServerConfig, scope_filter: ScopeFilter) -> tuple[Scope, ...]:
     """The MCP-layer entry point for `cli/scope.py::scopes_for`: raises via
     `require_scope_available` for `scope_filter="local"` with no project —
     a real usage error, same as the CLI's own "--scope local requested
@@ -52,7 +47,7 @@ def scopes_for_config(config: "ServerConfig", scope_filter: ScopeFilter) -> tupl
 
 
 def fetch_merged_for_config(
-    config: "ServerConfig",
+    config: ServerConfig,
     scope_filter: ScopeFilter,
     fetch: Callable[[sqlite3.Connection, Scope], Sequence[T]],
 ) -> list[T]:

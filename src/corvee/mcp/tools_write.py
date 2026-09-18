@@ -4,7 +4,7 @@
 # https://github.com/btschwertfeger
 #
 
-from typing import TYPE_CHECKING, Annotated, Any, cast
+from typing import Annotated, Any, cast
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
@@ -15,6 +15,7 @@ from corvee.db.tasks import add_comment, apply_update, claim_task, insert_task, 
 from corvee.errors import UsageError
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import require_scope_available
+from corvee.mcp.server_config import ServerConfig
 from corvee.mcp.tools_common import (
     IsGlobalArg,
     SessionIdArg,
@@ -26,14 +27,8 @@ from corvee.mcp.tools_common import (
 )
 from corvee.mcp.worker import DbWorker
 
-if TYPE_CHECKING:
-    # Deferred: corvee.mcp.server imports this module inside serve(), so
-    # importing ServerConfig back here at module level would be circular.
-    # Only used for type annotations.
-    from corvee.mcp.server import ServerConfig
 
-
-def register_write_tools(app: MCPServer, config: "ServerConfig", worker: DbWorker) -> None:
+def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the write tools: `task_claim`, `task_unclaim`,
     `task_comment`, `task_start`, `task_done`, `task_cancel`,
     `task_review`, `task_block`, `task_add` (spec §10.3). Every one of

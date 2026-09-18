@@ -15,7 +15,8 @@ from mcp_helpers import call_error as _call_error
 from corvee.cli.context import corvee_context
 from corvee.config import ProjectConfig
 from corvee.db.tasks import insert_task
-from corvee.mcp.server import ServerConfig, build_server
+from corvee.mcp.server import build_server
+from corvee.mcp.server_config import ServerConfig
 
 
 @pytest.fixture
