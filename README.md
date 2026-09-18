@@ -6,6 +6,7 @@ agents, with humans as a secondary user.
 [![CI/CD](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml/badge.svg)](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+[![Documentation](https://img.shields.io/badge/docs-btschwertfeger.github.io%2FCorvee-blue.svg)](https://btschwertfeger.github.io/Corvee/)
 
 Agents lose context between sessions and collide with each other mid-task.
 corvee tracks tasks, todos, decisions, and checked-true facts in a local
@@ -30,11 +31,13 @@ flowchart LR
     end
 
     A1 -->|claim / update| CLI["corvee CLI"]
-    A2 -->|claim / update| CLI
+    A2 -->|claim / update| MCP["corvee MCP server"]
     H -->|claim / update| CLI
 
     CLI <--> LDB[("Local SQLite\ntasks + facts")]
     CLI <--> GDB[("Global SQLite\ntasks + facts")]
+    MCP <--> LDB
+    MCP <--> GDB
 
     LDB -.->|"already claimed -> exit 4"| A2
 ```
@@ -43,10 +46,22 @@ Every task and fact lives in exactly one of these two independent databases,
 picked with `--global` at creation time and encoded in the id from then on.
 `--scope all` (the default for listing) reads both.
 
+corvee itself is built with spec-driven development: [`docs/spec.md`](docs/spec.md)
+is written and extended before any code, then implemented and refined
+across many iterations.
+
 ## Install
 
 ```bash
 uv tool install corvee
+```
+
+Hosts that speak MCP natively instead of shelling out to the CLI need the
+`mcp` extra and `corvee mcp serve` (see [MCP server](docs/mcp.md) for
+per-host setup):
+
+```bash
+uv tool install 'corvee[mcp]'
 ```
 
 ## Quickstart
