@@ -12,7 +12,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from corvee.config import ProjectConfig
-from corvee.mcp.server import ServerConfig, build_server
+from corvee.mcp.server import build_server
+from corvee.mcp.server_config import ServerConfig
 
 if TYPE_CHECKING:
     from mcp.server.mcpserver import MCPServer

@@ -19,7 +19,7 @@ from corvee.cli.context import corvee_context
 from corvee.constants import SCOPE_FILTERS, ScopeFilter
 from corvee.errors import UsageError
 from corvee.mcp.scope import require_scope_available
-from corvee.mcp.server import ServerConfig
+from corvee.mcp.server_config import ServerConfig
 from corvee.models import parse_task_ref
 
 

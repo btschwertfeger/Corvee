@@ -15,7 +15,7 @@ from corvee.constants import Scope
 from corvee.db.tasks import TaskFilter, insert_task, list_tasks
 from corvee.errors import ConfigError
 from corvee.mcp.scope import fetch_merged_for_config, scopes_for_config
-from corvee.mcp.server import ServerConfig
+from corvee.mcp.server_config import ServerConfig
 
 
 class TestScopesForConfig:

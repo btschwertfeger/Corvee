@@ -16,7 +16,8 @@ from mcp.types import CallToolResult
 from corvee.config import ProjectConfig
 from corvee.db.schema import CURRENT_SCHEMA_VERSION
 from corvee.errors import ConfigError
-from corvee.mcp.server import ServerConfig, build_server
+from corvee.mcp.server import build_server
+from corvee.mcp.server_config import ServerConfig
 
 
 class TestVersionSkewMidSession:

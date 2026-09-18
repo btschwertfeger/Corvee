@@ -21,7 +21,7 @@ from corvee.db.tasks import require_task, search_tasks
 from corvee.errors import UsageError
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import fetch_merged_for_config, require_scope_available
-from corvee.mcp.server import ServerConfig
+from corvee.mcp.server_config import ServerConfig
 from corvee.mcp.tools_common import (
     LimitArg,
     TaskRefArg,
