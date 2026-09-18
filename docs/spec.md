@@ -2,10 +2,11 @@
 
 ## 1. Purpose
 
-`corvee` is a local CLI issue tracker designed primarily for AI coding agents
-(with humans as a secondary user) to track tasks, todos, decisions, and
-progress within a single project/workspace, across sessions — including
-multiple agents working on the same project concurrently. It solves the
+`corvee` is a single-machine, non-git-tracked, persistent CLI task tracker
+designed primarily for AI coding agents (with humans as a secondary user)
+to track tasks, todos, decisions, and progress within a single
+project/workspace, across sessions — including multiple agents working on
+the same project concurrently. It solves the
 problem of agents losing context between sessions and colliding with each
 other mid-task: instead of re-deriving "what was I doing" from chat history,
 or silently overwriting another agent's edit, the agent queries and claims
@@ -1684,7 +1685,7 @@ The first is for this project's own `AGENTS.md` (`agents_block_local` in
 ## Task tracking and facts (corvee)
 
 This project tracks tasks and checked-true facts with `corvee`, a local,
-multi-agent-aware CLI issue tracker and fact store. Identify yourself with
+multi-agent-aware CLI task tracker and fact store. Identify yourself with
 `corvee --actor agent:claude --session-id <token> <command>` (or the
 CORVEE_ACTOR/CORVEE_SESSION_ID environment variables, which the flags
 override) so every call stays a plain `corvee ...` command instead of an
@@ -1710,7 +1711,7 @@ project such a global config applies to — including ones that never ran
 ## Task tracking and facts (corvee)
 
 Projects that have run `corvee init` track tasks and checked-true facts
-with `corvee`, a local, multi-agent-aware CLI issue tracker and fact
+with `corvee`, a local, multi-agent-aware CLI task tracker and fact
 store. Check for `.corvee/config.toml`, or run `corvee doctor`, before
 assuming the current project uses it — not every project will. Where it
 applies, identify yourself with `corvee --actor agent:claude --session-id

@@ -18,10 +18,10 @@ Save it as a file an agent can be pointed at directly:
 """
 
 EXPLAIN_TEXT = """\
-corvee: a local, multi-agent-aware CLI issue tracker, plus a standalone
-store of checked-true facts. Multiple agents and humans can work the same
-backlog concurrently — claims prevent two actors from editing the same task
-at once.
+corvee: a single-machine, non-git-tracked, persistent, multi-agent-aware
+CLI task tracker, plus a standalone store of checked-true facts. Multiple
+agents and humans can work the same backlog concurrently — claims prevent
+two actors from editing the same task at once.
 
 Operating rule, not an example to adapt: track work as you go, never after
 the fact. This applies to any nontrivial piece of work, not just code — a

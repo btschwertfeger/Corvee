@@ -1,7 +1,8 @@
 # corvee
 
-A local, multi-agent-aware CLI issue tracker and fact store for AI coding
-agents, with humans as a secondary user.
+A single-machine, non-git-tracked, persistent, multi-agent-aware CLI issue
+tracker and fact store for AI coding agents, with humans as a secondary
+user.
 
 [![CI/CD](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml/badge.svg)](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
