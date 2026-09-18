@@ -1802,9 +1802,12 @@ unsolicited one from `corvee init`.
   spec version documents the design; the package version tracks what has
   actually shipped. The package version itself is never hand-edited — it's
   derived from git tags via `hatch-vcs` (`[tool.hatch.version] source =
-  "vcs"`), with a `fallback_version` for an untagged checkout, and written
-  to a git-ignored `src/corvee/_version.py` by a build hook, the same
-  pattern `setuptools_scm` provides for a setuptools-based project.
+  "vcs"`), with a `fallback_version` for an untagged checkout, and baked
+  into the built package's own metadata rather than a generated source
+  file. `corvee.__version__` reads it back at runtime via
+  `importlib.metadata.version("corvee")`, so it stays correct for any
+  installed copy of the package without a git-ignored file for static
+  analysis tools to trip over.
 
 ## 9. Testing
 

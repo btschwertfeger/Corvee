@@ -38,12 +38,12 @@ corvee = "corvee.cli.main:main"
 source = "vcs"
 
 [tool.hatch.version.raw-options]
-# No release has been tagged yet; once `git tag v0.3.0` exists this is
-# ignored in favor of the real git-described version.
-fallback_version = "0.3.0"
-
-[tool.hatch.build.hooks.vcs]
-version-file = "src/corvee/_version.py"
+# No release has been tagged yet; once a `v*` tag exists this is ignored
+# in favor of the real git-described version.
+fallback_version = "0.1.0"
+# Drop the "+g<hash>" local version segment: PyPI rejects local versions
+# outright, so untagged commits must resolve to a plain "0.1.0.devN".
+local_scheme = "no-local-version"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/corvee"]
