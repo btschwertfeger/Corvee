@@ -9,6 +9,7 @@ markdown files with semi-structured todo lists for agents to work on? Then
 Corvee might be a helpful tool for you and your agents!
 
 [![CI/CD](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml/badge.svg)](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml)
+[![codecov](https://codecov.io/gh/btschwertfeger/Corvee/branch/master/badge.svg)](https://app.codecov.io/gh/btschwertfeger/Corvee)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
 [![Documentation](https://img.shields.io/badge/docs-btschwertfeger.github.io%2FCorvee-blue.svg)](https://btschwertfeger.github.io/Corvee/)
