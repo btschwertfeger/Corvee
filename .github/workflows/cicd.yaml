@@ -3,6 +3,8 @@ name: CI/CD
 on:
   push:
     branches: [master]
+  release:
+    types: [created]
   pull_request:
 
 permissions:
@@ -97,3 +99,92 @@ jobs:
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # Uploads the package to test.pypi.org on every push to master.
+  upload-test-pypi:
+    if: |
+      success()
+      && github.ref == 'refs/heads/master'
+      && github.actor == 'btschwertfeger'
+      && github.event_name == 'push'
+    needs: [build]
+    name: Upload development version to Test PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # mandatory for OIDC Trusted Publishing
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/corvee
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            github.com:443
+            test.pypi.org
+            uploads.github.com:443
+
+      - name: Download the distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish package distributions to Test PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  # Uploads the package to PyPI when a release is created.
+  upload-pypi:
+    if: |
+      success()
+      && github.actor == 'btschwertfeger'
+      && github.event_name == 'release'
+    needs: [build]
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # mandatory for OIDC Trusted Publishing
+      attestations: write # write build-provenance attestations
+    environment:
+      name: pypi
+      url: https://pypi.org/p/corvee
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
+        with:
+          disable-sudo: true
+          egress-policy: block
+          allowed-endpoints: >
+            api.github.com:443
+            fulcio.sigstore.dev
+            github.com:443
+            pypi.org
+            rekor.sigstore.dev
+            timestamp.sigstore.dev
+            tuf-repo-cdn.sigstore.dev
+            upload.pypi.org
+
+      - name: Download the distributions
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      # SLSA build provenance for the wheel and sdist, written to GitHub's
+      # attestation store and verifiable with `gh attestation verify`.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "dist/*"
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          repository-url: https://upload.pypi.org/legacy/
