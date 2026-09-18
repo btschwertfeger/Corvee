@@ -16,7 +16,7 @@ from corvee.db.facts import insert_fact, require_fact, verify_fact
 from corvee.errors import UsageError
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import require_scope_available
-from corvee.mcp.server import ServerConfig
+from corvee.mcp.server_config import ServerConfig
 from corvee.mcp.tools_common import (
     FactRefArg,
     IsGlobalArg,
