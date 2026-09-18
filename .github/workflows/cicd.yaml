@@ -134,7 +134,7 @@ jobs:
 
   docs:
     runs-on: ubuntu-latest
-    needs: [pre-commit, test]
+    needs: [pre-commit]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -175,7 +175,7 @@ jobs:
       && github.ref == 'refs/heads/master'
       && github.actor == 'btschwertfeger'
       && github.event_name == 'push'
-    needs: [test, codeql]
+    needs: [docs, test, codeql]
     name: Upload development version to Test PyPI
     runs-on: ubuntu-latest
     permissions:
@@ -219,7 +219,7 @@ jobs:
       success()
       && github.actor == 'btschwertfeger'
       && github.event_name == 'release'
-    needs: [test, codeql]
+    needs: [docs, test, codeql]
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     permissions:
