@@ -1,0 +1,78 @@
+# corvee
+
+A local, multi-agent-aware CLI issue tracker and fact store for AI coding
+agents, with humans as a secondary user.
+
+[![CI/CD](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml/badge.svg)](https://github.com/btschwertfeger/Corvee/actions/workflows/cicd.yaml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
+
+Agents lose context between sessions and collide with each other mid-task.
+corvee tracks tasks, todos, decisions, and checked-true facts in a local
+SQLite database instead of chat history or a markdown file, so an agent (or
+a human) picks up exactly where the last session left off, and multiple
+agents work the same project without silently overwriting each other's
+edits.
+
+See the [documentation site](https://btschwertfeger.github.io/Corvee/) for
+the full pitch, the [Quickstart](docs/quickstart.md), the
+[Commands](docs/commands.md) reference, the
+[Specification](docs/spec.md), and the [MCP server](docs/mcp.md) for
+hosts that speak Model Context Protocol natively instead of shelling out
+to the CLI.
+
+```mermaid
+flowchart LR
+    subgraph sessions["Sessions, same project"]
+        A1["Agent session A"]
+        A2["Agent session B"]
+        H["Human"]
+    end
+
+    A1 -->|claim / update| CLI["corvee CLI"]
+    A2 -->|claim / update| CLI
+    H -->|claim / update| CLI
+
+    CLI <--> LDB[("Local SQLite\ntasks + facts")]
+    CLI <--> GDB[("Global SQLite\ntasks + facts")]
+
+    LDB -.->|"already claimed -> exit 4"| A2
+```
+
+Every task and fact lives in exactly one of these two independent databases,
+picked with `--global` at creation time and encoded in the id from then on.
+`--scope all` (the default for listing) reads both.
+
+## Install
+
+```bash
+uv tool install corvee
+```
+
+## Quickstart
+
+```bash
+cd your-project
+corvee init                              # once per project
+
+corvee task add "Fix the flaky auth test" --description "..."
+corvee task list --json
+corvee task claim TASK-1
+corvee task update TASK-1 --state done   # claim clears automatically
+
+corvee fact add "requests is Apache-2.0 licensed" --proof "pip show requests"
+corvee fact search "license" --json
+```
+
+`corvee explain` prints a compact, agent-oriented cheat sheet from inside
+any initialized project. See [Quickstart](docs/quickstart.md) for facts,
+global scope, and the full core loop.
+
+## License
+
+[Apache-2.0](LICENSE)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup and the
+project's quality gate.

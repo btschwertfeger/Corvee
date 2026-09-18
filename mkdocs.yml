@@ -1,0 +1,44 @@
+site_name: corvee
+site_description: A local, multi-agent-aware CLI issue tracker
+repo_url: https://github.com/btschwertfeger/Corvee
+repo_name: btschwertfeger/Corvee
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Commands: commands.md
+  - MCP server: mcp.md
+  - Concurrency model: concurrency.md
+  - Specification: spec.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - mkdocs_click
+
+docs_dir: docs

@@ -1,0 +1,44 @@
+# Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+wheels/
+*.whl
+src/corvee/_version.py
+
+# Environments
+.venv/
+venv/
+env/
+.hatch/
+
+# Testing / coverage / typing / linting caches
+.cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.ruff_cache/
+.pytest_cache/
+.tox/
+.nox/
+mutants/
+
+# Docs
+site/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# corvee project data (never committed)
+.corvee/

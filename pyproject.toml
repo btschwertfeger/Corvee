@@ -1,0 +1,163 @@
+#
+# Copyright (C) 2026 Benjamin Thomas Schwertfeger
+# SPDX-License-Identifier: Apache-2.0
+# https://github.com/btschwertfeger
+#
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "corvee"
+dynamic = ["version"]
+description = "A local, multi-agent-aware CLI issue tracker"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = ["click>=8.1"]
+maintainers = [
+  { name = "Benjamin Thomas Schwertfeger", email = "contact@b-schwertfeger.de" },
+]
+
+# Optional: `corvee mcp serve` (§10 of the spec). Not a hard dependency of
+# the base install -- a host with no MCP use case should not need to pull
+# in an MCP SDK. `corvee mcp serve` is always registered regardless of
+# whether this extra is installed; running it without the extra fails
+# cleanly rather than with a raw ImportError.
+[project.optional-dependencies]
+mcp = ["mcp>=2.2"]
+
+[project.urls]
+Homepage = "https://github.com/btschwertfeger/Corvee"
+
+[project.scripts]
+corvee = "corvee.cli.main:main"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+# No release has been tagged yet; once `git tag v0.3.0` exists this is
+# ignored in favor of the real git-described version.
+fallback_version = "0.3.0"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/corvee/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/corvee"]
+
+[tool.hatch.envs.default]
+installer = "uv"
+# Installs corvee[mcp] too, so the mcp SDK is present for local dev/test
+# runs (including the one e2e test that spawns a real `corvee mcp serve`
+# subprocess) without making it a hard dependency of the published package.
+features = ["mcp"]
+dependencies = [
+  "pytest",
+  "pytest-cov",
+  "pytest-xdist",
+  "ty",
+  "ruff",
+  "black",
+  "prek",
+  "mkdocs",
+  "mkdocs-material",
+  "mkdocs-click",
+  "mutmut",
+]
+
+# lint/format/typecheck all delegate to `prek run <hook-id>` rather than
+# invoking ruff/black/ty directly, so there is exactly one place
+# (.pre-commit-config.yaml) that owns each tool's config/args — hatch and
+# CI can never drift apart on what "lint" or "format" actually runs.
+[tool.hatch.envs.default.scripts]
+test = "pytest -n auto {args}"
+cov = "pytest --cov=src/corvee --cov-report=term-missing {args}"
+lint = "prek run ruff-check --all-files {args}"
+format = "prek run black --all-files {args}"
+typecheck = "prek run ty --all-files {args}"
+check = ["prek run --all-files {args}", "test"]
+docs-serve = "mkdocs serve"
+docs-build = "mkdocs build"
+# Opt-in, not part of `check`/CI: ~2300 mutants across db/ and guards/ run in
+# well under a minute locally, but a surviving mutant needs a human/agent to
+# read it and judge whether it's a real gap, so it stays a deliberate,
+# on-demand step rather than a merge gate.
+mutate = "mutmut run {args}"
+# Removes cache/build artifacts only (__pycache__, egg-info, tool caches,
+# dist/build/site output). Deliberately leaves src/corvee/_version.py alone
+# even though it's generated (hatch-vcs) and gitignored -- deleting it
+# breaks every already-installed environment's imports until a rebuild
+# (`hatch build --hooks-only` regenerates it), which is not what "clean"
+# should do to a working checkout. Never touches .corvee/ (this project's
+# own task/fact database) or .venv/ -- both are explicitly excluded, not
+# merely absent from the target list below.
+clean = """
+find . -type d \\( -name '__pycache__' -o -name '*.egg-info' \\) -not -path './.corvee/*' -not -path './.venv/*' -prune -exec rm -rf {{}} + && \\
+rm -rf .cache .pytest_cache .ruff_cache .coverage coverage.xml htmlcov build dist wheels site
+"""
+
+# Cross-version test matrix: `hatch run test:test`, or a single interpreter
+# with `hatch run +py=3.12 test:test`.
+[tool.hatch.envs.test]
+installer = "uv"
+features = ["mcp"]
+dependencies = ["pytest", "pytest-xdist"]
+
+[tool.hatch.envs.test.scripts]
+test = "pytest -n auto {args}"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.11", "3.12", "3.13", "3.14"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+cache_dir = ".cache/pytest"
+markers = [
+    "unit: pure functions and data structures, no filesystem/database/subprocess",
+    "acceptance: behavior through the CLI or db layer, in-process against a real tmp_path database",
+    "e2e: a real `python -m corvee` subprocess against a real database in a temp directory",
+]
+
+[tool.coverage.run]
+source = ["src/corvee"]
+branch = true
+data_file = ".cache/coverage/.coverage"
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
+skip_empty = true
+
+[tool.ty.src]
+include = ["src", "tests"]
+
+[tool.ruff]
+cache-dir = ".cache/ruff"
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "C4", "RET", "RUF", "S", "CPY"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S603"]
+# Table/column names interpolated here always come from a fixed internal
+# allow-list (never user input); every value is still bound via `?`.
+"src/corvee/db/tasks.py" = ["S608"]
+"src/corvee/db/facts.py" = ["S608"]
+"src/corvee/db/export_import.py" = ["S608"]
+
+[tool.ruff.lint.flake8-copyright]
+author = "Benjamin Thomas Schwertfeger"
+notice-rgx = "(?i)Copyright \\(C\\) \\d{4}"
+min-file-size = 1
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mutmut]
+only_mutate = ["src/corvee/db/*.py", "src/corvee/guards/*.py"]
