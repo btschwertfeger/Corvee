@@ -5,7 +5,7 @@
 #
 
 from datetime import UTC, datetime
-from typing import Annotated, Any, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
@@ -21,7 +21,6 @@ from corvee.db.tasks import require_task, search_tasks
 from corvee.errors import UsageError
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import fetch_merged_for_config, require_scope_available
-from corvee.mcp.server import ServerConfig
 from corvee.mcp.tools_common import (
     LimitArg,
     TaskRefArg,
@@ -33,8 +32,14 @@ from corvee.mcp.worker import DbWorker
 from corvee.models import parse_task_ref, task_ref
 from corvee.timeutil import parse_duration, timestamp
 
+if TYPE_CHECKING:
+    # Deferred: corvee.mcp.server imports this module inside serve(), so
+    # importing ServerConfig back here at module level would be circular.
+    # Only used for type annotations.
+    from corvee.mcp.server import ServerConfig
 
-def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
+
+def register_read_tools(app: MCPServer, config: "ServerConfig", worker: DbWorker) -> None:
     """Registers the read-only tools: `task_show`, `brief`, `fact_search`,
     `task_search` (spec §10.3). None of these accept `session_id` -- they
     write no events.

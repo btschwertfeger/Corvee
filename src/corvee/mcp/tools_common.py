@@ -11,7 +11,7 @@ helper.
 """
 
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import Field
 
@@ -19,8 +19,13 @@ from corvee.cli.context import corvee_context
 from corvee.constants import SCOPE_FILTERS, ScopeFilter
 from corvee.errors import UsageError
 from corvee.mcp.scope import require_scope_available
-from corvee.mcp.server import ServerConfig
 from corvee.models import parse_task_ref
+
+if TYPE_CHECKING:
+    # Deferred: corvee.mcp.server imports the tool modules (which import
+    # this module) inside serve(), so importing ServerConfig back here at
+    # module level would be circular. Only used for type annotations.
+    from corvee.mcp.server import ServerConfig
 
 
 def _enum_field(description: str, choices: tuple[str, ...]) -> Any:
@@ -68,7 +73,7 @@ def scope_filter_field(description: str) -> Any:
     return _enum_field(description, SCOPE_FILTERS)
 
 
-def project_db_path(config: ServerConfig) -> Path | None:
+def project_db_path(config: "ServerConfig") -> Path | None:
     """The resolved project's already-known db path, used verbatim by
     `corvee_context(project_db_path=...)` instead of `project_root=...`
     so a tool call never re-walks the filesystem to `.corvee/config.toml`
@@ -78,7 +83,7 @@ def project_db_path(config: ServerConfig) -> Path | None:
     return config.project.db_path if config.project else None
 
 
-def session_id_for(config: ServerConfig, session_id: str | None) -> str:
+def session_id_for(config: "ServerConfig", session_id: str | None) -> str:
     """A write tool's own `session_id` argument, if given, else the
     server's default (§10.1) -- never `None`, unlike the CLI's own
     optional `--session-id`. Falling all the way through to `None` here
@@ -97,7 +102,7 @@ def validate_scope_filter(scope: str) -> ScopeFilter:
     return scope
 
 
-def write_context(config: ServerConfig, ref: str | int) -> tuple[Any, Any]:
+def write_context(config: "ServerConfig", ref: str | int) -> tuple[Any, Any]:
     """Parse `ref`, check its scope is available on this server, and return
     (parsed_ref, an un-entered corvee_context(write=True, ...)) for the
     caller to `with`. Kept separate from entering the context so a tool
