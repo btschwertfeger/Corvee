@@ -30,6 +30,8 @@ docs = ["mkdocs", "mkdocs-material", "mkdocs-click"]
 
 [project.urls]
 Homepage = "https://github.com/btschwertfeger/Corvee"
+Documentation = "https://corvee.readthedocs.io/en/stable/"
+Changelog = "https://github.com/btschwertfeger/Corvee/releases"
 
 [project.scripts]
 corvee = "corvee.cli.main:main"
