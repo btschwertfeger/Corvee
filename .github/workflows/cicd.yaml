@@ -70,6 +70,15 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+      - name: Check git status
+        run: |
+          if [[ -z "$(git status --porcelain)" ]]; then
+            echo "No changes found."
+          else
+            echo "Changes detected. Please commit or discard changes before publishing."
+            git status --porcelain
+            exit 1
+          fi
       - name: Install hatch
         run: uv tool install hatch
       - name: Build
