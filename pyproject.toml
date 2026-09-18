@@ -20,11 +20,6 @@ maintainers = [
   { name = "Benjamin Thomas Schwertfeger", email = "contact@b-schwertfeger.de" },
 ]
 
-# Optional: `corvee mcp serve` (§10 of the spec). Not a hard dependency of
-# the base install -- a host with no MCP use case should not need to pull
-# in an MCP SDK. `corvee mcp serve` is always registered regardless of
-# whether this extra is installed; running it without the extra fails
-# cleanly rather than with a raw ImportError.
 [project.optional-dependencies]
 mcp = ["mcp>=2.2"]
 
