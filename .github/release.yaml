@@ -1,0 +1,36 @@
+# Config file to auto-generate release notes based on
+# https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes
+
+changelog:
+  exclude:
+    # labels:
+    #   - ignore-for-release
+    # authors:
+    #   - john-doe
+  categories:
+    - title: Breaking Changes ⚠️
+      labels:
+        - Breaking
+        - breaking
+    - title: Implemented Enhancements 🎉
+      labels:
+        - Feature
+        - enhancement
+    - title: Fixed Bugs 🪲
+      labels:
+        - Bug
+        - bug
+    - title: Documentation 📖
+      labels:
+        - documentation
+    - title: Other Changes 📝
+      labels:
+        - "*"
+      exclude:
+        labels:
+          - dependencies
+          - github_actions
+    - title: Dependencies 👒
+      labels:
+        - dependencies
+        - github_actions
