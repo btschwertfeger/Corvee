@@ -22,6 +22,11 @@ maintainers = [
 
 [project.optional-dependencies]
 mcp = ["mcp>=2.2"]
+# Only needed to build the documentation site (mkdocs.yml), not the package
+# itself. Kept as a project extra rather than a bare hatch dev dependency so
+# Read the Docs can install exactly this set via `pip install .[docs]`
+# instead of duplicating the package list in its own requirements file.
+docs = ["mkdocs", "mkdocs-material", "mkdocs-click"]
 
 [project.urls]
 Homepage = "https://github.com/btschwertfeger/Corvee"
@@ -47,10 +52,11 @@ packages = ["src/corvee"]
 
 [tool.hatch.envs.default]
 installer = "uv"
-# Installs corvee[mcp] too, so the mcp SDK is present for local dev/test
-# runs (including the one e2e test that spawns a real `corvee mcp serve`
-# subprocess) without making it a hard dependency of the published package.
-features = ["mcp"]
+# Installs corvee[mcp,docs] too, so the mcp SDK and mkdocs are present for
+# local dev/test/docs runs (including the one e2e test that spawns a real
+# `corvee mcp serve` subprocess) without making them hard dependencies of
+# the published package.
+features = ["mcp", "docs"]
 dependencies = [
   "pytest",
   "pytest-cov",
@@ -59,9 +65,6 @@ dependencies = [
   "ruff",
   "black",
   "prek",
-  "mkdocs",
-  "mkdocs-material",
-  "mkdocs-click",
   "mutmut",
 ]
 
