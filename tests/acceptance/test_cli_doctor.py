@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 
+from corvee.cli.commands.doctor import _findings_lines
 from corvee.cli.main import cli
 from corvee.config import ProjectConfig, bootstrap_project
 from corvee.db.schema import CURRENT_SCHEMA_VERSION
@@ -220,3 +221,28 @@ class TestDoctor:
                 "session_ids": ["session-a", "session-b"],
             }
         ]
+
+    def test_table_output_renders_a_shared_actor_sessions_finding(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """Non-JSON output names the task, actor, and both sessions instead of
+        crashing on a finding that is not a cycle (TASK-23).
+        """
+        add_result = runner.invoke(cli, ["task", "add", "a", "--description", "d", "--json"])
+        task_id = json.loads(add_result.output)[0]["id"]
+        runner.invoke(cli, ["--session-id", "session-a", "task", "claim", task_id])
+        runner.invoke(cli, ["--session-id", "session-b", "task", "claim", task_id])
+
+        result = runner.invoke(cli, ["doctor"])
+        assert result.exit_code == 0
+        assert (
+            f"{task_id} claimed by agent:test from multiple sessions: session-a, session-b"
+            in result.output
+        )
+
+    def test_unknown_finding_kind_renders_instead_of_crashing(self) -> None:
+        """A finding kind this renderer does not know about is shown as-is, so
+        adding a fourth producer can never crash `doctor` again (TASK-23).
+        """
+        finding = {"kind": "future_kind", "detail": "x"}
+        assert _findings_lines([finding]) == ["findings:", f"  {finding}"]

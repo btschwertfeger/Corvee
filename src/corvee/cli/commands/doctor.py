@@ -54,13 +54,24 @@ def _findings_lines(findings: list[dict[str, Any]], *, prefix: str = "") -> list
         return [f"{prefix}findings: none"]
     lines = [f"{prefix}findings:"]
     for finding in findings:
-        if finding["kind"] == "cycle":
+        kind = finding.get("kind")
+        if kind == "cycle":
             lines.append(f"  {finding['relation']} cycle: {' -> '.join(finding['task_ids'])}")
-        else:
+        elif kind == "dangling_foreign_key":
             lines.append(
                 f"  dangling foreign key: {finding['table']}.rowid={finding['rowid']}"
                 f" -> {finding['references']}"
             )
+        elif kind == "shared_actor_sessions":
+            sessions = ", ".join(finding["session_ids"])
+            lines.append(
+                f"  {finding['task_id']} claimed by {finding['actor']} from multiple sessions:"
+                f" {sessions}"
+            )
+        else:
+            # indexed by nothing but `kind`, so a finding shape this renderer
+            # does not know yet still shows up instead of crashing `doctor`.
+            lines.append(f"  {finding}")
     return lines
 
 
