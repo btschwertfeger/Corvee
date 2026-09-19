@@ -99,7 +99,12 @@ def corvee_context(
         )
         conn.execute("COMMIT")
     except BaseException:
-        conn.execute("ROLLBACK")
+        # `BEGIN ...` above can fail before any transaction exists (lock
+        # contention past busy_timeout). Rolling back then would raise
+        # "cannot rollback - no transaction is active" and replace the real
+        # cause; in_transaction is False in exactly that case.
+        if conn.in_transaction:
+            conn.execute("ROLLBACK")
         raise
     finally:
         conn.close()
