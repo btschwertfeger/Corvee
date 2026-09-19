@@ -36,9 +36,7 @@ def completion(shell: str) -> None:
     --priority, ...), and TASK-<n>/FACT-<n> arguments completed against
     real ids in the current project.
     """
-    # Deferred import: corvee.cli.main imports this module to register the
-    # command, so importing it back at module load time would be circular.
-    from corvee.cli.main import cli as root_cli
+    root_cli = click.get_current_context().find_root().command
 
     comp_cls = click.shell_completion.get_completion_class(shell)
     if comp_cls is None:
