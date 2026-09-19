@@ -1,5 +1,5 @@
 site_name: corvee
-site_description: A local, multi-agent-aware CLI issue tracker
+site_description: A local, multi-agent-aware CLI task tracker and fact store for people and agents
 repo_url: https://github.com/btschwertfeger/Corvee
 repo_name: btschwertfeger/Corvee
 
@@ -24,6 +24,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Use cases: use-cases.md
   - Quickstart: quickstart.md
   - Commands: commands.md
   - MCP server: mcp.md

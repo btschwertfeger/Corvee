@@ -1,12 +1,12 @@
 # Corvee
 
 > A single-machine, non-git-tracked, persistent, multi-agent-aware CLI task
-> tracker and fact store for AI agents, with humans as a secondary
-> user.
+> tracker and fact store. Track any work that outlives one session, whether
+> a person or an AI agent picks it back up.
 
-Are you sick of agents hallucinating and forgetting work across session or
-markdown files with semi-structured todo lists for agents to work on? Then
-Corvee might be a helpful tool for you and your agents!
+Are you sick of losing track of work across sessions, or of agents that
+hallucinate and forget between them? Then Corvee might be a helpful tool
+for you and your agents!
 
 <div align="center">
 
@@ -28,12 +28,12 @@ Corvee might be a helpful tool for you and your agents!
 
 </div>
 
-Agents lose context between sessions and collide with each other mid-task.
-corvee tracks tasks, todos, decisions, and checked-true facts in a local
-SQLite database instead of chat history or a markdown file, so an agent (or
-a human) picks up exactly where the last session left off, and multiple
-agents work the same project without silently overwriting each other's
-edits.
+Work loses context between sessions, and concurrent workers collide
+mid-task. corvee tracks tasks, todos, decisions, and checked-true facts in
+a local SQLite database instead of chat history or a markdown file, so a
+person or an agent picks up exactly where the last session left off, and
+several of them share one project without silently overwriting each
+other's edits.
 
 See the [documentation site](https://corvee.readthedocs.io/en/latest/) for
 the full pitch, the [Quickstart](docs/quickstart.md), the
@@ -65,6 +65,24 @@ flowchart LR
 Every task and fact lives in exactly one of these two independent databases,
 picked with `--global` at creation time and encoded in the id from then on.
 `--scope all` (the default for listing) reads both.
+
+## Use cases
+
+corvee is not tied to code. A project is any workspace you return to, and a
+task is any unit of work worth resuming.
+
+- Software work. One repository's backlog, with each agent session
+  claiming the task it works on.
+- Research. A reading queue, open questions, and checked findings stored
+  with the source that established each one.
+- Writing and editing. Chapters, revisions, and reviews, plus editorial
+  decisions you do not want to look up twice.
+- Operations and home labs. Recurring chores and machine-wide facts such
+  as certificate expirations, filed with `--global`.
+- Personal tracking. Anything with a state and a history, run straight
+  from the terminal with no agent involved.
+
+See [Use cases](docs/use-cases.md) for worked examples.
 
 corvee itself is built with spec-driven development: [`docs/spec.md`](docs/spec.md)
 is written and extended before any code, then implemented and refined
