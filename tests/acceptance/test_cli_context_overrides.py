@@ -4,6 +4,7 @@
 # https://github.com/btschwertfeger
 #
 
+import sqlite3
 import threading
 from pathlib import Path
 
@@ -11,6 +12,7 @@ import pytest
 
 from corvee.cli.context import corvee_context
 from corvee.config import ProjectConfig
+from corvee.db.connection import open_connection
 
 
 class TestCorveeContextActorSessionOverrides:
@@ -101,3 +103,37 @@ class TestCorveeContextProjectDbPathOverride:
         """
         with corvee_context(write=False) as ctx:
             assert ctx.db_path == project.db_path
+
+
+def _open_with_short_busy_timeout(db_path: Path) -> sqlite3.Connection:
+    """A real connection with a tiny busy_timeout, so a lock-contention test
+    does not spend the production 5s waiting for the lock (TASK-27)."""
+    conn = open_connection(db_path)
+    conn.execute("PRAGMA busy_timeout = 25")
+    return conn
+
+
+class TestCorveeContextBeginFailureIsNotMasked:
+    def test_failed_begin_surfaces_its_own_error_not_a_rollback_error(
+        self, project: ProjectConfig, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A BEGIN IMMEDIATE that loses the lock race must propagate
+        "database is locked", not a follow-up "cannot rollback - no
+        transaction is active" from rolling back a transaction that never
+        opened (TASK-27).
+        """
+        blocker = sqlite3.connect(project.db_path)
+        blocker.execute("BEGIN EXCLUSIVE")
+        monkeypatch.setattr("corvee.cli.context.open_connection", _open_with_short_busy_timeout)
+        try:
+            with (
+                pytest.raises(sqlite3.OperationalError) as excinfo,
+                corvee_context(write=True),
+            ):
+                pytest.fail("the context body must not run")
+        finally:
+            blocker.rollback()
+            blocker.close()
+
+        assert "database is locked" in str(excinfo.value)
+        assert "cannot rollback" not in str(excinfo.value)
