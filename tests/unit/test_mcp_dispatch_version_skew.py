@@ -10,7 +10,6 @@ import pytest
 
 pytest.importorskip("mcp")
 
-import corvee.mcp.dispatch as dispatch_module
 from corvee.errors import ClaimConflictError, ConfigError
 from corvee.mcp.dispatch import _schedule_exit, run_tool
 from corvee.mcp.worker import DbWorker
@@ -25,7 +24,7 @@ class TestScheduleExitPrintsToStderrFirst:
         whoever is watching the process, would otherwise see the process
         die 100ms later with nothing in its own logs explaining why.
         """
-        monkeypatch.setattr(dispatch_module.os, "_exit", lambda code: None)
+        monkeypatch.setattr("corvee.mcp.dispatch.os._exit", lambda code: None)
 
         err = ConfigError(
             "schema_too_new",
@@ -58,7 +57,7 @@ class TestSchemaSkewSchedulesProcessExit:
         isError for every subsequent call.
         """
         scheduled: list[ConfigError] = []
-        monkeypatch.setattr(dispatch_module, "_schedule_exit", scheduled.append)
+        monkeypatch.setattr("corvee.mcp.dispatch._schedule_exit", scheduled.append)
 
         def _raise() -> None:
             raise ConfigError(
@@ -86,7 +85,7 @@ class TestSchemaSkewSchedulesProcessExit:
         global-only mode) is not, and must not kill the server.
         """
         scheduled: list[int] = []
-        monkeypatch.setattr(dispatch_module, "_schedule_exit", scheduled.append)
+        monkeypatch.setattr("corvee.mcp.dispatch._schedule_exit", scheduled.append)
 
         def _raise() -> None:
             raise ConfigError("no_project", "no project in scope")
@@ -103,7 +102,7 @@ class TestSchemaSkewSchedulesProcessExit:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         scheduled: list[int] = []
-        monkeypatch.setattr(dispatch_module, "_schedule_exit", scheduled.append)
+        monkeypatch.setattr("corvee.mcp.dispatch._schedule_exit", scheduled.append)
 
         def _raise() -> None:
             raise ClaimConflictError("claim_conflict", "held by someone else")

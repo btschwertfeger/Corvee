@@ -87,14 +87,13 @@ class TestFetchMergedForConfig:
         call (TASK-37). Proven by making `resolve_project` itself explode
         if called at all.
         """
-        import corvee.cli.context
 
         def _must_not_be_called(*args: object, **kwargs: object) -> None:
             raise AssertionError(
                 "resolve_project was called; the cached project.db_path was not reused"
             )
 
-        monkeypatch.setattr(corvee.cli.context, "resolve_project", _must_not_be_called)
+        monkeypatch.setattr("corvee.cli.context.resolve_project", _must_not_be_called)
 
         config = ServerConfig(actor="agent:test", project=project, session_id="sess-server")
         assert fetch_merged_for_config(config, "local", _titles) == []
