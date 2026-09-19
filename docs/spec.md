@@ -3,18 +3,17 @@
 ## 1. Purpose
 
 `corvee` is a single-machine, non-git-tracked, persistent CLI task tracker
-designed primarily for AI agents (with humans as a secondary user)
-to track tasks, todos, decisions, and progress within a single
-project/workspace, across sessions — including multiple agents working on
-the same project concurrently. It solves the
-problem of agents losing context between sessions and colliding with each
-other mid-task: instead of re-deriving "what was I doing" from chat history,
-or silently overwriting another agent's edit, the agent queries and claims
+that tracks tasks, todos, decisions, and progress within a single
+project/workspace, across sessions, for people and AI agents alike,
+including several of them working on the same project concurrently. It
+keeps a session from losing context and keeps two workers from colliding
+mid-task: instead of re-deriving "what was I doing" from chat history, or
+silently overwriting another worker's edit, the caller queries and claims
 work through `corvee`.
 
 Alongside tracking work, corvee also holds a small, standalone store of
-checked-true claims (§4.6) — a place to record something as verified, with
-proof and a date, so an agent can retrieve it later and check its own output
+checked-true claims (§4.6), a place to record something as verified with
+proof and a date, so a later session can retrieve it and check new output
 against it instead of re-deriving or silently hallucinating a fact it
 already established once.
 

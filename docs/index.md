@@ -1,23 +1,22 @@
 # corvee
 
 A single-machine, non-git-tracked, persistent CLI task tracker and fact
-store designed for AI agents (with humans as a secondary user) to
-track tasks, todos, decisions, and progress within a single
-project/workspace, across sessions, including multiple agents working on
-the same project concurrently.
+store. It tracks tasks, todos, decisions, and progress within a single
+project or workspace, across sessions, for people and AI agents alike, and
+lets several of them work the same project concurrently without colliding.
 
 Instead of re-deriving "what was I doing" from chat history, or silently
-overwriting another agent's edit, the agent queries and claims work through
+overwriting a collaborator's edit, you query and claim work through
 `corvee`.
 
 ## Why
 
-Agents lose context between sessions and collide with each other mid-task.
-corvee solves both problems with one mechanism: a shared SQLite database on
-disk, and a claim/unclaim protocol that makes "someone is actively working
-on this right now" an explicit, queryable fact instead of an assumption. It
-replaces the ad hoc TODO.md or scratch notes file an agent would otherwise
-keep, with one queryable, claimable backlog.
+Context goes missing between sessions, and two workers still collide
+mid-task. corvee solves both problems with one mechanism: a shared SQLite
+database on disk, and a claim/unclaim protocol that makes "someone is
+actively working on this right now" an explicit, queryable fact instead of
+an assumption. It replaces the ad hoc TODO.md or scratch notes file you
+would otherwise keep, with one queryable, claimable backlog.
 
 ## Comments and events persist reasoning
 
@@ -48,7 +47,7 @@ flowchart LR
 
 Facts like a license, a decided API shape, or a verified environment detail
 get buried in prose, commit messages, or code comments, where they are hard
-to prove and get re-derived by every agent that stumbles onto them again.
+to prove and get re-derived by everyone who stumbles onto them again.
 `corvee fact list` and `corvee fact search` surface claims other agents
 already verified, each carrying the proof that established it and a
 timestamp. Trusting a `verified` fact costs one lookup. Marking a fact
@@ -56,6 +55,17 @@ timestamp. Trusting a `verified` fact costs one lookup. Marking a fact
 claim, such as a command's output or a specific test run. `fact revise`
 drops a verified fact back to `unverified` the moment its wording changes,
 so `verified` always describes the text currently under it.
+
+## Who it is for
+
+Anything that needs durable state across sessions fits, including code.
+A researcher tracks a reading queue and keeps each verified finding with
+the source behind it. Chapters and editorial decisions are a writer's
+backlog. Certificate rotations and other machine-wide facts live in the
+global database. People run corvee directly, with no agent in the loop,
+and the claim protocol protects a person and an agent sharing one backlog
+the same way it protects two agents. [Use cases](use-cases.md) has worked
+examples.
 
 ## What it is not
 
