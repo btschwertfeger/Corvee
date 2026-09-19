@@ -109,7 +109,6 @@ class TestTaskShow:
         filesystem walk + TOML re-parse (TASK-37). Proven by making
         `resolve_project` itself explode if called at all.
         """
-        import corvee.cli.context
 
         with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
             from corvee.db.tasks import insert_task
@@ -121,7 +120,7 @@ class TestTaskShow:
                 "resolve_project was called; the cached project.db_path was not reused"
             )
 
-        monkeypatch.setattr(corvee.cli.context, "resolve_project", _must_not_be_called)
+        monkeypatch.setattr("corvee.cli.context.resolve_project", _must_not_be_called)
 
         detail = _call(app, "task_show", ref=f"TASK-{task.id}")
         assert detail["title"] == "t"

@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-import corvee.db.connection as connection_module
 from corvee.db.connection import _set_wal_mode_with_retry, open_connection
 from corvee.db.schema import CURRENT_SCHEMA_VERSION, MIGRATIONS
 from corvee.errors import ConfigError
@@ -38,7 +37,7 @@ class TestSetWalModeWithRetry:
         """Retries through SQLITE_BUSY and succeeds once the lock clears, still issuing
         the real WAL pragma on the successful attempt, not just any statement.
         """
-        monkeypatch.setattr(connection_module.time, "sleep", lambda _seconds: None)
+        monkeypatch.setattr("corvee.db.connection.time.sleep", lambda _seconds: None)
         conn = _FlakyExecute(failures=2)
         _set_wal_mode_with_retry(conn)  # ty: ignore[invalid-argument-type]
         assert conn.calls == 3
@@ -46,7 +45,7 @@ class TestSetWalModeWithRetry:
 
     def test_reraises_once_attempts_are_exhausted(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """A lock that never clears within `attempts` tries propagates, not swallowed."""
-        monkeypatch.setattr(connection_module.time, "sleep", lambda _seconds: None)
+        monkeypatch.setattr("corvee.db.connection.time.sleep", lambda _seconds: None)
         conn = _FlakyExecute(failures=10)
         with pytest.raises(sqlite3.OperationalError):
             _set_wal_mode_with_retry(conn, attempts=3)  # ty: ignore[invalid-argument-type]
@@ -156,7 +155,7 @@ class TestOpenConnection:
         """
         db_path = tmp_path / "corvee.db"
         broken_migrations = [*MIGRATIONS, (CURRENT_SCHEMA_VERSION + 1, ["NOT VALID SQL"])]
-        monkeypatch.setattr(connection_module, "MIGRATIONS", broken_migrations)
+        monkeypatch.setattr("corvee.db.connection.MIGRATIONS", broken_migrations)
 
         with pytest.raises(sqlite3.OperationalError):
             open_connection(db_path)
@@ -177,13 +176,12 @@ class TestOpenConnection:
         """
         db_path = tmp_path / "corvee.db"
         broken_migrations = [*MIGRATIONS, (CURRENT_SCHEMA_VERSION + 1, ["NOT VALID SQL"])]
-        monkeypatch.setattr(connection_module, "MIGRATIONS", broken_migrations)
+        monkeypatch.setattr("corvee.db.connection.MIGRATIONS", broken_migrations)
 
         real_connect = sqlite3.connect
         opened: list[sqlite3.Connection] = []
         monkeypatch.setattr(
-            connection_module.sqlite3,
-            "connect",
+            "corvee.db.connection.sqlite3.connect",
             lambda *args, **kwargs: opened.append(real_connect(*args, **kwargs)) or opened[-1],
         )
 
