@@ -13,7 +13,7 @@ for you and your agents!
 [![GitHub](https://badgen.net/badge/icon/github?icon=github&label)](https://github.com/btschwertfeger/corvee)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](pyproject.toml)
-<!-- [![Downloads](https://static.pepy.tech/personalized-badge/corvee?period=total&units=abbreviation&left_color=grey&right_color=orange&left_text=downloads)](https://pepy.tech/project/corvee) -->
+[![Downloads](https://static.pepy.tech/personalized-badge/corvee?period=total&units=abbreviation&left_color=grey&right_color=orange&left_text=downloads)](https://pepy.tech/project/corvee)
 
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![typing-ty](https://img.shields.io/badge/typing-ty-informational)](https://github.com/astral-sh/ty)
@@ -21,7 +21,7 @@ for you and your agents!
 [![codecov](https://codecov.io/gh/btschwertfeger/Corvee/branch/master/badge.svg)](https://app.codecov.io/gh/btschwertfeger/Corvee)
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14702/badge)](https://www.bestpractices.dev/projects/14702)
-[![OpenSSF ScoreCard](https://img.shields.io/ossf-scorecard/github.com/btschwertfeger/corvee?label=openssf%20scorecard&style=flat)](https://securityscorecards.dev/viewer/?uri=github.com/btschwertfeger/corvee)
+[![OpenSSF ScoreCard](https://img.shields.io/ossf-scorecard/github.com/btschwertfeger/corvee?label=openssf%20scorecard&style=flat)](https://securityscorecards.dev/viewer/?uri=github.com/btschwertfeger/Corvee)
 
 [![release](https://img.shields.io/pypi/v/corvee)](https://pypi.org/project/corvee/)
 [![Documentation](https://img.shields.io/badge/docs-btschwertfeger.github.io%2FCorvee-blue.svg)](https://corvee.readthedocs.io/en/latest/)
