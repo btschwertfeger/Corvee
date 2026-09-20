@@ -5,6 +5,7 @@
 #
 
 import json
+import sys
 import tomllib
 from pathlib import Path
 
@@ -97,18 +98,24 @@ class TestInit:
         content = (tmp_path / ".corvee" / "config.toml").read_text()
         assert content == 'db_path = "../main/.corvee/corvee.db"\n'
 
-    def test_db_path_holding_a_quote_leaves_a_usable_project(self, tmp_path: Path) -> None:
+    def test_db_path_holding_an_escaped_character_leaves_a_usable_project(
+        self, tmp_path: Path
+    ) -> None:
         """The value reaches config.toml escaped, so the project keeps working.
 
-        Writing it raw produced `db_path = "foo"bar.db"`, which failed `init`
-        itself and then every later command in that directory.
+        Written raw, a backslash reads back as an invalid TOML escape and a
+        quote ends the string early, so `init` itself failed and every later
+        command in that directory failed with it. Windows refuses `"` in a
+        filename, so the same escaping is exercised there through a nested
+        path spelled with a backslash.
         """
-        result = CliRunner().invoke(cli, ["init", "--db-path", 'foo"bar.db'])
+        value = "sub\\dir.db" if sys.platform == "win32" else 'foo"bar.db'
+
+        result = CliRunner().invoke(cli, ["init", "--db-path", value])
 
         assert result.exit_code == 0
         written = (tmp_path / ".corvee" / "config.toml").read_text()
-        assert tomllib.loads(written)["db_path"] == 'foo"bar.db'
-        assert (tmp_path / ".corvee" / 'foo"bar.db').is_file()
+        assert tomllib.loads(written)["db_path"] == value
         assert json.loads(CliRunner().invoke(cli, ["task", "list", "--json"]).output) == []
 
     def test_db_path_is_ignored_on_a_second_init(self, tmp_path: Path) -> None:

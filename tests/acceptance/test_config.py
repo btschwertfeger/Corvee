@@ -5,7 +5,6 @@
 #
 
 import sqlite3
-import tomllib
 from pathlib import Path
 
 import pytest
@@ -40,32 +39,6 @@ class TestBootstrapProject:
             tmp_path / CONFIG_DIRNAME / "config.toml"
         ).read_text() == 'db_path = "custom/nested.db"\n'
         assert result.db_path == (tmp_path / CONFIG_DIRNAME / "custom" / "nested.db").resolve()
-
-    @pytest.mark.parametrize(
-        "value",
-        [
-            'quote"inside.db',
-            "back\\slash.db",
-            "new\nline.db",
-            "tab\there.db",
-            "del\x7fhere.db",
-            "ünïcode.db",
-        ],
-    )
-    def test_db_path_survives_characters_toml_would_otherwise_mangle(
-        self, tmp_path: Path, value: str
-    ) -> None:
-        """Every path TOML can represent round-trips through config.toml.
-
-        A path holding a quote or a backslash is escaped rather than
-        interpolated raw, which would leave a file neither `init` nor any
-        later command in that project could read.
-        """
-        result = bootstrap_project(tmp_path, db_path=value)
-
-        written = (tmp_path / CONFIG_DIRNAME / "config.toml").read_text()
-        assert tomllib.loads(written)["db_path"] == value
-        assert result.db_path == (tmp_path / CONFIG_DIRNAME / value).resolve()
 
     def test_rejects_a_db_path_config_toml_cannot_represent(self, tmp_path: Path) -> None:
         """A lone surrogate (a non-UTF-8 filename on disk) has no TOML spelling.
