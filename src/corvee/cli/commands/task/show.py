@@ -66,7 +66,7 @@ def show(ids: tuple[str, ...], since_duration: str | None, no_events: bool, as_j
         for task in tasks:
             detail = task.to_dict()
             detail["labels"] = list_task_labels(ctx.conn, task.id)
-            detail["links"] = get_task_links(ctx.conn, task.id)
+            detail["links"] = get_task_links(ctx.conn, task.id, scope=scope)
             detail["subtasks"] = [
                 task_ref(child_id, scope) for child_id in get_children(ctx.conn, task.id)
             ]
