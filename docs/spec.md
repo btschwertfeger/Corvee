@@ -73,7 +73,7 @@ against the current working directory, which is what keeps the default
 subdirectory. `corvee init --db-path <path>` is the one place that value is
 chosen, and only at creation time: it writes `<path>` into `config.toml`
 instead of the default, resolved the same way against the config's own
-directory (so the worktree-sharing `../main/.corvee/corvee.db` example
+directory (so the worktree-sharing `../../main/.corvee/corvee.db` example
 above is exactly what `--db-path` is for). Like every other part of `init`,
 it is inert on a re-run against an existing config — the flag is only
 consulted while `config.toml` is being created.
@@ -96,7 +96,7 @@ That is also the whole answer for git worktrees. Each worktree gets its own
 `.corvee/config.toml` and therefore its own backlog by default. Worktrees
 that should share one backlog point their `db_path` at the same file, which
 works because the path is resolved against the config's own directory, so
-`../main/.corvee/corvee.db` from a sibling checkout is stable no matter
+`../../main/.corvee/corvee.db` from a sibling checkout is stable no matter
 where the command runs.
 
 ### 3.2 Connection model
