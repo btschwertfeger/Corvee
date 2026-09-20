@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
-      - name: Install project (generates src/corvee/_version.py via the hatch-vcs build hook)
+      - name: Install project
         run: uv pip install --system -e .
       - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
