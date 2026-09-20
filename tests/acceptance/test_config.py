@@ -5,6 +5,7 @@
 #
 
 import sqlite3
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -15,7 +16,7 @@ from corvee.config import (
     global_db_path,
     resolve_project,
 )
-from corvee.errors import ConfigError
+from corvee.errors import ConfigError, UsageError
 
 
 class TestBootstrapProject:
@@ -39,6 +40,44 @@ class TestBootstrapProject:
             tmp_path / CONFIG_DIRNAME / "config.toml"
         ).read_text() == 'db_path = "custom/nested.db"\n'
         assert result.db_path == (tmp_path / CONFIG_DIRNAME / "custom" / "nested.db").resolve()
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            'quote"inside.db',
+            "back\\slash.db",
+            "new\nline.db",
+            "tab\there.db",
+            "del\x7fhere.db",
+            "ünïcode.db",
+        ],
+    )
+    def test_db_path_survives_characters_toml_would_otherwise_mangle(
+        self, tmp_path: Path, value: str
+    ) -> None:
+        """Every path TOML can represent round-trips through config.toml.
+
+        A path holding a quote or a backslash is escaped rather than
+        interpolated raw, which would leave a file neither `init` nor any
+        later command in that project could read.
+        """
+        result = bootstrap_project(tmp_path, db_path=value)
+
+        written = (tmp_path / CONFIG_DIRNAME / "config.toml").read_text()
+        assert tomllib.loads(written)["db_path"] == value
+        assert result.db_path == (tmp_path / CONFIG_DIRNAME / value).resolve()
+
+    def test_rejects_a_db_path_config_toml_cannot_represent(self, tmp_path: Path) -> None:
+        """A lone surrogate (a non-UTF-8 filename on disk) has no TOML spelling.
+
+        It is refused before anything is written, so a rejected `init` leaves
+        the directory untouched instead of a config that cannot be read back.
+        """
+        with pytest.raises(UsageError) as excinfo:
+            bootstrap_project(tmp_path, db_path="bad\udcffname.db")
+
+        assert excinfo.value.exit_code == 2
+        assert not (tmp_path / CONFIG_DIRNAME).exists()
 
     def test_db_path_argument_is_ignored_once_a_config_already_exists(self, tmp_path: Path) -> None:
         """db_path only applies while config.toml is being created, like every other init flag."""

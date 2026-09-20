@@ -78,6 +78,12 @@ above is exactly what `--db-path` is for). Like every other part of `init`,
 it is inert on a re-run against an existing config — the flag is only
 consulted while `config.toml` is being created.
 
+The value reaches `config.toml` as a properly escaped TOML string, so a
+`--db-path` holding a quote, a backslash, or a control character resolves
+back to the file the user named. A path that is not valid UTF-8 (which Linux
+filenames allow) has no TOML spelling at all, so `init` refuses it with exit
+2 (`invalid_db_path`) before writing anything.
+
 The CLI resolves the project by walking up from the current directory to the
 nearest `.corvee/config.toml`, the same way git walks up to find `.git`.
 That is what lets a project "just work" from any subdirectory without

@@ -5,6 +5,7 @@
 #
 
 import json
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -95,6 +96,20 @@ class TestInit:
         assert result.exit_code == 0
         content = (tmp_path / ".corvee" / "config.toml").read_text()
         assert content == 'db_path = "../main/.corvee/corvee.db"\n'
+
+    def test_db_path_holding_a_quote_leaves_a_usable_project(self, tmp_path: Path) -> None:
+        """The value reaches config.toml escaped, so the project keeps working.
+
+        Writing it raw produced `db_path = "foo"bar.db"`, which failed `init`
+        itself and then every later command in that directory.
+        """
+        result = CliRunner().invoke(cli, ["init", "--db-path", 'foo"bar.db'])
+
+        assert result.exit_code == 0
+        written = (tmp_path / ".corvee" / "config.toml").read_text()
+        assert tomllib.loads(written)["db_path"] == 'foo"bar.db'
+        assert (tmp_path / ".corvee" / 'foo"bar.db').is_file()
+        assert json.loads(CliRunner().invoke(cli, ["task", "list", "--json"]).output) == []
 
     def test_db_path_is_ignored_on_a_second_init(self, tmp_path: Path) -> None:
         """--db-path on a re-run against an existing config changes nothing."""
