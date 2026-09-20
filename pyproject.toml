@@ -87,12 +87,8 @@ docs-build = "mkdocs build"
 # on-demand step rather than a merge gate.
 mutate = "mutmut run {args}"
 # Removes cache/build artifacts only (__pycache__, egg-info, tool caches,
-# dist/build/site output). Deliberately leaves src/corvee/_version.py alone
-# even though it's generated (hatch-vcs) and gitignored -- deleting it
-# breaks every already-installed environment's imports until a rebuild
-# (`hatch build --hooks-only` regenerates it), which is not what "clean"
-# should do to a working checkout. Never touches .corvee/ (this project's
-# own task/fact database) or .venv/ -- both are explicitly excluded, not
+# dist/build/site output). Never touches .corvee/ (this project's own
+# task/fact database) or .venv/ -- both are explicitly excluded, not
 # merely absent from the target list below.
 clean = """
 find . -type d \\( -name '__pycache__' -o -name '*.egg-info' \\) -not -path './.corvee/*' -not -path './.venv/*' -prune -exec rm -rf {{}} + && \\
