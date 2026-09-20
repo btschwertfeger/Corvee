@@ -11,6 +11,7 @@ from click.testing import CliRunner
 
 from corvee import __version__
 from corvee.cli.main import cli
+from corvee.config import ProjectConfig
 from corvee.db.schema import CURRENT_SCHEMA_VERSION
 from corvee.errors import NotFoundError
 
@@ -36,6 +37,29 @@ class TestHelpAndVersion:
 
         version_result = runner.invoke(cli, ["--version"])
         assert version_result.stderr == ""
+
+
+class TestConfigProblems:
+    def test_a_write_against_a_read_only_database_exits_six(
+        self, project: ProjectConfig, runner: CliRunner
+    ) -> None:
+        """A database file this process cannot write to is a project problem (exit 6).
+
+        SQLite only reports it once a statement actually writes, past the point
+        `open_connection` can see it, so the translation happens around the
+        command body in `corvee_context` instead.
+        """
+        project.db_path.chmod(0o444)
+        try:
+            result = runner.invoke(cli, ["task", "add", "x", "--description", "d", "--json"])
+        finally:
+            project.db_path.chmod(0o644)
+
+        assert result.exit_code == 6
+        assert result.stdout == ""
+        payload = json.loads(result.stderr)
+        assert payload["error"]["code"] == "unusable_database"
+        assert payload["error"]["path"] == str(project.db_path)
 
 
 class TestErrorHandling:

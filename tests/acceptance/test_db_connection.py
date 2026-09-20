@@ -53,6 +53,42 @@ class TestSetWalModeWithRetry:
 
 
 class TestOpenConnection:
+    def test_a_file_that_is_not_a_database_is_a_config_error(self, tmp_path: Path) -> None:
+        """Opening a file that isn't a SQLite database exits 6, naming the file."""
+        db_path = tmp_path / "corvee.db"
+        db_path.write_bytes(b"not a database")
+
+        with pytest.raises(ConfigError) as excinfo:
+            open_connection(db_path)
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "unusable_database"
+        assert str(db_path) in excinfo.value.message
+
+    def test_a_directory_as_the_db_path_is_a_config_error(self, tmp_path: Path) -> None:
+        """A db_path pointing at a directory exits 6 instead of "unable to open database file"."""
+        with pytest.raises(ConfigError) as excinfo:
+            open_connection(tmp_path)
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "unusable_database"
+
+    def test_a_db_path_sqlite_cannot_open_is_a_config_error(self, tmp_path: Path) -> None:
+        """A path with a regular file where a parent directory belongs exits 6.
+
+        This is SQLite's "unable to open database file" in a form every platform
+        reports the same way, unlike an unwritable directory, which Windows does
+        not have in the same sense.
+        """
+        blocker = tmp_path / "blocker"
+        blocker.write_text("not a directory")
+
+        with pytest.raises(ConfigError) as excinfo:
+            open_connection(blocker / "corvee.db")
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "unusable_database"
+
     def test_opening_a_fresh_db_bootstraps_the_schema(self, tmp_path: Path) -> None:
         """Opening a nonexistent db file creates and migrates it to the current schema version."""
         conn = open_connection(tmp_path / "corvee.db")

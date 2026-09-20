@@ -38,7 +38,7 @@ it from.
 | 3 | Task or fact not found |
 | 4 | Claim conflict: the task is held by another actor |
 | 5 | Guard violation: open children, a `parent_of` cycle, a rejected state transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, linking across the local/global scope split |
-| 6 | Project/config problem: no `.corvee/config.toml`, or the schema is newer than this binary supports |
+| 6 | Project/config problem: no or unreadable `.corvee/config.toml`, a database file that cannot be opened or written, or a schema newer than this binary supports |
 
 For the exact JSON shapes, filter semantics, and every edge case, see the
 [Specification](spec.md). This page is a summary, not the contract.

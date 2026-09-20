@@ -145,6 +145,46 @@ class TestResolveProject:
             resolve_project(tmp_path)
         assert excinfo.value.exit_code == 6
 
+    def test_a_config_that_is_not_valid_toml_is_a_config_error(self, tmp_path: Path) -> None:
+        """A config.toml TOML cannot parse exits 6, naming the file it could not read."""
+        corvee_dir = tmp_path / CONFIG_DIRNAME
+        corvee_dir.mkdir()
+        (corvee_dir / "config.toml").write_text("db_path = \n")
+
+        with pytest.raises(ConfigError) as excinfo:
+            resolve_project(tmp_path)
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "invalid_config"
+        assert str(corvee_dir / "config.toml") in excinfo.value.message
+
+    def test_a_config_that_is_not_utf8_is_a_config_error(self, tmp_path: Path) -> None:
+        """A config.toml holding binary exits 6 like any other unreadable one."""
+        corvee_dir = tmp_path / CONFIG_DIRNAME
+        corvee_dir.mkdir()
+        (corvee_dir / "config.toml").write_bytes(b'db_path = "x.db"\n\xff\xfe\n')
+
+        with pytest.raises(ConfigError) as excinfo:
+            resolve_project(tmp_path)
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "invalid_config"
+
+    def test_a_db_path_that_is_not_a_string_is_a_config_error(self, tmp_path: Path) -> None:
+        """`db_path = 42` exits 6 with a message naming the type, rather than dying
+        on the path join with a TypeError.
+        """
+        corvee_dir = tmp_path / CONFIG_DIRNAME
+        corvee_dir.mkdir()
+        (corvee_dir / "config.toml").write_text("db_path = 42\n")
+
+        with pytest.raises(ConfigError) as excinfo:
+            resolve_project(tmp_path)
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "invalid_config"
+        assert "db_path must be a string, got int" in excinfo.value.message
+
     def test_relative_db_path_resolves_against_config_dir_not_cwd(self, tmp_path: Path) -> None:
         """A relative db_path resolves against the config file's own directory, not cwd."""
         corvee_dir = tmp_path / CONFIG_DIRNAME

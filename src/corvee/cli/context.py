@@ -13,7 +13,7 @@ from pathlib import Path
 from corvee.actor import resolve_actor, resolve_session_id
 from corvee.config import global_db_path, resolve_project
 from corvee.constants import Scope
-from corvee.db.connection import open_connection
+from corvee.db.connection import open_connection, unusable_database_error
 
 
 @dataclass(frozen=True)
@@ -98,13 +98,21 @@ def corvee_context(
             session_id=resolve_session_id(session_id),
         )
         conn.execute("COMMIT")
-    except BaseException:
+    except BaseException as error:
         # `BEGIN ...` above can fail before any transaction exists (lock
         # contention past busy_timeout). Rolling back then would raise
         # "cannot rollback - no transaction is active" and replace the real
         # cause; in_transaction is False in exactly that case.
         if conn.in_transaction:
             conn.execute("ROLLBACK")
+        # sqlite reports a database it cannot write to (a read-only file or
+        # filesystem, most often) only once a statement actually writes, well
+        # past the point `open_connection` can see it, so an unusable file has
+        # to be translated here too.
+        if isinstance(error, sqlite3.Error):
+            config_error = unusable_database_error(error, db_path)
+            if config_error is not None:
+                raise config_error from error
         raise
     finally:
         conn.close()
