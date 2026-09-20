@@ -7,7 +7,7 @@
 import sqlite3
 from collections.abc import Callable
 
-from corvee.constants import TERMINAL_STATES, Relation
+from corvee.constants import TERMINAL_STATES, Relation, Scope
 from corvee.db.events import record_field_change
 from corvee.db.tasks import require_task
 from corvee.errors import GuardViolationError
@@ -33,6 +33,8 @@ def link_tasks(
     relation: Relation,
     actor: str,
     session_id: str | None,
+    *,
+    scope: Scope = "local",
 ) -> dict[int, str]:
     """Link two tasks. Returns {task_id: warning} for advisory oddities (never raised).
 
@@ -40,8 +42,8 @@ def link_tasks(
     already-`done` parent via `parent_of` — allowed (the parent isn't
     retroactively invalidated), but worth surfacing on the parent's output.
     """
-    source_task = require_task(conn, source_id)
-    target_task = require_task(conn, target_id)
+    source_task = require_task(conn, source_id, scope=scope)
+    target_task = require_task(conn, target_id, scope=scope)
 
     if relation == "relates_to" and source_id > target_id:
         # Symmetric: stored normalized so `link A B` and `link B A` collapse
@@ -53,10 +55,10 @@ def link_tasks(
     ):
         raise GuardViolationError(
             "link_cycle",
-            f"linking {task_ref(source_id)} -> {task_ref(target_id)}"
+            f"linking {task_ref(source_id, scope)} -> {task_ref(target_id, scope)}"
             f" ({relation}) would create a cycle",
-            source_id=task_ref(source_id),
-            target_id=task_ref(target_id),
+            source_id=task_ref(source_id, scope),
+            target_id=task_ref(target_id, scope),
             relation=relation,
         )
 
@@ -68,10 +70,10 @@ def link_tasks(
         if existing_parent is not None and existing_parent[0] != source_id:
             raise GuardViolationError(
                 "already_has_parent",
-                f"{task_ref(target_id)} already has a parent: "
-                f"{task_ref(existing_parent[0])}; use `corvee task unlink` first",
-                task_id=task_ref(target_id),
-                current_parent=task_ref(existing_parent[0]),
+                f"{task_ref(target_id, scope)} already has a parent: "
+                f"{task_ref(existing_parent[0], scope)}; use `corvee task unlink` first",
+                task_id=task_ref(target_id, scope),
+                current_parent=task_ref(existing_parent[0], scope),
             )
 
     existing = conn.execute(
@@ -90,7 +92,7 @@ def link_tasks(
         task_id=source_id,
         field=f"link:{relation}",
         old_value=None,
-        new_value=task_ref(target_id),
+        new_value=task_ref(target_id, scope),
         actor=actor,
         session_id=session_id,
     )
@@ -99,7 +101,7 @@ def link_tasks(
         task_id=target_id,
         field=f"link:{relation}",
         old_value=None,
-        new_value=task_ref(source_id),
+        new_value=task_ref(source_id, scope),
         actor=actor,
         session_id=session_id,
     )
@@ -109,7 +111,7 @@ def link_tasks(
         and source_task.state == "done"
         and target_task.state not in TERMINAL_STATES
     ):
-        return {source_id: f"child {task_ref(target_id)} is open while this parent is done"}
+        return {source_id: f"child {task_ref(target_id, scope)} is open while this parent is done"}
     return {}
 
 
@@ -120,9 +122,11 @@ def unlink_tasks(
     relation: Relation,
     actor: str,
     session_id: str | None,
+    *,
+    scope: Scope = "local",
 ) -> None:
-    require_task(conn, source_id)
-    require_task(conn, target_id)
+    require_task(conn, source_id, scope=scope)
+    require_task(conn, target_id, scope=scope)
     if relation == "relates_to" and source_id > target_id:
         source_id, target_id = target_id, source_id
 
@@ -137,7 +141,7 @@ def unlink_tasks(
         conn,
         task_id=source_id,
         field=f"link:{relation}",
-        old_value=task_ref(target_id),
+        old_value=task_ref(target_id, scope),
         new_value=None,
         actor=actor,
         session_id=session_id,
@@ -146,14 +150,16 @@ def unlink_tasks(
         conn,
         task_id=target_id,
         field=f"link:{relation}",
-        old_value=task_ref(source_id),
+        old_value=task_ref(source_id, scope),
         new_value=None,
         actor=actor,
         session_id=session_id,
     )
 
 
-def get_task_links(conn: sqlite3.Connection, task_id: int) -> list[dict[str, str]]:
+def get_task_links(
+    conn: sqlite3.Connection, task_id: int, *, scope: Scope = "local"
+) -> list[dict[str, str]]:
     """Every link touching `task_id`, from either end (for `corvee show`)."""
     rows = conn.execute(
         "SELECT source_id, target_id, relation FROM task_links"
@@ -167,7 +173,7 @@ def get_task_links(conn: sqlite3.Connection, task_id: int) -> list[dict[str, str
         results.append(
             {
                 "relation": row["relation"],
-                "task_id": task_ref(other),
+                "task_id": task_ref(other, scope),
                 "direction": "outgoing" if is_source else "incoming",
             },
         )

@@ -70,7 +70,7 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 task = require_task(ctx.conn, parsed.id, scope=parsed.scope)
                 detail = task.to_dict()
                 detail["labels"] = list_task_labels(ctx.conn, task.id)
-                detail["links"] = get_task_links(ctx.conn, task.id)
+                detail["links"] = get_task_links(ctx.conn, task.id, scope=parsed.scope)
                 detail["subtasks"] = [
                     task_ref(child_id, parsed.scope) for child_id in get_children(ctx.conn, task.id)
                 ]

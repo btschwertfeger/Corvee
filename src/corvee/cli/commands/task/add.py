@@ -143,7 +143,7 @@ def _insert_one(
     if item["parent"] is not None:
         parent = parse_task_ref(item["parent"])
         assert_same_scope(parent.scope, scope)
-        link_tasks(conn, parent.id, task.id, "parent_of", actor, session_id)
+        link_tasks(conn, parent.id, task.id, "parent_of", actor, session_id, scope=scope)
     return require_task(conn, task.id, scope=scope)
 
 

@@ -39,7 +39,13 @@ def link(source_ref: str, target_ref: str, relation: str, as_json: bool) -> None
     assert_same_scope(source.scope, target.scope)
     with corvee_context(scope=source.scope) as ctx:
         warnings = link_tasks(
-            ctx.conn, source.id, target.id, narrow_relation(relation), ctx.actor, ctx.session_id
+            ctx.conn,
+            source.id,
+            target.id,
+            narrow_relation(relation),
+            ctx.actor,
+            ctx.session_id,
+            scope=source.scope,
         )
         tasks = require_tasks(ctx.conn, [source.id, target.id], scope=source.scope)
     dicts = []

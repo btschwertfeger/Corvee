@@ -5,6 +5,7 @@
 #
 
 import json
+from collections.abc import Callable
 
 from click.testing import CliRunner
 
@@ -287,3 +288,72 @@ class TestDoctorGlobal:
         payload = json.loads(result.output)
         assert payload["global"] is not None
         assert payload["global"]["tasks"]["total"] == 1
+
+
+class TestGlobalLinkScope:
+    @staticmethod
+    def _add_global(runner: CliRunner, title: str) -> str:
+        return str(
+            json.loads(
+                runner.invoke(
+                    cli, ["task", "add", title, "--description", "d", "--global", "--json"]
+                ).output
+            )[0]["id"]
+        )
+
+    def test_links_and_events_use_the_global_id_form(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """Linking two global tasks renders and records `TASK-GLOBAL-<n>`, both in
+        `show`'s links and in the stored event values that make up the audit trail.
+        """
+        first = self._add_global(runner, "global one")
+        second = self._add_global(runner, "global two")
+        assert (first, second) == ("TASK-GLOBAL-1", "TASK-GLOBAL-2")
+
+        link_result = runner.invoke(
+            cli, ["task", "link", first, second, "--relation", "relates_to"]
+        )
+        assert link_result.exit_code == 0
+
+        detail = json.loads(runner.invoke(cli, ["task", "show", first, "--json"]).output)[0]
+        assert detail["links"] == [
+            {"relation": "relates_to", "task_id": second, "direction": "outgoing"}
+        ]
+        link_events = [event for event in detail["events"] if event["field"] == "link:relates_to"]
+        assert [event["new_value"] for event in link_events] == [second]
+
+    def test_unlink_records_the_global_id_form(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """`unlink` on a global pair records the removal in the same id form."""
+        first = self._add_global(runner, "global one")
+        second = self._add_global(runner, "global two")
+        runner.invoke(cli, ["task", "link", first, second, "--relation", "duplicates"])
+        runner.invoke(cli, ["task", "unlink", first, second, "--relation", "duplicates"])
+
+        detail = json.loads(runner.invoke(cli, ["task", "show", first, "--json"]).output)[0]
+        assert detail["links"] == []
+        unlink_events = [
+            event
+            for event in detail["events"]
+            if event["field"] == "link:duplicates" and event["old_value"] is not None
+        ]
+        assert [event["old_value"] for event in unlink_events] == [second]
+
+    def test_a_local_task_sharing_the_number_is_not_referenced(
+        self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
+    ) -> None:
+        """A stored `TASK-GLOBAL-2` must not resolve against an unrelated local
+        `TASK-2`: before the fix the event value was the bare `TASK-2`, so `show`
+        reported the local task in `referenced` and pointed at the wrong record.
+        """
+        add_task("local one")
+        add_task("local two")
+        first = self._add_global(runner, "global one")
+        second = self._add_global(runner, "global two")
+        runner.invoke(cli, ["task", "link", first, second, "--relation", "relates_to"])
+
+        detail = json.loads(runner.invoke(cli, ["task", "show", first, "--json"]).output)[0]
+        assert second in detail["referenced"]
+        assert "TASK-2" not in detail["referenced"]
