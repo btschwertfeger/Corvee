@@ -42,7 +42,8 @@ def _set_wal_mode_with_retry(conn: sqlite3.Connection, *, attempts: int = 5) -> 
 # writable (SQLITE_PERM is the Windows-ACL spelling of the same condition).
 # Deliberately absent: SQLITE_BUSY, which busy_timeout already retries and
 # whose exhaustion is still an open question (§3.2, TASK-68), and SQLITE_IOERR,
-# a hardware condition rather than a property of the configured database.
+# which covers a failing device as readily as a file that cannot be read, with
+# nothing here to tell those apart.
 _UNUSABLE_DB_CODES = frozenset(
     {
         sqlite3.SQLITE_CANTOPEN,
@@ -57,11 +58,11 @@ _UNUSABLE_DB_CODES = frozenset(
 def unusable_database_error(error: sqlite3.Error, db_path: Path) -> ConfigError | None:
     """`error` as the ConfigError (exit 6) saying `db_path` cannot be used, or None.
 
-    Spec §5 gives exit 6 to project and config problems, and a database file
-    that cannot be read, written or parsed as a schema is one: no `corvee`
-    command succeeds until the file or its permissions change. Every other
-    sqlite3 failure keeps its own shape, so a lock timeout or a bug in corvee
-    never masquerades as something the user can fix in a config file.
+    A database file that cannot be read, written or parsed as a schema is a
+    project problem (spec §5): no `corvee` command succeeds until the file or
+    its permissions change. Every other sqlite3 failure keeps its own shape, so
+    a lock timeout or a bug in corvee never masquerades as something the user
+    can fix in a file.
     """
     # sqlite_errorcode is an *extended* code (SQLITE_READONLY_DBMOVED is 1032,
     # say); its low byte is the primary code the set above names. A hand-built
@@ -119,10 +120,9 @@ def open_connection(db_path: Path) -> sqlite3.Connection:
     try:
         return _open_connection(db_path)
     except sqlite3.Error as error:
-        # Whichever statement first touches an unusable file is the one that
-        # reports it -- `connect` for a directory, the WAL pragma for a path
-        # SQLite cannot create, a query for a file that isn't a database -- so
-        # the translation sits around the whole body rather than at each one.
+        # Whichever statement first touches the file is the one that reports it
+        # (`connect` for a directory, the WAL pragma for a path SQLite cannot
+        # create), so this wraps the whole body rather than each of them.
         unusable = unusable_database_error(error, db_path)
         if unusable is not None:
             raise unusable from error

@@ -185,6 +185,19 @@ class TestResolveProject:
         assert excinfo.value.code == "invalid_config"
         assert "db_path must be a string, got int" in excinfo.value.message
 
+    def test_a_db_path_holding_a_nul_byte_is_a_config_error(self, tmp_path: Path) -> None:
+        """`db_path = "a\\u0000b"` is valid TOML but is not a path at all."""
+        corvee_dir = tmp_path / CONFIG_DIRNAME
+        corvee_dir.mkdir()
+        (corvee_dir / "config.toml").write_text('db_path = "a\\u0000b.db"\n')
+
+        with pytest.raises(ConfigError) as excinfo:
+            resolve_project(tmp_path)
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "invalid_config"
+        assert "NUL byte" in excinfo.value.message
+
     def test_relative_db_path_resolves_against_config_dir_not_cwd(self, tmp_path: Path) -> None:
         """A relative db_path resolves against the config file's own directory, not cwd."""
         corvee_dir = tmp_path / CONFIG_DIRNAME

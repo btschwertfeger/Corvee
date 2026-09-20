@@ -163,6 +163,14 @@ def resolve_project(start: Path | None = None) -> ProjectConfig:
             f"got {type(db_path_value).__name__}",
             path=str(config_path),
         )
+    # A NUL byte is a valid TOML string but cannot be part of a path, and
+    # Path.resolve() reports it as a ValueError rather than OSError.
+    if "\x00" in db_path_value:
+        raise ConfigError(
+            "invalid_config",
+            f"cannot read {config_path}: db_path contains a NUL byte",
+            path=str(config_path),
+        )
     # A relative db_path resolves against config.toml's own directory, never cwd.
     db_path = (config_path.parent / db_path_value).resolve()
     return ProjectConfig(config_path=config_path, db_path=db_path)
