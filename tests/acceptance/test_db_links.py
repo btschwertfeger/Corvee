@@ -5,12 +5,30 @@
 #
 
 import sqlite3
+from collections.abc import Iterator
 
 import pytest
 
+from corvee.config import global_db_path
+from corvee.db.connection import open_connection
 from corvee.db.links import get_children, get_task_links, link_tasks, unlink_tasks
 from corvee.db.tasks import apply_update, insert_task
-from corvee.errors import GuardViolationError
+from corvee.errors import GuardViolationError, NotFoundError
+
+
+@pytest.fixture
+def global_conn() -> Iterator[sqlite3.Connection]:
+    """A connection to the global database, bootstrapped on first open.
+
+    `_fake_home` in conftest.py points $HOME at the test's tmp_path, so this
+    never touches a real ~/.corvee/corvee.db. The parent directory is created
+    the same way `corvee_context` creates it on the first global write.
+    """
+    db_path = global_db_path()
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = open_connection(db_path)
+    yield connection
+    connection.close()
 
 
 class TestLinkTasks:
@@ -145,3 +163,57 @@ class TestUnlinkTasks:
 
         link_tasks(conn, parent2.id, child.id, "parent_of", "agent:a", None)
         assert get_children(conn, parent2.id) == [child.id]
+
+
+class TestGlobalScopeLinks:
+    def test_link_and_events_use_the_global_id_form(self, global_conn: sqlite3.Connection) -> None:
+        """A link between two global tasks renders and records `TASK-GLOBAL-<n>`,
+        not the bare `TASK-<n>` form that every other database also answers to.
+        """
+        a = insert_task(global_conn, title="a")
+        b = insert_task(global_conn, title="b")
+        link_tasks(global_conn, a.id, b.id, "relates_to", "agent:a", None, scope="global")
+
+        assert get_task_links(global_conn, a.id, scope="global") == [
+            {"relation": "relates_to", "task_id": "TASK-GLOBAL-2", "direction": "outgoing"}
+        ]
+        values = global_conn.execute(
+            "SELECT new_value FROM task_events WHERE field = 'link:relates_to' ORDER BY task_id"
+        ).fetchall()
+        assert [row[0] for row in values] == ["TASK-GLOBAL-2", "TASK-GLOBAL-1"]
+
+    def test_unlink_records_the_global_id_form(self, global_conn: sqlite3.Connection) -> None:
+        """Unlinking a global pair records the removed link in the same id form."""
+        a = insert_task(global_conn, title="a")
+        b = insert_task(global_conn, title="b")
+        link_tasks(global_conn, a.id, b.id, "duplicates", "agent:a", None, scope="global")
+        unlink_tasks(global_conn, a.id, b.id, "duplicates", "agent:a", None, scope="global")
+
+        values = global_conn.execute(
+            "SELECT old_value FROM task_events WHERE task_id = ? AND field = 'link:duplicates'"
+            " ORDER BY rowid DESC LIMIT 1",
+            (a.id,),
+        ).fetchone()
+        assert values is not None
+        assert values[0] == "TASK-GLOBAL-2"
+
+    def test_guard_messages_use_the_global_id_form(self, global_conn: sqlite3.Connection) -> None:
+        """A rejected link names both tasks in the form the caller used."""
+        a = insert_task(global_conn, title="a")
+        b = insert_task(global_conn, title="b")
+        c = insert_task(global_conn, title="c")
+        link_tasks(global_conn, a.id, b.id, "parent_of", "agent:a", None, scope="global")
+        link_tasks(global_conn, b.id, c.id, "parent_of", "agent:a", None, scope="global")
+
+        with pytest.raises(GuardViolationError) as excinfo:
+            link_tasks(global_conn, c.id, a.id, "parent_of", "agent:a", None, scope="global")
+        assert "TASK-GLOBAL-3 -> TASK-GLOBAL-1" in str(excinfo.value)
+
+    def test_require_task_failure_names_the_global_id(
+        self, global_conn: sqlite3.Connection
+    ) -> None:
+        """The not-found error for a global link names `TASK-GLOBAL-<n>`, not `TASK-<n>`."""
+        a = insert_task(global_conn, title="a")
+        with pytest.raises(NotFoundError) as excinfo:
+            link_tasks(global_conn, a.id, 999, "blocks", "agent:a", None, scope="global")
+        assert "TASK-GLOBAL-999" in str(excinfo.value)
