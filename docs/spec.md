@@ -938,7 +938,7 @@ Exit codes are distinct enough to branch on without parsing at all.
 | 3 | Task or fact not found |
 | 4 | Claim conflict (task held by another actor) |
 | 5 | Guard violation (open children, `parent_of` cycle, rejected transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, cross-scope link) |
-| 6 | Project/config problem (no `.corvee/config.toml`, unreadable DB, schema newer than this binary, `corvee import` of a dump whose schema_version doesn't match this binary's) |
+| 6 | Project/config problem (no or unreadable `.corvee/config.toml`, a database file that cannot be opened or written, schema newer than this binary, `corvee import` of a dump whose schema_version doesn't match this binary's) |
 
 ### 5.1 `task` commands
 

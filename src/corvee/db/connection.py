@@ -37,6 +37,46 @@ def _set_wal_mode_with_retry(conn: sqlite3.Connection, *, attempts: int = 5) -> 
             delay *= 2
 
 
+# sqlite3 error codes that mean "this file cannot be used as a corvee
+# database": missing or unopenable, not a database at all, malformed, or not
+# writable (SQLITE_PERM is the Windows-ACL spelling of the same condition).
+# Deliberately absent: SQLITE_BUSY, which busy_timeout already retries and
+# whose exhaustion is still an open question (§3.2, TASK-68), and SQLITE_IOERR,
+# which covers a failing device as readily as a file that cannot be read, with
+# nothing here to tell those apart.
+_UNUSABLE_DB_CODES = frozenset(
+    {
+        sqlite3.SQLITE_CANTOPEN,
+        sqlite3.SQLITE_NOTADB,
+        sqlite3.SQLITE_READONLY,
+        sqlite3.SQLITE_PERM,
+        sqlite3.SQLITE_CORRUPT,
+    },
+)
+
+
+def unusable_database_error(error: sqlite3.Error, db_path: Path) -> ConfigError | None:
+    """`error` as the ConfigError (exit 6) saying `db_path` cannot be used, or None.
+
+    A database file that cannot be read, written or parsed as a schema is a
+    project problem (spec §5): no `corvee` command succeeds until the file or
+    its permissions change. Every other sqlite3 failure keeps its own shape, so
+    a lock timeout or a bug in corvee never masquerades as something the user
+    can fix in a file.
+    """
+    # sqlite_errorcode is an *extended* code (SQLITE_READONLY_DBMOVED is 1032,
+    # say); its low byte is the primary code the set above names. A hand-built
+    # sqlite3.Error carries no code at all, and is left alone.
+    code = getattr(error, "sqlite_errorcode", None)
+    if code is None or (code & 0xFF) not in _UNUSABLE_DB_CODES:
+        return None
+    return ConfigError(
+        "unusable_database",
+        f"cannot use database {db_path}: {error}",
+        path=str(db_path),
+    )
+
+
 def _read_schema_version(conn: sqlite3.Connection) -> int:
     """Plain read of MAX(version), taking no lock. 0 if unmigrated."""
     try:
@@ -74,9 +114,23 @@ def _apply_missing_migrations(conn: sqlite3.Connection) -> None:
 def open_connection(db_path: Path) -> sqlite3.Connection:
     """Open `db_path`, applying pragmas and bootstrapping/migrating the schema.
 
-    Refuses (ConfigError, exit 6) if the database's schema is newer than this
-    binary supports.
+    Refuses (ConfigError, exit 6) if the file cannot be used as a database at
+    all, or if its schema is newer than this binary supports.
     """
+    try:
+        return _open_connection(db_path)
+    except sqlite3.Error as error:
+        # Whichever statement first touches the file is the one that reports it
+        # (`connect` for a directory, the WAL pragma for a path SQLite cannot
+        # create), so this wraps the whole body rather than each of them.
+        unusable = unusable_database_error(error, db_path)
+        if unusable is not None:
+            raise unusable from error
+        raise
+
+
+def _open_connection(db_path: Path) -> sqlite3.Connection:
+    """`open_connection`'s body, leaving raw sqlite3 failures to its caller."""
     conn = sqlite3.connect(db_path)
     conn.isolation_level = None  # manual BEGIN/COMMIT control, see _apply_missing_migrations
     conn.row_factory = sqlite3.Row

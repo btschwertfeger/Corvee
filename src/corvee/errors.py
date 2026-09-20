@@ -53,6 +53,8 @@ class GuardViolationError(CorveeError):
 
 
 class ConfigError(CorveeError):
-    """No .corvee/config.toml, unreadable DB, schema newer than binary (exit 6)."""
+    """No or unreadable .corvee/config.toml, a database file that cannot be
+    opened or written, schema newer than binary (exit 6).
+    """
 
     exit_code = 6
