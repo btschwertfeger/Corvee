@@ -21,7 +21,7 @@ for you and your agents!
 [![codecov](https://codecov.io/gh/btschwertfeger/Corvee/branch/master/badge.svg)](https://app.codecov.io/gh/btschwertfeger/Corvee)
 
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14702/badge)](https://www.bestpractices.dev/projects/14702)
-[![OpenSSF ScoreCard](https://img.shields.io/ossf-scorecard/github.com/btschwertfeger/corvee?label=openssf%20scorecard&style=flat)](https://securityscorecards.dev/viewer/?uri=github.com/btschwertfeger/Corvee)
+[![OpenSSF ScoreCard](https://img.shields.io/ossf-scorecard/github.com/btschwertfeger/Corvee?label=openssf%20scorecard&style=flat)](https://securityscorecards.dev/viewer/?uri=github.com/btschwertfeger/Corvee)
 
 [![release](https://img.shields.io/pypi/v/corvee)](https://pypi.org/project/corvee/)
 [![Documentation](https://img.shields.io/badge/docs-btschwertfeger.github.io%2FCorvee-blue.svg)](https://corvee.readthedocs.io/en/latest/)
