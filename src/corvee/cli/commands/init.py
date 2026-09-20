@@ -24,7 +24,7 @@ Get the paths it created as machine-readable output:
 Re-run it any time; it never overwrites existing data:
   corvee init
 Share a backlog with a sibling git worktree by pointing both at one file:
-  corvee init --db-path ../main/.corvee/corvee.db
+  corvee init --db-path ../../main/.corvee/corvee.db
 """
 
 _STATUS_TEXT = {

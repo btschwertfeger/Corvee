@@ -38,7 +38,7 @@ A reading queue is a task list, and open questions are tasks. What you
 established from a source becomes a fact, and the source is its proof.
 
 ```bash
-corvee task add "Read the 2024 survey on X" --priority high
+corvee task add "Read the 2024 survey on X" --description "for the related-work section" --priority high
 corvee task add "Find the error bound for method Y" --description "needed for section 3.2"
 corvee fact add "The survey reports a 12% error rate at n=1000" \
   --proof "Table 4, p. 11, https://example.org/survey.pdf"
@@ -54,9 +54,9 @@ Chapters, revisions, and reviews map onto tasks and subtasks. Editorial
 decisions are facts, with the style guide or source you checked as proof.
 
 ```bash
-corvee task add "Revise chapter 4" --priority high
-corvee task add "Verify every citation resolves" --parent TASK-14
-corvee task label TASK-14 --add editorial
+corvee task add "Revise chapter 4" --description "tighten the argument, drop the digression" --priority high
+corvee task add "Verify every citation resolves" --description "every URL and DOI, against the publisher's page" --parent TASK-1
+corvee task label TASK-1 --add editorial
 corvee fact add "House style uses the Oxford comma" --proof "style guide, section 2.1"
 ```
 
@@ -83,7 +83,7 @@ agent. Shell completion covers subcommands, flags, and real
 
 ```bash
 eval "$(corvee completion bash)"   # or zsh / fish
-corvee task add "Renew passport" --priority high
+corvee task add "Renew passport" --description "appointment needed before it lapses" --priority high
 corvee task list --fields id,title,state
 ```
 
