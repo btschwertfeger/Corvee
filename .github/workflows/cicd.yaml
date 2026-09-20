@@ -122,7 +122,7 @@ jobs:
       - name: Run tests
         run: pytest -n auto -x --cov=corvee --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
       - name: Upload coverage to Codecov
-        if: always() && github.actor == 'btschwertfeger'
+        if: ${{ !cancelled() && github.actor == 'btschwertfeger' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -133,7 +133,7 @@ jobs:
           report_type: coverage
           name: codecov-umbrella
       - name: Upload test results to Codecov
-        if: always() && github.actor == 'btschwertfeger'
+        if: ${{ !cancelled() && github.actor == 'btschwertfeger' }}
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
