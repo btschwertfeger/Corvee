@@ -150,6 +150,11 @@ JSON-on-stderr shape and the process exit code.
   behavior. Set `CORVEE_GLOBAL_DB=/some/scratch/path` first. The pytest
   suite already isolates `$HOME` for you. This is only for ad hoc shell
   commands outside it.
+- Tests run on Linux, macOS and Windows, so none may assume POSIX filesystem
+  rules. Where a platform genuinely differs, branch on `sys.platform` inside
+  one test rather than skipping it, or assert the value against a pure
+  function in `tests/unit` instead of through a file whose name the platform
+  will not accept.
 - Commit one completed corvee task per commit, not a batch of several
   tasks squashed into one. Finish the task (code, tests, docs, `hatch run
   check` green, `corvee task comment`/`update --state done`), then commit

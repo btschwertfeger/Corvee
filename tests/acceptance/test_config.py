@@ -15,7 +15,7 @@ from corvee.config import (
     global_db_path,
     resolve_project,
 )
-from corvee.errors import ConfigError
+from corvee.errors import ConfigError, UsageError
 
 
 class TestBootstrapProject:
@@ -39,6 +39,18 @@ class TestBootstrapProject:
             tmp_path / CONFIG_DIRNAME / "config.toml"
         ).read_text() == 'db_path = "custom/nested.db"\n'
         assert result.db_path == (tmp_path / CONFIG_DIRNAME / "custom" / "nested.db").resolve()
+
+    def test_rejects_a_db_path_config_toml_cannot_represent(self, tmp_path: Path) -> None:
+        """A lone surrogate (a non-UTF-8 filename on disk) has no TOML spelling.
+
+        It is refused before anything is written, so a rejected `init` leaves
+        the directory untouched instead of a config that cannot be read back.
+        """
+        with pytest.raises(UsageError) as excinfo:
+            bootstrap_project(tmp_path, db_path="bad\udcffname.db")
+
+        assert excinfo.value.exit_code == 2
+        assert not (tmp_path / CONFIG_DIRNAME).exists()
 
     def test_db_path_argument_is_ignored_once_a_config_already_exists(self, tmp_path: Path) -> None:
         """db_path only applies while config.toml is being created, like every other init flag."""

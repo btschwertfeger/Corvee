@@ -4,6 +4,7 @@
 # https://github.com/btschwertfeger
 #
 
+import json
 import os
 import tomllib
 from dataclasses import dataclass
@@ -11,7 +12,7 @@ from pathlib import Path
 from typing import Literal
 
 from corvee.db.connection import open_connection
-from corvee.errors import ConfigError
+from corvee.errors import ConfigError, UsageError
 
 # What `init` did to `.gitignore`, the one file it appends to but never
 # creates from scratch: "appended" (the `.corvee/` entry was missing and got
@@ -196,23 +197,49 @@ def _ensure_gitignore_entry(directory: Path) -> TouchStatus:
     return "appended"
 
 
+def _toml_basic_string(value: str) -> str:
+    """`value` as a quoted TOML basic string, ready to write into config.toml.
+
+    `json.dumps` escapes quotes, backslashes and control characters the way
+    TOML wants them, and `ensure_ascii=False` keeps a non-ASCII path readable
+    instead of spelling it out as `\\uXXXX` escapes. Two characters are left
+    over: DEL, which JSON leaves raw and TOML forbids in a basic string, is
+    escaped here; a lone surrogate (a non-UTF-8 filename on disk, which Linux
+    allows) has no spelling in UTF-8 text at all, so it is refused rather than
+    written into a config file nothing can read back.
+    """
+    try:
+        value.encode("utf-8")
+    except UnicodeEncodeError as error:
+        raise UsageError(
+            "invalid_db_path",
+            f"--db-path {value!r} is not valid UTF-8 and cannot be written to config.toml",
+        ) from error
+    return json.dumps(value, ensure_ascii=False).replace("\x7f", "\\u007f")
+
+
 def bootstrap_project(directory: Path, *, db_path: str | None = None) -> InitResult:
     """Idempotently set up a project in `directory` (never over anything that exists).
 
     Never truncates an existing config or database — a second `init` in the
     same directory is a safe, speculative no-op for anything already present.
     `db_path`, if given, is only used the first time a config is created; it
-    is ignored (with the existing config left untouched) on a re-run. Never
-    touches AGENTS.md; the caller is responsible for showing
-    `AGENTS_BLOCK_LOCAL`/`AGENTS_BLOCK_GLOBAL` to the user instead.
+    is ignored (with the existing config left untouched) on a re-run. A
+    `db_path` that cannot be written as TOML text raises `UsageError` before
+    anything is created. Never touches AGENTS.md; the caller is responsible
+    for showing `AGENTS_BLOCK_LOCAL`/`AGENTS_BLOCK_GLOBAL` to the user
+    instead.
     """
     corvee_dir = directory / CONFIG_DIRNAME
     config_path = corvee_dir / CONFIG_FILENAME
 
     config_created = not config_path.exists()
     if config_created:
+        # Serialized (and so validated) before anything is created, so a
+        # --db-path that cannot be stored leaves the directory untouched.
+        db_path_line = _toml_basic_string(db_path or DEFAULT_DB_FILENAME)
         corvee_dir.mkdir(parents=True, exist_ok=True)
-        config_path.write_text(f'db_path = "{db_path or DEFAULT_DB_FILENAME}"\n')
+        config_path.write_text(f"db_path = {db_path_line}\n")
 
     gitignore_status = _ensure_gitignore_entry(directory)
 
