@@ -6,7 +6,9 @@
 
 import json
 from collections.abc import Callable
+from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from corvee.cli.main import cli
@@ -116,6 +118,45 @@ class TestTaskShowReferenced:
         task_id = add_task("task")
         result = runner.invoke(cli, ["task", "show", task_id])
         assert "referenced: (none)" in result.output
+
+
+class TestGlobalRecordLocalMentionIsAmbiguous:
+    def test_local_mention_in_global_record_is_dropped_without_a_local_project(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A bare TASK-<n> mention inside a global task's description has no
+        fixed local project to resolve against, so it must be dropped, not
+        turn the whole `show` into a no_project failure, when there is no
+        `.corvee/config.toml` anywhere upward from cwd.
+        """
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("CORVEE_ACTOR", "agent:test")
+        runner.invoke(
+            cli,
+            ["task", "add", "global task", "--description", "mirrors TASK-1", "--global", "--json"],
+        )
+        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-1", "--json"])
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload[0]["referenced"] == []
+
+    def test_local_mention_in_global_record_is_dropped_even_with_a_matching_local_project(
+        self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
+    ) -> None:
+        """A bare TASK-<n> mention inside a global task's description is still
+        dropped even when the reader's cwd happens to have a local project with
+        a matching TASK-<n> -- resolving it there would be an arbitrary
+        coincidence of cwd, not the project the mention actually refers to.
+        """
+        add_task("local task")
+        runner.invoke(
+            cli,
+            ["task", "add", "global task", "--description", "mirrors TASK-1", "--global", "--json"],
+        )
+        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-1", "--json"])
+        assert result.exit_code == 0, result.output
+        payload = json.loads(result.output)
+        assert payload[0]["referenced"] == []
 
 
 class TestFactShowReferenced:

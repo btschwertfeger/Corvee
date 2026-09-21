@@ -1248,6 +1248,18 @@ unused global database simply doesn't resolve, silently dropped like any
 other non-existent mention. A record mentioning its own id is excluded,
 and the list is distinct ids in order of first appearance.
 
+This resolution is asymmetric, not the mirror of itself in both
+directions: a bare `TASK-<n>`/`FACT-<n>` mention found in a *global*
+record's own text is dropped unconditionally, never checked against the
+reader's local project. The global database is shared machine-wide and
+belongs to no one local project, so such a mention has no fixed target —
+whichever project happens to be the caller's cwd is an arbitrary
+coincidence, not the project that wrote the mention, and resolving
+against it would attribute the mention to the wrong task as often as the
+right one. A `TASK-GLOBAL-<n>`/`FACT-GLOBAL-<n>` mention names the one
+global database unambiguously regardless of which scope's record it
+appears in, so it keeps resolving both ways.
+
 ### 5.2 Text input, batches, and labels
 
 **Any free-text option accepts `-` and reads that value from stdin.** This
