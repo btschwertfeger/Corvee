@@ -5,13 +5,15 @@
 #
 
 import json
+from pathlib import Path
 
 import click
+import pytest
 from click.testing import CliRunner
 
 from corvee import __version__
 from corvee.cli.main import cli
-from corvee.config import ProjectConfig
+from corvee.config import CONFIG_DIRNAME, ProjectConfig
 from corvee.db.schema import CURRENT_SCHEMA_VERSION
 from corvee.errors import NotFoundError
 
@@ -60,6 +62,26 @@ class TestConfigProblems:
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "unusable_database"
         assert payload["error"]["path"] == str(project.db_path)
+
+    def test_a_regular_file_where_the_global_corvee_directory_belongs_exits_six(
+        self, runner: CliRunner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A regular file sitting at ~/.corvee blocks `mkdir` for the global database
+        the same way a permission error would; both are project problems (exit 6),
+        not the `internal_error` a raw OSError would otherwise become.
+        """
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        (fake_home / CONFIG_DIRNAME).write_text("not a directory")
+        monkeypatch.setenv("HOME", str(fake_home))
+        monkeypatch.setenv("USERPROFILE", str(fake_home))
+
+        result = runner.invoke(cli, ["fact", "add", "x", "--global", "--json"])
+
+        assert result.exit_code == 6
+        assert result.stdout == ""
+        payload = json.loads(result.stderr)
+        assert payload["error"]["code"] == "cannot_create_directory"
 
 
 class TestErrorHandling:

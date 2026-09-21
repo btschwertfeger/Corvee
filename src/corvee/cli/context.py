@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from corvee.actor import resolve_actor, resolve_session_id
-from corvee.config import global_db_path, resolve_project
+from corvee.config import ensure_directory, global_db_path, resolve_project
 from corvee.constants import Scope
 from corvee.db.connection import open_connection, unusable_database_error
 
@@ -81,7 +81,7 @@ def corvee_context(
     if scope == "global":
         db_path = global_db_path()
         if write or db_path.is_file():
-            db_path.parent.mkdir(parents=True, exist_ok=True)
+            ensure_directory(db_path.parent)
             conn = open_connection(db_path)
         else:
             conn = open_connection(Path(":memory:"))

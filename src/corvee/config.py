@@ -177,6 +177,22 @@ def resolve_project(start: Path | None = None) -> ProjectConfig:
     return ProjectConfig(config_path=config_path, db_path=db_path)
 
 
+def ensure_directory(path: Path) -> None:
+    """`path.mkdir(parents=True, exist_ok=True)`, translating any `OSError`
+    (permission denied, a regular file already sitting where a directory is
+    expected) into `ConfigError` (exit 6) instead of leaking it as the raw
+    `internal_error` (exit 1) every other `Exception` becomes.
+    """
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError as error:
+        raise ConfigError(
+            "cannot_create_directory",
+            f"cannot create directory {path}: {error}",
+            path=str(path),
+        ) from error
+
+
 def _ensure_gitignore_entry(directory: Path) -> TouchStatus:
     """Append the `.corvee/` entry to an existing `.gitignore`, never create one from
     scratch. `.gitignore`'s absence usually means the project doesn't want an
@@ -238,13 +254,13 @@ def bootstrap_project(directory: Path, *, db_path: str | None = None) -> InitRes
         # Serialized (and so validated) before anything is created, so a
         # --db-path that cannot be stored leaves the directory untouched.
         db_path_line = _toml_basic_string(db_path or DEFAULT_DB_FILENAME)
-        corvee_dir.mkdir(parents=True, exist_ok=True)
+        ensure_directory(corvee_dir)
         config_path.write_text(f"db_path = {db_path_line}\n")
 
     gitignore_status = _ensure_gitignore_entry(directory)
 
     project = resolve_project(directory)
-    project.db_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_directory(project.db_path.parent)
     open_connection(project.db_path).close()
 
     return InitResult(
