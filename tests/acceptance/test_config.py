@@ -52,6 +52,32 @@ class TestBootstrapProject:
         assert excinfo.value.exit_code == 2
         assert not (tmp_path / CONFIG_DIRNAME).exists()
 
+    def test_a_regular_file_where_dot_corvee_belongs_exits_six(self, tmp_path: Path) -> None:
+        """A file (not a directory) already at `.corvee` blocks `init` the same way
+        a permission error would; both are project problems (exit 6), not the
+        `internal_error` a raw OSError would otherwise become.
+        """
+        (tmp_path / CONFIG_DIRNAME).write_text("not a directory")
+
+        with pytest.raises(ConfigError) as excinfo:
+            bootstrap_project(tmp_path)
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "cannot_create_directory"
+
+    def test_a_regular_file_where_the_db_directory_belongs_exits_six(self, tmp_path: Path) -> None:
+        """A file blocking the *database's* directory (distinct from `.corvee`
+        itself, e.g. a custom nested `--db-path`) is the same project problem.
+        """
+        (tmp_path / CONFIG_DIRNAME).mkdir()
+        (tmp_path / CONFIG_DIRNAME / "sub").write_text("not a directory")
+
+        with pytest.raises(ConfigError) as excinfo:
+            bootstrap_project(tmp_path, db_path="sub/x.db")
+
+        assert excinfo.value.exit_code == 6
+        assert excinfo.value.code == "cannot_create_directory"
+
     def test_db_path_argument_is_ignored_once_a_config_already_exists(self, tmp_path: Path) -> None:
         """db_path only applies while config.toml is being created, like every other init flag."""
         bootstrap_project(tmp_path)
