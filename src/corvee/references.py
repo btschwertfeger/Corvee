@@ -45,6 +45,16 @@ def find_referenced(
     names the other one. A mention that doesn't resolve to a real row, or
     that names the record's own id, is silently dropped, the same tolerant
     spirit `task_events`/`fact_events` already apply to free-text fields.
+
+    Resolution is asymmetric: a bare `TASK-<n>`/`FACT-<n>` mention found in a
+    *global* record's own text is dropped unconditionally, never checked
+    against the reader's own local project. The global database is shared
+    machine-wide and tied to no one local project, so such a mention has no
+    fixed target to resolve against — whichever project happens to be the
+    caller's cwd is arbitrary, not the project that wrote the mention. A
+    `TASK-GLOBAL-<n>`/`FACT-GLOBAL-<n>` mention names the one global
+    database unambiguously regardless of scope, so it keeps resolving both
+    ways.
     """
     seen: set[tuple[Kind, Scope, int]] = set()
     result: list[str] = []
@@ -63,6 +73,8 @@ def find_referenced(
             else:
                 kind, scope, ref_id = "fact", "local", int(match["fact_local"])
 
+            if own_scope == "global" and scope == "local":
+                continue
             if (kind, scope, ref_id) == (own_kind, own_scope, own_id):
                 continue
             key = (kind, scope, ref_id)
