@@ -134,17 +134,12 @@ JSON-on-stderr shape and the process exit code.
   examples (enforced by a test).
 - Full type hints throughout. `ty` has zero tolerance for untyped public
   signatures or unjustified `Any`.
-- Never use `typing.cast()`. It tells the type checker to trust an
-  annotation and does nothing at runtime, so an assumption that turns out
-  wrong propagates a bad value silently instead of failing loudly. Where a
-  value's real type is narrower than what the checker can infer on its own
-  (a DB column value narrowed to a `Literal`, a `click.Choice(...)`-checked
-  option), write a small function that checks the value against its known
-  set of valid members and raises if it is not one of them, then returns it
-  -- see `constants.py`'s `narrow_*` functions for the pattern, and
-  `mcp/dispatch.py::run_tool`'s docstring for the one place a genuine
-  external-library expressiveness gap (not a value narrowing) still needs a
-  single, well-documented `# ty: ignore[...]` instead.
+- Never use `typing.cast()` -- it trusts an annotation without verifying it
+  at runtime, so a wrong assumption propagates silently. Narrow values
+  instead using `constants.py`'s `narrow_*` pattern (check known members,
+  raise otherwise). The one exception is a genuine external-library
+  expressiveness gap, documented with `# ty: ignore[...]` in
+  `mcp/dispatch.py::run_tool`'s docstring.
 - Tests are classified by directory, not per-test decorators: `tests/unit`
   (pure functions, no filesystem/db), `tests/acceptance` (through the CLI or
   db layer against a real `tmp_path` SQLite database), `tests/e2e` (a real
