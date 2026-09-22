@@ -41,6 +41,15 @@ what each one actually runs. `hatch run check` (or `prek run --all-files`
 directly) is the mandatory quality gate before a change is considered
 finished.
 
+`test:test` is a local convenience for checking one interpreter from the
+matrix. CI's `test` job does not run it, and installs the wheel `build`
+produced (the same artifact `upload-pypi`/`upload-test-pypi` later publish)
+plus its own hardcoded `pytest`/`pytest-cov`/`pytest-xdist`, exercising the
+actual packaged wheel on every OS/interpreter combination instead of the
+editable source install a `hatch` env creates. A dependency added to
+`[tool.hatch.envs.default.dependencies]` for testing must be added to
+`cicd.yaml`'s install step by hand to reach CI.
+
 ## Principles
 
 KISS, YAGNI, DRY. A change should be minimal and focused on what was asked.
