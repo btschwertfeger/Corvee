@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v34)
+# corvee — Technical Specification (v35)
 
 ## 1. Purpose
 
@@ -416,7 +416,8 @@ sorting rules — see §4.6.
   update` rejects such a transition and lists the blocking subtask IDs.
   Re-opening a child of an already-`done` parent is allowed (the parent
   isn't retroactively invalidated) but surfaces a `warnings` key (a list of
-  strings) on the child's object in `corvee task update`'s output.
+  strings) on the child's object, whichever surface performs the reopen
+  (`corvee task update --state open`, or `task_reopen` over MCP).
   `corvee task link <parent> <child> --relation parent_of` carries the
   same warning, on the parent's object instead, when the child being
   attached is non-terminal and the parent is already `done` — neither case
@@ -2209,11 +2210,11 @@ either way.
 
 ### 10.3 Tool list
 
-Sixteen tools. Every ref-taking tool accepts the same `TASK-<n>`/
+Seventeen tools. Every ref-taking tool accepts the same `TASK-<n>`/
 `TASK-GLOBAL-<n>`/`FACT-<n>`/`FACT-GLOBAL-<n>` forms the CLI accepts and
 resolves scope the same way (§4.2, §4.6), since `--project-root` fixes
 which *local* database is in play but never removes the global one.
-Eleven tools write an event and accept an optional `session_id`, falling
+Twelve tools write an event and accept an optional `session_id`, falling
 back to the server's own resolved default when omitted (§10.1); the
 remaining five — `brief`, `fact_search`, `task_search`, `task_show`, and
 `fact_show` — write nothing and do not accept it at all.
@@ -2313,6 +2314,17 @@ depending on which parameter was wrong.
   is not the same as `done`, and `review` is not terminal (§4.4), so
   unlike `task_done`/`task_cancel` it keeps whatever claim the task
   already had.
+- `task_reopen` — `apply_update(..., state="open", force=False)`. Before
+  this tool, a `cancelled`/`done` task had no way back to `open` over MCP:
+  `task_start`/`task_review`/`task_block` reject the transition they'd
+  attempt (`invalid_transition`) and `task_claim` refuses outright
+  (`task_terminal`), so a mis-cancel or a premature `done` was
+  unrecoverable short of the CLI's `task update --state open`.
+  `TRANSITIONS` (`constants.py`) already allows `cancelled`/`done` ->
+  `open`, the same transition the CLI has always exposed; this tool is a
+  narrow wrapper around it, `task_done`'s exact shape aimed at the
+  opposite direction. Fails with `invalid_transition` from `review`, the
+  one state `open` is not reachable from directly (§4.5).
 - `task_block` — `apply_update(..., state="blocked", force=False)`, **requiring a
   `comment` argument that is non-empty after stripping whitespace**,
   written via the same call `corvee task comment` uses, before the state

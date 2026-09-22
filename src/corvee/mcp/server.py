@@ -27,7 +27,8 @@ _BASE_INSTRUCTIONS = (
     "task_search/brief/fact_search to orient, task_add to file new work, "
     "then task_claim/task_start/task_comment/task_done/task_review/"
     "task_cancel/task_block to work a task, releasing it with task_unclaim "
-    "if you cannot finish it. task_block requires a comment explaining why. "
+    "if you cannot finish it. task_reopen undoes a mis-cancel or premature "
+    "done. task_block requires a comment explaining why. "
     "Check an existing fact with fact_show before re-deriving it; record "
     "new or updated ones with fact_add/fact_verify."
 )

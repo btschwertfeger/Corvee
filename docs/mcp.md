@@ -178,7 +178,7 @@ instead:
 
 ## What it exposes
 
-Sixteen tools, narrow and single-purpose rather than one wide `task_update`
+Seventeen tools, narrow and single-purpose rather than one wide `task_update`
 (see [Specification §10.4](spec.md#104-trust-and-error-handling) for why).
 Every tool that writes something accepts an optional `session_id`
 argument — a per-conversation token, distinct from the actor set at
@@ -200,6 +200,7 @@ keep it stable across your calls in one conversation.
 | `task_done` | yes | Move to `done` |
 | `task_cancel` | yes | Move to `cancelled` |
 | `task_review` | yes | Move to `review`, keeping the current claim |
+| `task_reopen` | yes | Move a `cancelled`/`done` task back to `open` |
 | `task_block` | yes | Move to `blocked` — requires a comment explaining why |
 | `fact_show` | no | Read one fact by id |
 | `fact_search` | no | Search facts (default 20 results) |
@@ -207,8 +208,8 @@ keep it stable across your calls in one conversation.
 | `fact_verify` | yes | Mark a fact checked-true, with proof |
 
 `force` lives only on `task_claim`/`task_unclaim` — not on `task_start`/
-`task_done`/`task_cancel`/`task_review`/`task_block`, whose names should
-never quietly let a caller steal someone else's claim. Call
+`task_done`/`task_cancel`/`task_review`/`task_reopen`/`task_block`, whose
+names should never quietly let a caller steal someone else's claim. Call
 `task_claim(force=true)` first if you need to take one over.
 
 No `purge`, `delete`, `import`, or `export` on this surface — those stay

@@ -29,6 +29,7 @@ _EXPECTED_TOOLS = {
     "task_done",
     "task_cancel",
     "task_review",
+    "task_reopen",
     "task_block",
     "task_add",
     "task_search",
