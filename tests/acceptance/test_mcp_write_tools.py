@@ -72,6 +72,9 @@ class TestTaskUnclaim:
 
         error = _call_error(app, "task_unclaim", ref=task_id, session_id="sess-1")
         assert error["error"]["code"] == "claim_conflict"
+        assert error["error"]["hint"] == (
+            "call task_unclaim(force=true) on this ref to release the claim, then retry"
+        )
 
     def test_force_releases_someone_elses_stale_claim(self, app: MCPServer, task_id: str) -> None:
         with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:

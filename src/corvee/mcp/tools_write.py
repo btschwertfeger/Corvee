@@ -13,7 +13,7 @@ from corvee.cli.context import corvee_context
 from corvee.constants import DEFAULT_PRIORITY, DEFAULT_TASK_TYPE, PRIORITIES, TASK_TYPES, Scope
 from corvee.db.tasks import add_comment, apply_update, claim_task, insert_task, unclaim_task
 from corvee.errors import UsageError
-from corvee.mcp.dispatch import run_tool
+from corvee.mcp.dispatch import UNCLAIM_CONFLICT_HINT, run_tool
 from corvee.mcp.scope import require_scope_available
 from corvee.mcp.server_config import ServerConfig
 from corvee.mcp.tools_common import (
@@ -96,7 +96,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 return task.to_dict()
 
-        return await run_tool(worker, _fetch)
+        return await run_tool(worker, _fetch, claim_conflict_hint=UNCLAIM_CONFLICT_HINT)
 
     @app.tool(structured_output=True)
     async def task_comment(

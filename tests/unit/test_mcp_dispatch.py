@@ -16,7 +16,7 @@ pytest.importorskip("mcp")
 from mcp.types import CallToolResult, TextContent
 
 from corvee.errors import ClaimConflictError, GuardViolationError
-from corvee.mcp.dispatch import run_tool
+from corvee.mcp.dispatch import UNCLAIM_CONFLICT_HINT, run_tool
 from corvee.mcp.worker import DbWorker
 
 
@@ -94,6 +94,28 @@ class TestRunToolCorveeError:
         }
         assert len(result.content) == 1
         assert json.loads(_text(result)) == result.structured_content
+
+    def test_claim_conflict_hint_can_be_overridden(self) -> None:
+        """A caller (`task_unclaim`) can pass its own `claim_conflict_hint`
+        instead of the default `task_claim(force=true)` one, since stealing
+        the claim there would reassign it to the caller rather than release
+        it -- the opposite of what an unclaim call is for.
+        """
+
+        def _raise() -> None:
+            raise ClaimConflictError("claim_conflict", "TASK-14 is claimed by agent:other")
+
+        worker = DbWorker()
+        try:
+            result = asyncio.run(
+                run_tool(worker, _raise, claim_conflict_hint=UNCLAIM_CONFLICT_HINT)
+            )
+        finally:
+            worker.close()
+
+        assert isinstance(result, CallToolResult)
+        assert result.structured_content is not None
+        assert result.structured_content["error"]["hint"] == UNCLAIM_CONFLICT_HINT
 
     def test_guard_violation_carries_its_extra_fields(self) -> None:
         """A CorveeError's **extra kwargs survive into the error body, exactly
