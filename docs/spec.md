@@ -883,8 +883,9 @@ corvee
 ```
 
 All commands emit human-readable table output by default. Every command
-except `corvee explain` accepts `--json`, mutating ones included, so an
-agent can set one convention and never think about it again.
+accepts `--json`, mutating ones included, except `explain`, `completion`,
+and `mcp serve`, which have no `--json` flag, and `export`, which always
+writes JSON without needing one.
 
 **Success output is always a JSON array of objects on stdout, uniform
 within a command group**, one element per affected row, whether the command
@@ -918,9 +919,11 @@ A few commands step outside that shape because what they return is not a
 task or a fact. `corvee task labels --json` yields an array of `{"name":
 ..., "task_count": ...}`; `corvee task claims --json` yields an array of
 `{"actor": ..., "scope": ..., "count": ..., "oldest_claimed_at": ...}`,
-oldest first. `corvee export --json` and `corvee doctor --json` each yield
-a single JSON object rather than an array, since a backup and a stats
-report are both documents, not query results (§5.4, §5.5).
+oldest first. `corvee export`, `corvee doctor --json`, `corvee brief --json`,
+`corvee init --json`, and `corvee task tree --json` each yield a single
+JSON object rather than an array, since a backup, a stats report, a
+session snapshot, a bootstrap report, and a subtree are all documents, not
+flat query results (§3.1, §5.1.2, §5.4, §5.5, §5.8).
 
 **Failure writes a JSON object to stderr and nothing to stdout**, so a
 caller can parse stdout unconditionally. The object is
