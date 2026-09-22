@@ -11,6 +11,7 @@ from corvee.cli.scope import fetch_merged, paginate_after, resolve_cursor, sort_
 from corvee.constants import SCOPE_FILTERS, narrow_scope_filter
 from corvee.db.tasks import ready_tasks
 from corvee.guards.fields import validate_fields
+from corvee.guards.labels import normalize_label
 from corvee.output import emit_tasks
 
 EPILOG = """\
@@ -52,11 +53,12 @@ def ready(
 ) -> None:
     """Unclaimed open tasks with no open blocks predecessor — what can start right now."""
     fields = validate_fields(fields_csv.split(",")) if fields_csv else None
+    label_filters = tuple(normalize_label(name) for name in labels)
     # --limit applies after the merge, never per scope.
     tasks = sort_tasks(
         fetch_merged(
             narrow_scope_filter(scope_filter),
-            lambda conn, s: ready_tasks(conn, labels=labels, scope=s),
+            lambda conn, s: ready_tasks(conn, labels=label_filters, scope=s),
         )
     )
     if after_ref is not None:

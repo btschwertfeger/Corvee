@@ -1315,7 +1315,11 @@ characters at most. Anything else exits 2 with the pattern in the message.
 with removals applied before additions, so `--remove x --add x` ends with
 `x` attached. Adding a label a task already has, or removing one it doesn't,
 is a no-op success rather than an error, matching how re-claiming and
-same-state updates behave.
+same-state updates behave. `task list --label`/`task ready --label` filter
+values go through the same normalization before the query runs, so
+`--label API` matches a task labeled `api` and a filter value that fails
+the pattern exits 2 the same way `--add` does, rather than silently
+matching nothing.
 
 **`task unclaim` on an already-unclaimed task is a no-op success.** A
 `--force` update that steals another actor's claim follows the same

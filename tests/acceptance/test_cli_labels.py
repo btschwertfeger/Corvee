@@ -112,3 +112,23 @@ class TestListLabelFilter:
         )
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [a]
+
+    def test_matches_regardless_of_filter_case(
+        self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
+    ) -> None:
+        """--label API matches a task labeled api, the same as add_label normalizes it."""
+        task_id = add_task("task")
+        runner.invoke(cli, ["task", "label", task_id, "--add", "API"])
+
+        result = runner.invoke(cli, ["task", "list", "--label", "API", "--json"])
+        payload = json.loads(result.output)
+        assert [t["id"] for t in payload] == [task_id]
+
+    def test_invalid_filter_value_exits_two(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """--label is normalized the same way as --add, so a bad pattern exits 2."""
+        result = runner.invoke(cli, ["task", "list", "--label", "has space", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stderr)
+        assert payload["error"]["code"] == "invalid_label"
