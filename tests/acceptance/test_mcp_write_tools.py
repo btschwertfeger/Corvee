@@ -146,6 +146,28 @@ class TestTaskReview:
         assert result["claimed_by"] == "agent:test"
 
 
+class TestTaskReopen:
+    def test_reopens_a_cancelled_task(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_cancel", ref=task_id, session_id="sess-1")
+        result = _call(app, "task_reopen", ref=task_id, session_id="sess-1")
+        assert result["state"] == "open"
+        assert result["claimed_by"] is None
+
+    def test_reopens_a_done_task(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_done", ref=task_id, session_id="sess-1")
+        result = _call(app, "task_reopen", ref=task_id, session_id="sess-1")
+        assert result["state"] == "open"
+        assert result["claimed_by"] is None
+
+    def test_rejects_reopening_a_task_under_review(self, app: MCPServer, task_id: str) -> None:
+        """`open` is the one state `review` cannot transition to directly
+        (constants.py's TRANSITIONS)."""
+        _call(app, "task_start", ref=task_id, session_id="sess-1")
+        _call(app, "task_review", ref=task_id, session_id="sess-1")
+        error = _call_error(app, "task_reopen", ref=task_id, session_id="sess-1")
+        assert error["error"]["code"] == "invalid_transition"
+
+
 class TestTaskBlock:
     def test_requires_a_comment(self, app: MCPServer, task_id: str) -> None:
         error = _call_error(app, "task_block", ref=task_id, comment="", session_id="sess-1")
@@ -192,6 +214,7 @@ class TestForceIsNotAParameterOnStateTransitionTools:
             pytest.param("task_done", {}, id="task_done"),
             pytest.param("task_cancel", {}, id="task_cancel"),
             pytest.param("task_review", {}, id="task_review"),
+            pytest.param("task_reopen", {}, id="task_reopen"),
             pytest.param("task_block", {"comment": "stuck"}, id="task_block"),
         ],
     )

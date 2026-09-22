@@ -31,10 +31,10 @@ from corvee.mcp.worker import DbWorker
 def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the write tools: `task_claim`, `task_unclaim`,
     `task_comment`, `task_start`, `task_done`, `task_cancel`,
-    `task_review`, `task_block`, `task_add` (spec §10.3). Every one of
-    these writes an event; `session_id` is optional on each, defaulting to
-    the server's own `ServerConfig.session_id` (§10.1) when a call omits
-    it.
+    `task_review`, `task_reopen`, `task_block`, `task_add` (spec §10.3).
+    Every one of these writes an event; `session_id` is optional on each,
+    defaulting to the server's own `ServerConfig.session_id` (§10.1) when a
+    call omits it.
     """
 
     @app.tool(structured_output=True)
@@ -210,6 +210,34 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                     config.actor,
                     session_id=session_id_for(config, session_id),
                     state="review",
+                    force=False,
+                    scope=parsed.scope,
+                )
+                return tasks[0].to_dict()
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_reopen(ref: TaskRefArg, session_id: SessionIdArg = None) -> dict[str, Any]:
+        """Move a task back to open. Use this to undo a mis-cancel or a
+        premature done: `task_start`/`task_review`/`task_block` refuse an
+        already-`cancelled`/`done` task with `invalid_transition`, and
+        `task_claim` refuses one with `task_terminal`, so before this tool
+        there was no way back from either state on this surface. Fails
+        with `invalid_transition` itself when called from `review`, the
+        one state `open` is not reachable from directly (§4.5).
+        `session_id` defaults to this server's own session id if omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            parsed, ctx_cm = write_context(config, ref)
+            with ctx_cm as ctx:
+                tasks = apply_update(
+                    ctx.conn,
+                    parsed.id,
+                    config.actor,
+                    session_id=session_id_for(config, session_id),
+                    state="open",
                     force=False,
                     scope=parsed.scope,
                 )
