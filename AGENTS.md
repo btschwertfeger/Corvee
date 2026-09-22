@@ -26,7 +26,8 @@ files.
 
 ```bash
 hatch run test                  # pytest, parallel via pytest-xdist
-hatch run check                 # every prek hook + test.
+hatch run cov                   # pytest with coverage, fails under 90%
+hatch run check                 # every prek hook + cov.
                                  # Run this before considering a change done
 hatch run lint                  # ruff check, via prek
 hatch run format                # black, via prek

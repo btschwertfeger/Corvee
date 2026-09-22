@@ -74,11 +74,11 @@ dependencies = [
 # CI can never drift apart on what "lint" or "format" actually runs.
 [tool.hatch.envs.default.scripts]
 test = "pytest -n auto {args}"
-cov = "pytest --cov=src/corvee --cov-report=term-missing {args}"
+cov = "pytest -n auto --cov=src/corvee --cov-report=term-missing {args}"
 lint = "prek run ruff-check --all-files {args}"
 format = "prek run black --all-files {args}"
 typecheck = "prek run ty --all-files {args}"
-check = ["prek run --all-files {args}", "test"]
+check = ["prek run --all-files {args}", "cov"]
 docs-serve = "mkdocs serve"
 docs-build = "mkdocs build"
 # Opt-in, not part of `check`/CI: ~2300 mutants across db/ and guards/ run in
@@ -124,6 +124,7 @@ branch = true
 data_file = ".cache/coverage/.coverage"
 
 [tool.coverage.report]
+fail_under = 90
 exclude_lines = ["pragma: no cover", "if TYPE_CHECKING:"]
 skip_empty = true
 
