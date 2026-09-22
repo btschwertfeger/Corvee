@@ -285,22 +285,24 @@ CREATE INDEX idx_task_links_target ON task_links(target_id);
 CREATE UNIQUE INDEX idx_one_parent ON task_links(target_id)
     WHERE relation = 'parent_of';
 
--- One timeline per task, two kinds of row: 'comment' (manual narrative —
--- why) and 'field_change' (automatic audit trail — what changed, written
--- by corvee itself on every mutation, including claim/unclaim and label
--- and link changes; for those, 'field' is 'label' or 'link:<relation>' and
--- the added or removed value sits in new_value or old_value, so an
--- unlink is never silent). One table
--- because corvee show reads them as a single merged, time-ordered feed
--- anyway; splitting them into two tables would just require a UNION at
--- read time for no benefit.
+-- One timeline per task, three kinds of row: 'created' (one row, written
+-- once when the task is made, new_value holds its title -- the task
+-- equivalent of fact_events' own 'created' kind), 'comment' (manual
+-- narrative — why), and 'field_change' (automatic audit trail — what
+-- changed, written by corvee itself on every mutation, including
+-- claim/unclaim and label and link changes; for those, 'field' is 'label'
+-- or 'link:<relation>' and the added or removed value sits in new_value or
+-- old_value, so an unlink is never silent). One table because corvee show
+-- reads them as a single merged, time-ordered feed anyway; splitting them
+-- into separate tables would just require a UNION at read time for no
+-- benefit.
 CREATE TABLE task_events (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     task_id    INTEGER NOT NULL REFERENCES tasks(id),
-    kind       TEXT NOT NULL,    -- comment|field_change
+    kind       TEXT NOT NULL,    -- created|comment|field_change
     field      TEXT,             -- set when kind=field_change
     old_value  TEXT,
-    new_value  TEXT,
+    new_value  TEXT,             -- title when kind=created
     body       TEXT,             -- set when kind=comment
     actor      TEXT NOT NULL,    -- see §4.4
     session_id TEXT,
