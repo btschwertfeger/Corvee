@@ -21,6 +21,7 @@ T = TypeVar("T")
 _SCHEMA_TOO_NEW = "schema_too_new"
 _CLAIM_CONFLICT = "claim_conflict"
 _CLAIM_CONFLICT_HINT = "call task_claim(force=true) on this ref to steal the claim, then retry"
+UNCLAIM_CONFLICT_HINT = "call task_unclaim(force=true) on this ref to release the claim, then retry"
 
 
 def _schedule_exit(err: ConfigError) -> None:
@@ -45,7 +46,7 @@ def _schedule_exit(err: ConfigError) -> None:
     asyncio.get_running_loop().call_later(0.1, os._exit, err.exit_code)
 
 
-def _error_result(err: CorveeError) -> CallToolResult:
+def _error_result(err: CorveeError, *, claim_conflict_hint: str) -> CallToolResult:
     """Build a clean, prefix-free `isError` tool result from a `CorveeError`.
 
     Raising `mcp.server.mcpserver.exceptions.ToolError` instead would work
@@ -68,12 +69,17 @@ def _error_result(err: CorveeError) -> CallToolResult:
     -- a CLI flag, meaningless to an MCP caller and not something this
     function changes, since doing so would change CLI output nobody asked
     to change. `hint` says the same thing in MCP's own terms instead,
-    additive rather than a replacement.
+    additive rather than a replacement. `claim_conflict_hint` is the
+    caller's own tool-specific remedy (`run_tool`'s own parameter), not a
+    single string for every tool: `task_claim(force=true)` steals a claim,
+    the correct remedy for every state-transition tool including
+    `task_claim` itself, but the wrong one for `task_unclaim`, where it
+    would reassign the claim instead of releasing it.
     """
     body = err.to_json()
     body["error"]["exit_code"] = err.exit_code
     if err.code == _CLAIM_CONFLICT:
-        body["error"]["hint"] = _CLAIM_CONFLICT_HINT
+        body["error"]["hint"] = claim_conflict_hint
     return CallToolResult(
         content=[TextContent(type="text", text=json.dumps(body))],
         structured_content=body,
@@ -81,7 +87,12 @@ def _error_result(err: CorveeError) -> CallToolResult:
     )
 
 
-async def run_tool(worker: DbWorker, fn: Callable[[], T]) -> T:
+async def run_tool(
+    worker: DbWorker,
+    fn: Callable[[], T],
+    *,
+    claim_conflict_hint: str = _CLAIM_CONFLICT_HINT,
+) -> T:
     """Run `fn` (a tool handler's DB work) on the dedicated worker thread and
     map any failure into a clean `isError` result.
 
@@ -90,6 +101,10 @@ async def run_tool(worker: DbWorker, fn: Callable[[], T]) -> T:
     exception, and reported the same way `CorveeGroup.main()` already
     reports an unexpected error to the CLI -- the exception's own message,
     never a traceback, under `internal_error`/exit code 1.
+
+    `claim_conflict_hint` reaches `_error_result` unchanged, which
+    documents when a caller needs to override the default. `task_unclaim`
+    is the only one that does.
 
     A successful call's return value passes through unchanged, for the
     SDK's own auto-conversion to build the tool result from.
@@ -108,8 +123,10 @@ async def run_tool(worker: DbWorker, fn: Callable[[], T]) -> T:
     except CorveeError as err:
         if isinstance(err, ConfigError) and err.code == _SCHEMA_TOO_NEW:
             _schedule_exit(err)
-        return _error_result(err)  # ty: ignore[invalid-return-type]
+        return _error_result(  # ty: ignore[invalid-return-type]
+            err, claim_conflict_hint=claim_conflict_hint
+        )
     except Exception as exc:
-        return _error_result(
-            CorveeError("internal_error", str(exc))
-        )  # ty: ignore[invalid-return-type]
+        return _error_result(  # ty: ignore[invalid-return-type]
+            CorveeError("internal_error", str(exc)), claim_conflict_hint=claim_conflict_hint
+        )

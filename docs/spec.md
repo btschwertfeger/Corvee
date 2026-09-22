@@ -2203,10 +2203,15 @@ claim" — a CLI flag, meaningless verbatim to an MCP caller. Rather than
 forking that message per interface (which would change CLI output no one
 asked to change) or leaving it as-is (exposing CLI flag phrasing on an
 interface with no flags at all), `dispatch._error_result` adds `hint`
-alongside it, phrased in MCP's own terms: call `task_claim(force=true)`
-on the ref, then retry. Additive, not a replacement — `message` is
-unchanged, so a caller matching on it (CLI or MCP) sees the same text
-either way.
+alongside it, phrased in MCP's own terms, and the tool that raised the
+error picks which one. `run_tool`'s `claim_conflict_hint` parameter
+defaults to `task_claim(force=true)` on the ref, then retry. That is the
+right remedy wherever taking over the claim lets the call proceed, which
+covers every state-transition tool and `task_claim` itself.
+`task_unclaim` passes `task_unclaim(force=true)` instead, since stealing
+a claim there would reassign it to the caller instead of releasing it.
+Additive, not a replacement — `message` is unchanged, so a caller
+matching on it (CLI or MCP) sees the same text either way.
 
 ### 10.3 Tool list
 
