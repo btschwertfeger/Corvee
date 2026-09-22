@@ -185,3 +185,31 @@ class TestFactShowReferenced:
         result = runner.invoke(cli, ["fact", "show", "FACT-1", "--json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
+
+    def test_cross_scope_mention_resolves(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """A FACT-GLOBAL-<n> mention inside a local fact resolves against the
+        global database, opened only because that mention was found.
+        """
+        runner.invoke(cli, ["fact", "add", "global target", "--global", "--json"])
+        fact_id = add_fact("local claim")
+        runner.invoke(cli, ["fact", "revise", fact_id, "mirrors FACT-GLOBAL-1", "--json"])
+        result = runner.invoke(cli, ["fact", "show", fact_id, "--json"])
+        payload = json.loads(result.output)
+        assert payload[0]["referenced"] == ["FACT-GLOBAL-1"]
+
+    def test_cross_scope_mention_that_does_not_exist_does_not_create_the_global_db(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """Checking a FACT-GLOBAL-<n> mention against a never-used global database
+        must not materialize it (§3.3), the same guarantee a direct
+        `fact show FACT-GLOBAL-<n>` already has.
+        """
+        assert not global_db_path().is_file()
+        fact_id = add_fact("local claim")
+        runner.invoke(cli, ["fact", "revise", fact_id, "mirrors FACT-GLOBAL-1", "--json"])
+        result = runner.invoke(cli, ["fact", "show", fact_id, "--json"])
+        payload = json.loads(result.output)
+        assert payload[0]["referenced"] == []
+        assert not global_db_path().is_file()
