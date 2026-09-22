@@ -102,11 +102,9 @@ async def run_tool(
     reports an unexpected error to the CLI -- the exception's own message,
     never a traceback, under `internal_error`/exit code 1.
 
-    `claim_conflict_hint` is passed straight to `_error_result`: every
-    caller but `task_unclaim` leaves it at the default `_CLAIM_CONFLICT_HINT`
-    (stealing the claim via `task_claim(force=true)` is the correct remedy
-    for a state-transition tool, `task_claim` included); `task_unclaim`
-    passes `UNCLAIM_CONFLICT_HINT` instead.
+    `claim_conflict_hint` reaches `_error_result` unchanged, which
+    documents when a caller needs to override the default. `task_unclaim`
+    is the only one that does.
 
     A successful call's return value passes through unchanged, for the
     SDK's own auto-conversion to build the tool result from.

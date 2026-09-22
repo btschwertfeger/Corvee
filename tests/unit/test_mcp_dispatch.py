@@ -98,8 +98,8 @@ class TestRunToolCorveeError:
     def test_claim_conflict_hint_can_be_overridden(self) -> None:
         """A caller (`task_unclaim`) can pass its own `claim_conflict_hint`
         instead of the default `task_claim(force=true)` one, since stealing
-        the claim there would reassign it to the caller rather than release
-        it -- the opposite of what an unclaim call is for.
+        the claim there would reassign it to the caller instead of
+        releasing it.
         """
 
         def _raise() -> None:

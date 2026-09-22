@@ -279,12 +279,11 @@ documents. No raw traceback is ever passed through — an unexpected error
 still comes back in this shape, with `exit_code: 1`.
 
 A `claim_conflict` carries one more field, `hint`, phrased for this
-surface rather than the CLI's own `--force` flag, and specific to the tool
-that raised it: every tool but `task_unclaim` points at
-`task_claim(force=true)`, the way to take over the claim and proceed;
-`task_unclaim` points at `task_unclaim(force=true)` instead, since
-stealing the claim would reassign it rather than release it, the opposite
-of what a call to `task_unclaim` is trying to do:
+surface rather than the CLI's own `--force` flag. Every tool but
+`task_unclaim` points at `task_claim(force=true)`, which takes over the
+claim so the call can proceed. `task_unclaim` points at
+`task_unclaim(force=true)`, since stealing a claim would reassign it
+instead of releasing it:
 
 ```json
 {
