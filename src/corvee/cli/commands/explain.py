@@ -109,8 +109,11 @@ them. corvee doctor flags a claimed task with recent activity from more
 than one session under one actor string, which is what that collision
 looks like after the fact.
 
-Always pass --json. Success is a JSON array of objects on stdout; failure is
-an object on stderr: {"error": {"code": ..., "message": ...}}.
+Always pass --json, except on explain, completion, and mcp serve (no
+--json flag) and export (already emits JSON, no flag needed). Success is
+a JSON array of objects on stdout, or a single object for brief, doctor,
+init, and task tree. Failure is an object on stderr:
+{"error": {"code": ..., "message": ...}}.
 
 Full flag reference for any command: corvee <command> --help
 """

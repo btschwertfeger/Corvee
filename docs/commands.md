@@ -1,7 +1,11 @@
 # Commands
 
-Every command below accepts `--json` (except `explain`) and prints a JSON
-array of objects on success. `corvee <command> --help` shows runnable
+Every command below accepts `--json` and prints a JSON array of objects
+on success, except `explain`, `completion`, and `mcp serve`, which have
+no `--json` flag, and `export`, which always writes JSON without needing
+one. `brief`, `doctor`, `init`, and `task tree` accept `--json` but print
+one object rather than an array, since each returns a document rather
+than query results. `corvee <command> --help` shows runnable
 examples for any of them. This page covers usage and flags only. Standalone,
 checked-true (or not-yet-checked, or retracted) facts are not linked to
 tasks by the schema (see [Specification](spec.md#46-facts)).

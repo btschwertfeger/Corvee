@@ -63,10 +63,11 @@ corvee task comment TASK-14 "found the root cause" --json
 corvee task update TASK-14 --state done --json       # finish it, claim clears automatically
 ```
 
-Every command accepts `--json` (except `explain`) and, on success, prints a
-JSON array of objects to stdout. On failure, nothing is written to stdout
-and a JSON error object goes to stderr instead, so a caller can parse
-stdout unconditionally.
+Most commands accept `--json` and, on success, print a JSON array of
+objects to stdout. A handful of exceptions are covered in
+[Commands](commands.md). On failure, nothing is written to stdout and a
+JSON error object goes to stderr instead, so a caller can parse stdout
+unconditionally.
 
 ## What the output looks like
 
