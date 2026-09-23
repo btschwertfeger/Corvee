@@ -77,7 +77,7 @@ affected row(s):
 ```
 $ corvee task add "Fix the flaky auth test" --description "Retry logic in test_auth.py::test_login_retry is racy under load"
 ID      TITLE                    TYPE  PRIORITY  STATE  CLAIMED_BY  CLAIMED_AT  ASSIGNED_TO  CREATED_AT                UPDATED_AT                SCOPE
-TASK-1  Fix the flaky auth test  task  medium    open   None        None        None         2026-09-15T06:28:27.641Z  2026-09-15T06:28:27.641Z  local
+TASK-1  Fix the flaky auth test  task  medium    open                                        2026-09-15T06:28:27.641Z  2026-09-15T06:28:27.641Z  local
 ```
 
 `task show` prints the full record instead, including every claim, state
@@ -92,9 +92,9 @@ title: Fix the flaky auth test
 type: task
 priority: medium
 state: done
-claimed_by: None
-claimed_at: None
-assigned_to: None
+claimed_by: (none)
+claimed_at: (none)
+assigned_to: (none)
 created_at: 2026-09-15T06:28:27.641Z
 updated_at: 2026-09-15T06:28:27.810Z
 scope: local
