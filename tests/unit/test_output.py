@@ -68,6 +68,14 @@ class TestRenderTable:
         assert "TASK-1" in lines[1]
         assert "do the thing" in lines[1]
 
+    def test_null_column_renders_blank_not_the_string_none(self) -> None:
+        """A None value (e.g. an unclaimed task's claimed_by) renders as an empty
+        cell, not the string "None".
+        """
+        table = render_table([TASK], fields=["id", "claimed_by"])
+        lines = table.splitlines()
+        assert "None" not in lines[1]
+
     def test_embedded_newlines_do_not_break_row_alignment(self) -> None:
         """A multi-line field value (an expected shape for agent-written free
         text, §5.2) collapses onto one physical line instead of splitting the
@@ -105,6 +113,13 @@ class TestRenderDetailHeader:
         """A caller that projected the block field out via --fields keeps it out here too."""
         header = render_detail_header(TASK, ["id", "title"], block_field="description")
         assert header == "id: TASK-1\ntitle: do the thing"
+
+    def test_null_flat_field_shows_none_placeholder(self) -> None:
+        """A None flat-field value (e.g. an unclaimed task's claimed_by) shows
+        (none), not the string "None", directly above the block field.
+        """
+        header = render_detail_header(TASK, ["id", "claimed_by"], block_field="description")
+        assert header.splitlines() == ["id: TASK-1", "claimed_by: (none)"]
 
     def test_block_field_shows_none_placeholder_when_missing(self) -> None:
         """An unset block value (e.g. an unverified fact's proof) shows (none), not "None"."""
