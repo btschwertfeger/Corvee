@@ -45,6 +45,14 @@ def link_tasks(
     source_task = require_task(conn, source_id, scope=scope)
     target_task = require_task(conn, target_id, scope=scope)
 
+    if source_id == target_id:
+        raise GuardViolationError(
+            "self_link",
+            f"cannot link {task_ref(source_id, scope)} ({relation}) to itself",
+            task_id=task_ref(source_id, scope),
+            relation=relation,
+        )
+
     if relation == "relates_to" and source_id > target_id:
         # Symmetric: stored normalized so `link A B` and `link B A` collapse
         # to one row.
