@@ -52,6 +52,12 @@ def import_project(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
             "dump is missing the required schema_version key; is this a corvee dump?",
         )
     schema_version = data["schema_version"]
+    if not isinstance(schema_version, int):
+        raise UsageError(
+            "invalid_schema_version",
+            f"schema_version must be an integer, got {type(schema_version).__name__}",
+            schema_version=schema_version,
+        )
     if schema_version > CURRENT_SCHEMA_VERSION:
         raise ConfigError(
             "schema_too_new",
