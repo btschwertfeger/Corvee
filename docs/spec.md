@@ -155,9 +155,14 @@ process solves, and it's explicitly out of scope (§2).
 Every task and fact lives in exactly one of two databases: the **local**
 project database resolved by §3.1, or one **global** database shared
 across every project on the machine, at `~/.corvee/corvee.db`. The global
-database has no `config.toml` and no override — one fixed path, the same
-"one source of truth" reasoning §3.1 gives for the project binding, just
-without a pointer file to find it through, since there is only ever one.
+database has no `config.toml` — one fixed path, the same "one source of
+truth" reasoning §3.1 gives for the project binding, just without a
+pointer file to find it through, since there is only ever one.
+`$CORVEE_GLOBAL_DB`, if set, redirects that fixed path to the value given,
+taken as-is against cwd with no `expanduser()`/`resolve()`; it is an
+internal escape hatch for tests and agent tooling to exercise `--global`
+scope without touching a real user's database, never part of the
+documented CLI/config surface, and ordinary use never sets it.
 
 **The global database is created lazily, on first use, not by `corvee
 init`.** `corvee init` only ever touches the local project (§3.1); nothing
