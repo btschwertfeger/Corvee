@@ -103,6 +103,18 @@ class TestImportProject:
         assert excinfo.value.exit_code == 6
         assert excinfo.value.code == "schema_too_old"
 
+    def test_refuses_unknown_column_in_a_row(self, conn: sqlite3.Connection) -> None:
+        """A row carrying a key that isn't a real column on that table (foreign
+        or crafted) raises UsageError (exit 2) instead of the raw sqlite error
+        the interpolated INSERT would otherwise surface (TASK-33).
+        """
+        data = export_project(conn)
+        data["tasks"] = [{"id": 1, "title": "x", "bogus_column": "evil"}]
+        with pytest.raises(UsageError) as excinfo:
+            import_project(conn, data)
+        assert excinfo.value.exit_code == 2
+        assert excinfo.value.code == "invalid_dump_column"
+
     def test_round_trip_preserves_ids_and_content(self, tmp_path: Path) -> None:
         """A full export/import round trip reproduces every table's content exactly."""
         source_project = bootstrap_project(tmp_path / "source")

@@ -945,7 +945,7 @@ Exit codes are distinct enough to branch on without parsing at all.
 |---|---|
 | 0 | Success |
 | 1 | Unexpected/internal error |
-| 2 | Usage or validation error (bad flag, unknown `--fields` name, invalid state, cross-namespace id, malformed `--stale`/`--since` duration, `corvee import` of malformed JSON or a dump missing `schema_version`) |
+| 2 | Usage or validation error (bad flag, unknown `--fields` name, invalid state, cross-namespace id, malformed `--stale`/`--since` duration, `corvee import` of malformed JSON, a dump missing `schema_version`, or a dump row with an unknown column) |
 | 3 | Task or fact not found |
 | 4 | Claim conflict (task held by another actor) |
 | 5 | Guard violation (open children, `parent_of` cycle, rejected transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, cross-scope link) |
@@ -1420,7 +1420,10 @@ surface as an unhandled error the first time something tried to act on
 that row. `--scope` must match what the dump came from — a
 dump has no self-describing scope marker, so restoring a local dump with
 `--scope global` (or vice versa) succeeds without error and simply lands
-the same rows in the other database, verbatim ids included.
+the same rows in the other database, verbatim ids included. Each row's keys
+are validated against that table's real columns before the insert, exiting
+2 on a foreign or crafted one, rather than a raw sqlite error surfacing
+straight from the interpolated `INSERT`.
 
 Both databases are git-ignored by design and live outside any repository
 (§3.3), so without these two commands — and `--scope global` reaching the

@@ -80,7 +80,16 @@ def import_project(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
         )
 
     for table in _TABLES:
+        valid_columns = {info[1] for info in conn.execute(f"PRAGMA table_info({table})")}
         for row in data.get(table, []):
+            unknown = sorted(set(row) - valid_columns)
+            if unknown:
+                raise UsageError(
+                    "invalid_dump_column",
+                    f"{table} row in the dump has unknown column(s): {', '.join(unknown)}",
+                    table=table,
+                    columns=unknown,
+                )
             columns = ", ".join(row.keys())
             placeholders = ", ".join("?" for _ in row)
             conn.execute(
