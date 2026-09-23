@@ -80,6 +80,21 @@ class TestImportProject:
             import_project(conn, data)
         assert excinfo.value.exit_code == 2
 
+    @pytest.mark.parametrize("bad_version", ["x", None, 1.5, [3]])
+    def test_refuses_non_integer_schema_version(
+        self, conn: sqlite3.Connection, bad_version: object
+    ) -> None:
+        """A schema_version that isn't an int (a string, null, a float, a list --
+        anything a hand-edited or foreign dump might carry) raises UsageError
+        (exit 2) instead of a bare TypeError from comparing it to an int (TASK-31).
+        """
+        data = export_project(conn)
+        data["schema_version"] = bad_version
+        with pytest.raises(UsageError) as excinfo:
+            import_project(conn, data)
+        assert excinfo.value.exit_code == 2
+        assert excinfo.value.code == "invalid_schema_version"
+
     def test_refuses_newer_schema_version(self, conn: sqlite3.Connection) -> None:
         """A dump whose schema_version exceeds this binary's raises ConfigError (exit 6)."""
         data = export_project(conn)

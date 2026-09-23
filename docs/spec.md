@@ -945,7 +945,7 @@ Exit codes are distinct enough to branch on without parsing at all.
 |---|---|
 | 0 | Success |
 | 1 | Unexpected/internal error |
-| 2 | Usage or validation error (bad flag, unknown `--fields` name, invalid state, cross-namespace id, malformed `--stale`/`--since` duration, `corvee import` of malformed JSON, a dump missing `schema_version`, or a dump row with an unknown column) |
+| 2 | Usage or validation error (bad flag, unknown `--fields` name, invalid state, cross-namespace id, malformed `--stale`/`--since` duration, `corvee import` of malformed JSON, a dump missing `schema_version` or carrying a non-integer one, or a dump row with an unknown column) |
 | 3 | Task or fact not found |
 | 4 | Claim conflict (task held by another actor) |
 | 5 | Guard violation (open children, `parent_of` cycle, rejected transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, cross-scope link) |
