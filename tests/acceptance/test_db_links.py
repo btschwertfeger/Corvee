@@ -10,6 +10,7 @@ from collections.abc import Iterator
 import pytest
 
 from corvee.config import global_db_path
+from corvee.constants import RELATIONS, Relation
 from corvee.db.connection import open_connection
 from corvee.db.links import get_children, get_task_links, link_tasks, unlink_tasks
 from corvee.db.tasks import apply_update, insert_task
@@ -60,6 +61,22 @@ class TestLinkTasks:
             link_tasks(conn, c.id, a.id, "parent_of", "agent:a", None)
         assert excinfo.value.exit_code == 5
         assert excinfo.value.extra["relation"] == "parent_of"
+
+    @pytest.mark.parametrize("relation", RELATIONS)
+    def test_self_link_is_rejected_for_every_relation(
+        self, conn: sqlite3.Connection, relation: Relation
+    ) -> None:
+        """A task linked to itself raises a guard violation (exit 5) for every
+        relation, not just parent_of/blocks (which happened to exit 5 already,
+        incidentally, via the cycle check) -- duplicates/relates_to used to fall
+        through to the schema's raw CHECK constraint instead (exit 1).
+        """
+        a = insert_task(conn, title="a")
+
+        with pytest.raises(GuardViolationError) as excinfo:
+            link_tasks(conn, a.id, a.id, relation, "agent:a", None)
+        assert excinfo.value.exit_code == 5
+        assert excinfo.value.code == "self_link"
 
     def test_blocks_two_cycle_is_rejected(self, conn: sqlite3.Connection) -> None:
         """A blocks B plus B blocks A is rejected as a two-node cycle."""
