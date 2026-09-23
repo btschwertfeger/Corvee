@@ -1407,10 +1407,13 @@ database, not a merged one, since local and global ids collide (both
 start at 1) and a merged dump would need to disambiguate them somehow.
 
 `corvee import <file> [--scope local|global]` refuses to run against a
-database that already holds tasks or facts, exiting 2. Restoring is
-therefore always into a freshly initialized project (or an empty global
-database), which sidesteps ID collisions, duplicate detection, and the
-question of what merging two histories would even mean. It also rejects a
+database that already holds tasks, facts, or labels, exiting 2 — a label
+survives a `task purge` (§4.5.1) even after every task wearing it is
+gone, so it's the one row an otherwise-empty project can still carry.
+Restoring is therefore always into a freshly initialized project (or an
+empty global database), which sidesteps ID collisions, duplicate
+detection, and the question of what merging two histories would even
+mean. It also rejects a
 dump whose `schema_version` doesn't exactly match the binary's: higher for
 the reason given in §3.2, and lower because a dump's rows are inserted
 verbatim with no migration applied — a value valid under an older schema
