@@ -38,6 +38,26 @@ class TestReady:
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [labeled_id]
 
+    def test_label_filter_matches_regardless_of_case(
+        self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
+    ) -> None:
+        """--label API matches a task labeled api, the same as add_label normalizes it."""
+        labeled_id = add_task("labeled")
+        runner.invoke(cli, ["task", "label", labeled_id, "--add", "API"])
+
+        result = runner.invoke(cli, ["task", "ready", "--label", "API", "--json"])
+        payload = json.loads(result.output)
+        assert [t["id"] for t in payload] == [labeled_id]
+
+    def test_invalid_label_filter_exits_two(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """--label is normalized the same way as `task label --add`, so a bad pattern exits 2."""
+        result = runner.invoke(cli, ["task", "ready", "--label", "has space", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stderr)
+        assert payload["error"]["code"] == "invalid_label"
+
     def test_limit_caps_the_result(
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:

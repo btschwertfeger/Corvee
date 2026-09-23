@@ -26,6 +26,7 @@ from corvee.constants import (
 )
 from corvee.db.tasks import TaskFilter, list_tasks
 from corvee.guards.fields import validate_fields
+from corvee.guards.labels import normalize_label
 from corvee.models import TaskRow, parse_task_ref
 from corvee.output import emit_tasks
 from corvee.timeutil import parse_duration, timestamp
@@ -147,7 +148,7 @@ def list_command(
         include_all=include_all,
         type=narrow_task_type(type_) if type_ else None,
         priority=narrow_priority(priority) if priority else None,
-        labels=labels,
+        labels=tuple(normalize_label(name) for name in labels),
         parent_id=parent.id if parent else None,
         blocks_id=blocks.id if blocks else None,
         blocked_by_id=blocked_by.id if blocked_by else None,
