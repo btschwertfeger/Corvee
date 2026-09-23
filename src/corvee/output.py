@@ -40,7 +40,14 @@ def render_table(
         return ""
     columns = list(fields) if fields is not None else list(default_fields)
     rows = [
-        [str(task.get(column, "")).replace("\r\n", " ").replace("\n", " ") for column in columns]
+        [
+            (
+                str(value).replace("\r\n", " ").replace("\n", " ")
+                if (value := task.get(column, "")) is not None
+                else ""
+            )
+            for column in columns
+        ]
         for task in tasks
     ]
     widths = [max(len(column), *(len(row[i]) for row in rows)) for i, column in enumerate(columns)]
@@ -66,7 +73,10 @@ def render_detail_header(
     caller that projected it out via `--fields` keeps it out here too.
     """
     flat_columns = [column for column in columns if column != block_field]
-    lines = [f"{column}: {row.get(column, '')}" for column in flat_columns]
+    lines = [
+        f"{column}: {value}" if (value := row.get(column, "")) is not None else f"{column}: (none)"
+        for column in flat_columns
+    ]
     if block_field in columns:
         value = row.get(block_field)
         lines.append("")

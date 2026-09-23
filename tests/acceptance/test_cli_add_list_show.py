@@ -141,6 +141,16 @@ class TestList:
         assert len(payload) == 1
         assert payload[0]["title"] == "open task"
 
+    def test_plain_output_renders_unclaimed_columns_blank(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """Without --json, an unclaimed task's CLAIMED_BY/CLAIMED_AT/ASSIGNED_TO
+        columns render blank, not the string "None" (TASK-35).
+        """
+        runner.invoke(cli, ["task", "add", "open task", "--description", "d", "--json"])
+        result = runner.invoke(cli, ["task", "list"])
+        assert "None" not in result.output
+
     def test_no_match_returns_empty_array(self, runner: CliRunner, project: ProjectConfig) -> None:
         """An empty backlog returns [] rather than an error."""
         result = runner.invoke(cli, ["task", "list", "--json"])
@@ -337,6 +347,17 @@ class TestShow:
         result = runner.invoke(cli, ["task", "show", "2", "1", "--json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == ["TASK-2", "TASK-1"]
+
+    def test_plain_output_renders_unclaimed_fields_as_none_placeholder(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """Without --json, `task show` renders an unset claimed_by as (none),
+        not the string "None" (TASK-35).
+        """
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
+        result = runner.invoke(cli, ["task", "show", "1"])
+        assert "claimed_by: (none)" in result.output
+        assert "None" not in result.output
 
     def test_plain_output_includes_comments_and_labels(
         self, runner: CliRunner, project: ProjectConfig
