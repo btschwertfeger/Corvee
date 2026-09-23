@@ -41,4 +41,8 @@ def parse_duration(text: str) -> timedelta:
         msg = f"invalid duration {text!r}: expected an integer followed by s, m, h, d, or w"
         raise UsageError("invalid_duration", msg)
     amount, unit = match.groups()
-    return timedelta(**{_DURATION_UNITS[unit]: int(amount)})
+    try:
+        return timedelta(**{_DURATION_UNITS[unit]: int(amount)})
+    except OverflowError as error:
+        msg = f"invalid duration {text!r}: too large"
+        raise UsageError("invalid_duration", msg) from error

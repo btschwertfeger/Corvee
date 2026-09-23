@@ -38,6 +38,17 @@ class TestDurationValidation:
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] != "internal_error"
 
+    def test_duration_too_large_for_timedelta_is_a_usage_error(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """A syntactically valid but absurdly large digit run (TASK-30) exits 2,
+        not 1 internal_error, the same as any other malformed duration.
+        """
+        result = runner.invoke(cli, ["task", "list", "--stale", "99999999999999999999d", "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stderr)
+        assert payload["error"]["code"] == "invalid_duration"
+
     def test_task_show_malformed_since_is_a_usage_error(
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:

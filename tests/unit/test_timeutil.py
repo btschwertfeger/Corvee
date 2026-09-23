@@ -57,3 +57,11 @@ class TestParseDuration:
         """
         with pytest.raises(UsageError, match="duration"):
             parse_duration(text)
+
+    def test_rejects_a_digit_run_too_large_for_timedelta(self) -> None:
+        """A syntactically valid but absurdly large digit run (TASK-30) raises
+        UsageError (exit 2) instead of the bare OverflowError timedelta() itself
+        raises when the value can't convert to a C int.
+        """
+        with pytest.raises(UsageError, match="duration"):
+            parse_duration("99999999999999999999d")
