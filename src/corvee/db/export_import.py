@@ -72,10 +72,11 @@ def import_project(conn: sqlite3.Connection, data: dict[str, Any]) -> None:
 
     existing_tasks = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
     existing_facts = conn.execute("SELECT COUNT(*) FROM facts").fetchone()[0]
-    if existing_tasks > 0 or existing_facts > 0:
+    existing_labels = conn.execute("SELECT COUNT(*) FROM labels").fetchone()[0]
+    if existing_tasks > 0 or existing_facts > 0 or existing_labels > 0:
         raise UsageError(
             "import_into_nonempty_project",
-            "cannot import into a project that already holds tasks or facts;"
+            "cannot import into a project that already holds tasks, facts, or labels;"
             " restore into a freshly initialized project",
         )
 

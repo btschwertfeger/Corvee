@@ -16,7 +16,8 @@ from corvee.db.export_import import export_project, import_project
 from corvee.db.facts import insert_fact, retract_fact, revise_fact
 from corvee.db.labels import add_label
 from corvee.db.links import link_tasks
-from corvee.db.tasks import add_comment, insert_task
+from corvee.db.schema import CURRENT_SCHEMA_VERSION
+from corvee.db.tasks import add_comment, apply_update, insert_task, purge_task
 from corvee.errors import ConfigError, UsageError
 
 
@@ -102,6 +103,34 @@ class TestImportProject:
             import_project(conn, data)
         assert excinfo.value.exit_code == 6
         assert excinfo.value.code == "schema_too_old"
+
+    def test_refuses_when_only_a_label_survives_a_purge(self, conn: sqlite3.Connection) -> None:
+        """A label row can outlive every task that used it (purge only clears
+        task_labels, not labels itself, TASK-32) -- import must still refuse
+        cleanly (exit 2) rather than let the leftover `labels` row collide
+        with the dump's own via a raw UNIQUE constraint failure (exit 1).
+        """
+        task = insert_task(conn, title="throwaway")
+        add_label(conn, task.id, "api", "agent:a", None)
+        apply_update(conn, task.id, "agent:a", state="cancelled")
+        purge_task(conn, task.id)
+        assert conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM labels").fetchone()[0] == 1
+
+        dump = {
+            "schema_version": CURRENT_SCHEMA_VERSION,
+            "tasks": [],
+            "labels": [{"id": 1, "name": "api"}],
+            "task_labels": [],
+            "task_links": [],
+            "task_events": [],
+            "facts": [],
+            "fact_events": [],
+        }
+        with pytest.raises(UsageError) as excinfo:
+            import_project(conn, dump)
+        assert excinfo.value.exit_code == 2
+        assert excinfo.value.code == "import_into_nonempty_project"
 
     def test_refuses_unknown_column_in_a_row(self, conn: sqlite3.Connection) -> None:
         """A row carrying a key that isn't a real column on that table (foreign
