@@ -164,6 +164,18 @@ class TestEmitTaskDetail:
         payload = json.loads(capsys.readouterr().out)
         assert payload == [row]
 
+    def test_plain_output_lists_links_by_direction_and_relation(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A task with links renders one `direction relation task_id` line per link."""
+        row = self._row(
+            links=[{"direction": "outgoing", "relation": "blocks", "task_id": "TASK-2"}]
+        )
+        emit_task_detail([row], as_json=False)
+        out = capsys.readouterr().out
+        assert "links:" in out
+        assert "outgoing blocks TASK-2" in out
+
 
 class TestEmitFactDetail:
     def test_plain_output_uses_markdown_header_not_table(
@@ -177,6 +189,35 @@ class TestEmitFactDetail:
         assert "proof:" in out
         assert "see LICENSE" in out
         assert "CLAIM" not in out
+
+    def test_plain_output_renders_revised_and_unverified_event_lines(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A "revised" event shows the old and new claim; an "unverified" event
+        shows its note -- the two event kinds specific to facts, not tasks.
+        """
+        row = {
+            **FACT,
+            "events": [
+                {
+                    "kind": "revised",
+                    "old_value": "package X is MIT-licensed",
+                    "new_value": "package X is Apache-2.0-licensed",
+                    "actor": "agent:test",
+                    "created_at": "2026-01-01T00:00:00.000Z",
+                },
+                {
+                    "kind": "unverified",
+                    "note": "license file changed upstream",
+                    "actor": "agent:test",
+                    "created_at": "2026-01-02T00:00:00.000Z",
+                },
+            ],
+        }
+        emit_fact_detail([row], as_json=False)
+        out = capsys.readouterr().out
+        assert "'package X is MIT-licensed' -> 'package X is Apache-2.0-licensed'" in out
+        assert "license file changed upstream" in out
 
 
 class TestEmitTasks:

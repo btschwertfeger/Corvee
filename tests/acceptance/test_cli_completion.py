@@ -4,6 +4,7 @@
 # https://github.com/btschwertfeger
 #
 
+import sqlite3
 from collections.abc import Callable
 from pathlib import Path
 
@@ -14,9 +15,21 @@ from click.testing import CliRunner
 from corvee.cli.completion import complete_fact_ids, complete_labels, complete_task_ids
 from corvee.cli.main import cli
 from corvee.config import ProjectConfig
+from corvee.db.schema import CURRENT_SCHEMA_VERSION
 
 _CTX = click.Context(click.Command("dummy"))
 _PARAM = click.Argument(["dummy"])
+
+
+def _bump_schema_version(db_path: Path) -> None:
+    """Make the project's db look like it was migrated by a newer binary."""
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)",
+        (CURRENT_SCHEMA_VERSION + 1, "2026-01-01T00:00:00.000Z"),
+    )
+    conn.commit()
+    conn.close()
 
 
 class TestCompleteTaskIds:
@@ -58,6 +71,15 @@ class TestCompleteTaskIds:
         monkeypatch.chdir(empty_dir)
         assert complete_task_ids(_CTX, _PARAM, "") == []
 
+    def test_a_database_on_a_newer_schema_returns_no_completions(
+        self, project: ProjectConfig
+    ) -> None:
+        """A database migrated by a newer binary raises a CorveeError while merging
+        scopes; completion offers nothing rather than erroring into the shell.
+        """
+        _bump_schema_version(project.db_path)
+        assert complete_task_ids(_CTX, _PARAM, "") == []
+
 
 class TestCompleteFactIds:
     def test_matches_ids_by_prefix(
@@ -76,6 +98,13 @@ class TestCompleteFactIds:
         add_fact("package X is MIT-licensed")
         items = complete_fact_ids(_CTX, _PARAM, "")
         assert items[0].help == "package X is MIT-licensed"
+
+    def test_a_database_on_a_newer_schema_returns_no_completions(
+        self, project: ProjectConfig
+    ) -> None:
+        """The fact-group equivalent of the same check on task ids."""
+        _bump_schema_version(project.db_path)
+        assert complete_fact_ids(_CTX, _PARAM, "") == []
 
 
 class TestCompleteLabels:

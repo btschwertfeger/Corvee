@@ -7,6 +7,7 @@
 import json
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 from corvee.cli.main import cli
@@ -166,6 +167,56 @@ class TestTaskAddFromFile:
     def test_missing_file_is_a_usage_error(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A --from-file path that doesn't exist exits 2 via click's own Path(exists=True)."""
         result = runner.invoke(cli, ["task", "add", "--from-file", "/no/such/file.json", "--json"])
+        assert result.exit_code == 2
+
+    @pytest.mark.parametrize(
+        "items",
+        [
+            pytest.param(["not a dict"], id="item_not_an_object"),
+            pytest.param(
+                [{"title": "a", "description": "   "}],
+                id="blank_description",
+            ),
+            pytest.param(
+                [{"title": "a", "description": "d", "priority": "not-a-real-priority"}],
+                id="invalid_priority",
+            ),
+            pytest.param(
+                [{"title": "a", "description": "d", "label": "api"}],
+                id="label_not_a_list",
+            ),
+            pytest.param(
+                [{"title": "a", "description": "d", "label": ["api", 1]}],
+                id="label_item_not_a_string",
+            ),
+            pytest.param(
+                [{"title": "a", "description": "d", "parent": 1}],
+                id="parent_not_a_string",
+            ),
+        ],
+    )
+    def test_batch_item_validation_is_rejected(
+        self,
+        runner: CliRunner,
+        project: ProjectConfig,
+        tmp_path: Path,
+        items: list[object],
+    ) -> None:
+        """Each documented per-item validation rule fails the whole call, exit 2."""
+        path = tmp_path / "batch.json"
+        path.write_text(json.dumps(items))
+        result = runner.invoke(cli, ["task", "add", "--from-file", str(path), "--json"])
+        assert result.exit_code == 2
+        listing = runner.invoke(cli, ["task", "list", "--json"])
+        assert json.loads(listing.output) == []
+
+    def test_invalid_json_is_a_usage_error(
+        self, runner: CliRunner, project: ProjectConfig, tmp_path: Path
+    ) -> None:
+        """A file that exists but isn't valid JSON exits 2, not 1 internal_error."""
+        path = tmp_path / "batch.json"
+        path.write_text("not json at all")
+        result = runner.invoke(cli, ["task", "add", "--from-file", str(path), "--json"])
         assert result.exit_code == 2
 
     def test_files_into_the_global_database(
