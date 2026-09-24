@@ -56,7 +56,7 @@ IsGlobalArg = Annotated[
     Field(description="File into the shared global database instead of the local project."),
 ]
 LimitArg = Annotated[
-    int,
+    int | float,
     Field(
         description="Maximum results, applied to the merged, sorted result "
         "across every scope searched (default 20)."
@@ -66,6 +66,23 @@ LimitArg = Annotated[
 
 def scope_filter_field(description: str) -> Any:
     return _enum_field(description, SCOPE_FILTERS)
+
+
+def validate_limit(limit: int | float) -> int:
+    """Narrow a `LimitArg` value to a positive int, the way `validate_scope_filter`
+    narrows a scope string -- a bad value still reaches the tool's own
+    `UsageError`, rather than surfacing as a raw protocol-level validation
+    error the SDK raises before the handler ever runs (`float` is only in
+    `LimitArg`'s type because pydantic already coerces a whole-number float
+    to `int` for a plain `int` field; only a fractional one like `1.5`
+    reaches here).
+    """
+    if isinstance(limit, float) and not limit.is_integer():
+        raise UsageError("invalid_limit", f"limit must be a whole number, got {limit}")
+    limit = int(limit)
+    if limit < 1:
+        raise UsageError("invalid_limit", f"limit must be >= 1, got {limit}")
+    return limit
 
 
 def project_db_path(config: ServerConfig) -> Path | None:
