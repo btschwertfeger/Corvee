@@ -21,9 +21,12 @@ def complete_task_ids(
     """Shell-complete a TASK-<n>/TASK-GLOBAL-<n> argument against real ids,
     merged across local and global (§3.3) the same way `--scope all` does.
 
-    Silent on any corvee-raised failure -- outside a project, or against a
-    database on a newer schema than this binary, tab completion just offers
-    nothing rather than erroring into the middle of the user's shell prompt.
+    Outside a project (or with no global database yet), `scopes_for` drops
+    both scopes before either connection opens, so there's nothing here to
+    catch. The `except CorveeError` below only matters once a scope is
+    actually queried and fails -- e.g. a database migrated by a newer
+    binary -- and offers no completions rather than erroring into the
+    middle of the user's shell prompt.
     """
     del ctx, param
     try:

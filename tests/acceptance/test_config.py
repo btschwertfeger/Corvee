@@ -112,6 +112,18 @@ class TestBootstrapProject:
         result_again = bootstrap_project(tmp_path)
         assert result_again.gitignore_status == "up_to_date"
 
+    def test_adds_a_newline_before_appending_to_a_file_missing_a_trailing_one(
+        self, tmp_path: Path
+    ) -> None:
+        """A .gitignore whose last line has no trailing newline still gets a
+        clean, separate `.corvee/` line, not one glued onto the existing content.
+        """
+        (tmp_path / ".gitignore").write_text("node_modules/")
+        result = bootstrap_project(tmp_path)
+        assert result.gitignore_status == "appended"
+        content = (tmp_path / ".gitignore").read_text()
+        assert content.splitlines() == ["node_modules/", ".corvee/"]
+
     def test_never_creates_a_gitignore_from_scratch(self, tmp_path: Path) -> None:
         """No .gitignore in the directory means bootstrap leaves none behind."""
         result = bootstrap_project(tmp_path)
