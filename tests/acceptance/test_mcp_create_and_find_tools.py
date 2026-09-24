@@ -160,6 +160,18 @@ class TestTaskSearch:
         error = _call_error(app, "task_search", text="x", limit=0)
         assert error["error"]["code"] == "invalid_limit"
 
+    def test_fractional_limit_is_a_clean_usage_error_not_a_raw_sdk_one(
+        self, app: MCPServer
+    ) -> None:
+        """A client sending `limit` as a JSON number with a fractional part
+        still fails inside corvee's own clean-error contract, rather than
+        raising a raw SDK argument-validation error that never reaches
+        `run_tool`.
+        """
+        error = _call_error(app, "task_search", text="x", limit=1.5)
+        assert error["error"]["code"] == "invalid_limit"
+        assert error["error"]["exit_code"] == 2
+
 
 class TestFactShow:
     def test_returns_claim_status_proof_and_events(

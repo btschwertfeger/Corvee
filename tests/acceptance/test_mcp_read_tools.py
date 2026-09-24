@@ -90,6 +90,24 @@ class TestTaskShow:
         detail = _call(app, "task_show", ref=task.id)
         assert detail["title"] == "t"
 
+    @pytest.mark.parametrize("since", [7, 7.5])
+    def test_since_as_a_json_number_is_a_clean_usage_error_not_a_raw_sdk_one(
+        self, app: MCPServer, project: ProjectConfig, since: object
+    ) -> None:
+        """A client sending `since` as a JSON number (not the documented
+        duration string) still fails inside corvee's own clean-error
+        contract, rather than raising a raw SDK argument-validation error
+        that never reaches `run_tool`.
+        """
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            from corvee.db.tasks import insert_task
+
+            task = insert_task(ctx.conn, title="t")
+
+        error = _call_error(app, "task_show", ref=f"TASK-{task.id}", since=since)
+        assert error["error"]["code"] == "invalid_duration"
+        assert error["error"]["exit_code"] == 2
+
     def test_local_ref_in_global_only_mode_gives_no_project_error(self) -> None:
         config = ServerConfig(actor="agent:test", project=None, session_id="sess-server")
         server, worker = build_server(config)
@@ -191,6 +209,14 @@ class TestFactSearch:
 
     def test_invalid_limit_gives_a_usage_error(self, app: MCPServer) -> None:
         error = _call_error(app, "fact_search", text="x", limit=0)
+        assert error["error"]["code"] == "invalid_limit"
+        assert error["error"]["exit_code"] == 2
+
+    def test_fractional_limit_is_a_clean_usage_error_not_a_raw_sdk_one(
+        self, app: MCPServer
+    ) -> None:
+        """The fact-group equivalent of the same check on `task_search`."""
+        error = _call_error(app, "fact_search", text="x", limit=1.5)
         assert error["error"]["code"] == "invalid_limit"
         assert error["error"]["exit_code"] == 2
 

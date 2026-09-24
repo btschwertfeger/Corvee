@@ -18,7 +18,6 @@ from corvee.db.facts import search_facts
 from corvee.db.labels import list_task_labels
 from corvee.db.links import get_children, get_task_links
 from corvee.db.tasks import require_task, search_tasks
-from corvee.errors import UsageError
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import fetch_merged_for_config, require_scope_available
 from corvee.mcp.server_config import ServerConfig
@@ -27,6 +26,7 @@ from corvee.mcp.tools_common import (
     TaskRefArg,
     project_db_path,
     scope_filter_field,
+    validate_limit,
     validate_scope_filter,
 )
 from corvee.mcp.worker import DbWorker
@@ -44,7 +44,7 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
     async def task_show(
         ref: TaskRefArg,
         since: Annotated[
-            str | None,
+            str | int | float | None,
             Field(
                 description="Only include events newer than this duration ago "
                 '(e.g. "7d", "4h"). Omit for the full timeline.'
@@ -57,7 +57,9 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
         """
 
         def _fetch() -> dict[str, Any]:
-            since_cutoff = timestamp(datetime.now(UTC) - parse_duration(since)) if since else None
+            since_cutoff = (
+                timestamp(datetime.now(UTC) - parse_duration(str(since))) if since else None
+            )
             parsed = parse_task_ref(str(ref))
             require_scope_available(config, parsed.scope)
             db_path = project_db_path(config) if parsed.scope == "local" else None
@@ -151,8 +153,7 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
 
         def _fetch() -> dict[str, Any]:
             scope_filter = validate_scope_filter(scope)
-            if limit < 1:
-                raise UsageError("invalid_limit", f"limit must be >= 1, got {limit}")
+            capped_limit = validate_limit(limit)
             facts = sort_facts(
                 fetch_merged_for_config(
                     config,
@@ -168,8 +169,8 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 )
             )
             return {
-                "result": [f.to_dict() for f in facts[:limit]],
-                "omitted": max(0, len(facts) - limit),
+                "result": [f.to_dict() for f in facts[:capped_limit]],
+                "omitted": max(0, len(facts) - capped_limit),
             }
 
         return await run_tool(worker, _fetch)
@@ -205,8 +206,7 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
 
         def _fetch() -> dict[str, Any]:
             scope_filter = validate_scope_filter(scope)
-            if limit < 1:
-                raise UsageError("invalid_limit", f"limit must be >= 1, got {limit}")
+            capped_limit = validate_limit(limit)
             tasks = sort_tasks(
                 fetch_merged_for_config(
                     config,
@@ -221,8 +221,8 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                 )
             )
             return {
-                "result": [t.to_dict() for t in tasks[:limit]],
-                "omitted": max(0, len(tasks) - limit),
+                "result": [t.to_dict() for t in tasks[:capped_limit]],
+                "omitted": max(0, len(tasks) - capped_limit),
             }
 
         return await run_tool(worker, _fetch)

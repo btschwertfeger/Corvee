@@ -276,7 +276,11 @@ status normally covers:
 
 `exit_code` maps to the same [exit codes](commands.md#exit-codes) the CLI
 documents. No raw traceback is ever passed through — an unexpected error
-still comes back in this shape, with `exit_code: 1`.
+raised inside a tool's own handler still comes back in this shape, with
+`exit_code: 1`. A value of a JSON type a parameter's schema rejects
+outright (a list or object where a task ref or duration is expected)
+never reaches the handler at all; that argument-validation failure
+surfaces as the MCP SDK's own error shape instead.
 
 A `claim_conflict` carries one more field, `hint`, phrased for this
 surface rather than the CLI's own `--force` flag. Every tool but
