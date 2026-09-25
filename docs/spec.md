@@ -1292,6 +1292,12 @@ instead of aligned under their headers. `--json` is unaffected, since a
 JSON string already escapes embedded newlines — the raw value with real
 newlines intact is always available there, or via `task show`.
 
+**Column padding counts terminal cells, not code points.** An East Asian
+wide or fullwidth character occupies two cells and a combining mark
+occupies none, so `render_table` measures every cell with a display-width
+helper before padding it. Measuring `len()` shifts each column after a CJK
+title out from under its header.
+
 **`task update` over several IDs is one transaction.** `corvee task update
 4 7 9 --state done` either applies to all three or to none. If task 7 fails
 the transition table or the parent/child guard, nothing is written, the

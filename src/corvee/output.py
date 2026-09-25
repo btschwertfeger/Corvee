@@ -5,6 +5,7 @@
 #
 
 import json
+import unicodedata
 from collections.abc import Sequence
 from typing import Any
 
@@ -29,6 +30,28 @@ def filter_fields(task: dict[str, Any], fields: Sequence[str] | None) -> dict[st
     return {field: task[field] for field in fields}
 
 
+def _display_width(text: str) -> int:
+    """Terminal cells `text` occupies.
+
+    East Asian wide and fullwidth characters take two cells and a combining
+    mark takes none, so len() pads a cell short or long and every column
+    after it loses its header.
+    """
+    return sum(
+        (
+            0
+            if unicodedata.combining(char)
+            else 2 if unicodedata.east_asian_width(char) in ("W", "F") else 1
+        )
+        for char in text
+    )
+
+
+def _pad(text: str, width: int) -> str:
+    """`text` left-aligned in `width` terminal cells, str.ljust by display width."""
+    return text + " " * (width - _display_width(text))
+
+
 def render_table(
     tasks: Sequence[dict[str, Any]],
     fields: Sequence[str] | None = None,
@@ -50,11 +73,14 @@ def render_table(
         ]
         for task in tasks
     ]
-    widths = [max(len(column), *(len(row[i]) for row in rows)) for i, column in enumerate(columns)]
-    header = "  ".join(column.upper().ljust(widths[i]) for i, column in enumerate(columns))
+    widths = [
+        max(_display_width(column), *(_display_width(row[i]) for row in rows))
+        for i, column in enumerate(columns)
+    ]
+    header = "  ".join(_pad(column.upper(), widths[i]) for i, column in enumerate(columns))
     lines = [header]
     for row in rows:
-        lines.append("  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)))
+        lines.append("  ".join(_pad(cell, widths[i]) for i, cell in enumerate(row)))
     return "\n".join(lines)
 
 
