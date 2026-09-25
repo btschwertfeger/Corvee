@@ -10,6 +10,7 @@ import pytest
 
 from corvee.errors import NotFoundError
 from corvee.output import (
+    _display_width,
     emit_error,
     emit_fact_detail,
     emit_facts,
@@ -89,6 +90,32 @@ class TestRenderTable:
         assert "Line one" in lines[1]
         assert "Line two" in lines[1]
         assert "high" in lines[1]
+
+    def test_wide_characters_keep_later_columns_aligned(self) -> None:
+        """A CJK title takes two terminal cells per character, so the column after
+        it starts at the same cell as for an ASCII title of the same width.
+        """
+        wide = {**TASK, "title": "四字熟語"}
+        narrow = {**TASK, "title": "12345678"}
+        lines = render_table([wide, narrow], fields=["id", "title", "priority"]).splitlines()
+        assert lines[1].rstrip() == "TASK-1  四字熟語  high"
+        assert lines[2].rstrip() == "TASK-1  12345678  high"
+
+
+class TestDisplayWidth:
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            ("do the thing", 12),
+            ("", 0),
+            ("四字熟語", 8),
+            ("\uff21\uff22", 4),  # fullwidth latin, east_asian_width "F"
+            ("e\u0301", 1),
+        ],
+    )
+    def test_counts_terminal_cells_not_code_points(self, text: str, expected: int) -> None:
+        """Wide and fullwidth characters take two cells, a combining mark none."""
+        assert _display_width(text) == expected
 
 
 class TestRenderDetailHeader:
