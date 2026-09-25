@@ -340,6 +340,16 @@ class TestShow:
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "task_not_found"
 
+    @pytest.mark.parametrize("value", ["²", "9" * 23, "9" * 5000])
+    def test_unparsable_id_exits_two(
+        self, runner: CliRunner, project: ProjectConfig, value: str
+    ) -> None:
+        """A non-ASCII-digit or out-of-range id exits 2, never as an internal error."""
+        result = runner.invoke(cli, ["task", "show", value, "--json"])
+        assert result.exit_code == 2
+        payload = json.loads(result.stderr)
+        assert payload["error"]["code"] == "invalid_task_id"
+
     def test_preserves_given_id_order(self, runner: CliRunner, project: ProjectConfig) -> None:
         """Multiple ids to `task show` come back in the order they were given, not id order."""
         runner.invoke(cli, ["task", "add", "a", "--description", "d", "--json"])

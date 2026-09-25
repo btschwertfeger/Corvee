@@ -398,6 +398,12 @@ never the string. `TASK-<n>` is unique within one database, not globally —
 a local project database holds one project's tasks; the global database
 (§3.3) holds the one shared backlog `--global` files into.
 
+`<n>` is one or more ASCII digits with a value no greater than 2**63-1, the
+largest value SQLite stores in an INTEGER column. A digit outside ASCII
+(Arabic-Indic, superscript) or a number past that bound exits 2 as a usage
+error. The same grammar applies to `FACT-<n>` (§4.6) and to both `-GLOBAL-`
+forms.
+
 **A task in the global database (§3.3) is referenced as `TASK-GLOBAL-<n>`**,
 its own id space, distinct from every project's `TASK-<n>`. A bare integer
 is ambiguous between the two and is always resolved as local — reaching a
@@ -945,7 +951,7 @@ Exit codes are distinct enough to branch on without parsing at all.
 |---|---|
 | 0 | Success |
 | 1 | Unexpected/internal error |
-| 2 | Usage or validation error (bad flag, unknown `--fields` name, invalid state, cross-namespace id, malformed `--stale`/`--since` duration, `corvee import` of malformed JSON, a dump missing `schema_version` or carrying a non-integer one, or a dump row with an unknown column) |
+| 2 | Usage or validation error (bad flag, unknown `--fields` name, invalid state, cross-namespace id, an id outside the §4.2 grammar, malformed `--stale`/`--since` duration, `corvee import` of malformed JSON, a dump missing `schema_version` or carrying a non-integer one, or a dump row with an unknown column) |
 | 3 | Task or fact not found |
 | 4 | Claim conflict (task held by another actor) |
 | 5 | Guard violation (open children, `parent_of` cycle, rejected transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, cross-scope link) |

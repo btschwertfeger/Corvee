@@ -52,6 +52,28 @@ class TestParseTaskRef:
             parse_task_ref(value)
         assert excinfo.value.exit_code == 2
 
+    @pytest.mark.parametrize("value", ["²", "TASK-²", "١٤", "TASK-١٤", "TASK-GLOBAL-١٤"])
+    def test_rejects_non_ascii_digits(self, value: str) -> None:
+        """Only ASCII 0-9 form an id; a superscript or Arabic-Indic digit exits 2."""
+        with pytest.raises(UsageError) as excinfo:
+            parse_task_ref(value)
+        assert excinfo.value.exit_code == 2
+        assert excinfo.value.code == "invalid_task_id"
+
+    @pytest.mark.parametrize(
+        "value", ["9" * 23, "9" * 5000, f"TASK-{'9' * 23}", f"TASK-GLOBAL-{'9' * 5000}"]
+    )
+    def test_rejects_ids_above_the_sqlite_integer_range(self, value: str) -> None:
+        """An id SQLite cannot store exits 2 instead of failing inside the driver."""
+        with pytest.raises(UsageError) as excinfo:
+            parse_task_ref(value)
+        assert excinfo.value.exit_code == 2
+        assert excinfo.value.code == "invalid_task_id"
+
+    def test_accepts_the_largest_storable_id(self) -> None:
+        """2**63-1 is the largest id SQLite stores, so it still parses."""
+        assert parse_task_ref(str(2**63 - 1)).id == 2**63 - 1
+
     def test_rejects_a_fact_id_pointing_at_fact_show(self) -> None:
         """A FACT-<n> value given to the task id parser is rejected, not silently misread."""
         with pytest.raises(UsageError) as excinfo:
@@ -123,6 +145,24 @@ class TestParseFactRef:
         with pytest.raises(UsageError) as excinfo:
             parse_fact_ref(value)
         assert excinfo.value.exit_code == 2
+
+    @pytest.mark.parametrize("value", ["²", "FACT-²", "١٤", "FACT-١٤", "FACT-GLOBAL-١٤"])
+    def test_rejects_non_ascii_digits(self, value: str) -> None:
+        """Only ASCII 0-9 form an id; a superscript or Arabic-Indic digit exits 2."""
+        with pytest.raises(UsageError) as excinfo:
+            parse_fact_ref(value)
+        assert excinfo.value.exit_code == 2
+        assert excinfo.value.code == "invalid_fact_id"
+
+    @pytest.mark.parametrize(
+        "value", ["9" * 23, "9" * 5000, f"FACT-{'9' * 23}", f"FACT-GLOBAL-{'9' * 5000}"]
+    )
+    def test_rejects_ids_above_the_sqlite_integer_range(self, value: str) -> None:
+        """An id SQLite cannot store exits 2 instead of failing inside the driver."""
+        with pytest.raises(UsageError) as excinfo:
+            parse_fact_ref(value)
+        assert excinfo.value.exit_code == 2
+        assert excinfo.value.code == "invalid_fact_id"
 
     def test_rejects_a_task_id_pointing_at_task_show(self) -> None:
         """A TASK-<n> value given to the fact id parser is rejected, not silently misread."""
