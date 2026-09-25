@@ -2078,14 +2078,13 @@ minted once for the process's lifetime: this last fallback exists
 specifically so a write tool call can leave `session_id` out entirely and
 still stamp something meaningful, rather than every omitted call
 defaulting to `None` the way the CLI's own optional `--session-id` does.
-This was not the original design — an earlier draft made `session_id` a
-required, undocumented per-call argument with no server-level default at
-all, which meant `corvee mcp serve --session-id ...`/`$CORVEE_SESSION_ID`
-had no effect whatsoever (nothing in the server read them), and a caller
-left to invent a value per call would mint a different one on every
-write, actively defeating `doctor`'s multi-session-claim detector by
-making every one of its own calls look like a different run. The
-resolved default is the record of *which run* touched a task/fact (§4.4),
+A per-call `session_id` with no server-level default would leave
+`corvee mcp serve --session-id ...`/`$CORVEE_SESSION_ID` with no effect
+whatsoever (nothing in the server would read them), and a caller left to
+invent a value per call would mint a different one on every write,
+actively defeating `doctor`'s multi-session-claim detector by making
+every one of its own calls look like a different run. The resolved
+default is instead the record of *which run* touched a task/fact (§4.4),
 which stays meaningful even within a single conversation's own process
 lifetime — a conversation can span more than one underlying agent run,
 and a caller that does distinguish its own runs still passes an explicit
@@ -2171,10 +2170,8 @@ cascade array**, unlike the CLI's own `task update --cascade`: neither
 tool exposes a `cascade` argument, `apply_update` only ever cascades when
 called with `cascade=True` *and* the target state is `cancelled`
 (`db/tasks.py`), and neither condition can occur through either tool —
-`task_done`/`task_block` target `done`/`blocked`, never `cancelled`. An
-earlier draft of this section described a cascade-array return for these
-two that the implementation never produced and structurally cannot
-produce; this is the corrected, verified behavior. Every ref-taking tool
+`task_done`/`task_block` target `done`/`blocked`, never `cancelled`.
+Every ref-taking tool
 argument is a single ref (a plain string), not a batch: the CLI's own
 multi-id, one-transaction batching (`claim 14 15 16`) has no MCP
 equivalent — a caller wanting that makes one tool call per
