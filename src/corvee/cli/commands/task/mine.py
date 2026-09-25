@@ -42,7 +42,8 @@ def _fetch(conn: sqlite3.Connection, scope: Scope) -> list[tuple[TaskRow, dict[s
 @click.option("--fields", "-f", "fields_csv")
 @click.option("--json", "-j", "as_json", is_flag=True)
 def mine(scope_filter: str, limit: int | None, fields_csv: str | None, as_json: bool) -> None:
-    """Open tasks claimed by $CORVEE_ACTOR, each with its last comment.
+    """Open tasks claimed by (or assigned and unclaimed to) $CORVEE_ACTOR,
+    each with its last comment.
 
     The session-resume query.
     """
