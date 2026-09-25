@@ -59,6 +59,30 @@ class TestTaskShowReferenced:
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
 
+    def test_oversized_mention_is_dropped_not_a_crash(
+        self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
+    ) -> None:
+        """A mention with far more digits than int() can even convert (Python's
+        4300-digit limit) is silently dropped, not an internal_error crash."""
+        task_id = add_task("task")
+        runner.invoke(cli, ["task", "comment", task_id, f"see TASK-{'9' * 5000} here"])
+        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload[0]["referenced"] == []
+
+    def test_mention_beyond_sqlite_integer_range_is_dropped(
+        self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
+    ) -> None:
+        """A mention with a valid-looking but too-large id (beyond SQLite's 64-bit
+        INTEGER range) is silently dropped, not an internal_error crash."""
+        task_id = add_task("task")
+        runner.invoke(cli, ["task", "comment", task_id, "see TASK-99999999999999999999999"])
+        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        assert result.exit_code == 0
+        payload = json.loads(result.output)
+        assert payload[0]["referenced"] == []
+
     def test_duplicate_mentions_are_deduplicated(
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
