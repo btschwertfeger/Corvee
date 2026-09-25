@@ -6,14 +6,15 @@
 
 """End-to-end tests against the real installed binary and a real database
 in a temp directory — no CliRunner, no in-process shortcuts. Each call is a
-genuine subprocess (`python -m corvee`), which is what an actual agent or
-human invokes.
+genuine subprocess, either `python -m corvee` or the installed `corvee`
+console script, which is what an actual agent or human invokes.
 """
 
 import json
 import os
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 
@@ -142,3 +143,36 @@ class TestFullWorkflow:
 
         help_result = _corvee(["--help"], tmp_path)
         assert help_result.returncode == 0
+
+    def test_installed_console_script_runs_end_to_end(self, tmp_path: Path) -> None:
+        """The `corvee` console script declared in [project.scripts] works, not just
+        `python -m corvee`."""
+        script = Path(sysconfig.get_path("scripts")) / (
+            "corvee.exe" if sys.platform == "win32" else "corvee"
+        )
+        assert script.is_file(), f"installed console script not found at {script}"
+
+        env = {**os.environ, "CORVEE_ACTOR": "agent:e2e", "CORVEE_SESSION_ID": "e2e-session"}
+        init_result = subprocess.run(
+            [str(script), "init"], cwd=tmp_path, env=env, capture_output=True, text=True, timeout=30
+        )
+        assert init_result.returncode == 0
+
+        add_result = subprocess.run(
+            [
+                str(script),
+                "task",
+                "add",
+                "exercise the console script",
+                "--description",
+                "d",
+                "--json",
+            ],
+            cwd=tmp_path,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert add_result.returncode == 0
+        assert json.loads(add_result.stdout)[0]["id"] == "TASK-1"

@@ -115,7 +115,7 @@ cache_dir = ".cache/pytest"
 markers = [
     "unit: pure functions and data structures, no filesystem/database/subprocess",
     "acceptance: behavior through the CLI or db layer, in-process against a real tmp_path database",
-    "e2e: a real `python -m corvee` subprocess against a real database in a temp directory",
+    "e2e: a real `python -m corvee` or installed `corvee` subprocess against a real database in a temp directory",
 ]
 
 [tool.coverage.run]
