@@ -12,7 +12,7 @@ from typing import Literal
 from corvee.constants import Scope
 from corvee.db.facts import get_fact
 from corvee.db.tasks import get_task
-from corvee.models import fact_ref, task_ref
+from corvee.models import bounded_id, fact_ref, task_ref
 
 Kind = Literal["task", "fact"]
 
@@ -65,13 +65,17 @@ def find_referenced(
             kind: Kind
             scope: Scope
             if match["task_global"] is not None:
-                kind, scope, ref_id = "task", "global", int(match["task_global"])
+                kind, scope, digits = "task", "global", match["task_global"]
             elif match["task_local"] is not None:
-                kind, scope, ref_id = "task", "local", int(match["task_local"])
+                kind, scope, digits = "task", "local", match["task_local"]
             elif match["fact_global"] is not None:
-                kind, scope, ref_id = "fact", "global", int(match["fact_global"])
+                kind, scope, digits = "fact", "global", match["fact_global"]
             else:
-                kind, scope, ref_id = "fact", "local", int(match["fact_local"])
+                kind, scope, digits = "fact", "local", match["fact_local"]
+
+            ref_id = bounded_id(digits)
+            if ref_id is None:
+                continue
 
             if own_scope == "global" and scope == "local":
                 continue

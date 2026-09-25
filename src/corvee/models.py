@@ -57,19 +57,29 @@ def fact_ref(fact_id: int, scope: Scope = "local") -> str:
     return f"{prefix}{fact_id}"
 
 
-def _ref_id(digits: str, value: str, kind: str) -> int:
-    """The integer form of an all-digit id, rejecting what SQLite cannot store.
+def bounded_id(digits: str) -> int | None:
+    """The integer form of an all-digit id, or None if it exceeds what SQLite
+    can store.
 
     The length check has to come first: int() refuses to convert a string
     longer than 4300 digits at all.
     """
-    if len(digits.lstrip("0")) > len(str(_MAX_ID)) or int(digits) > _MAX_ID:
+    if len(digits.lstrip("0")) > len(str(_MAX_ID)):
+        return None
+    value = int(digits)
+    return value if value <= _MAX_ID else None
+
+
+def _ref_id(digits: str, value: str, kind: str) -> int:
+    """The integer form of an all-digit id, rejecting what SQLite cannot store."""
+    result = bounded_id(digits)
+    if result is None:
         raise UsageError(
             f"invalid_{kind}_id",
             f"{kind} id {value!r} is out of range: the largest id is {_MAX_ID}",
             value=value,
         )
-    return int(digits)
+    return result
 
 
 def parse_task_ref(value: str) -> ParsedRef:
