@@ -27,10 +27,14 @@ TASK_REF_PREFIX = "TASK-"
 FACT_REF_PREFIX = "FACT-"
 TASK_GLOBAL_REF_PREFIX = "TASK-GLOBAL-"
 FACT_GLOBAL_REF_PREFIX = "FACT-GLOBAL-"
-_TASK_REF_RE = re.compile(rf"^{TASK_REF_PREFIX}(\d+)$", re.IGNORECASE)
-_FACT_REF_RE = re.compile(rf"^{FACT_REF_PREFIX}(\d+)$", re.IGNORECASE)
-_TASK_GLOBAL_REF_RE = re.compile(rf"^{TASK_GLOBAL_REF_PREFIX}(\d+)$", re.IGNORECASE)
-_FACT_GLOBAL_REF_RE = re.compile(rf"^{FACT_GLOBAL_REF_PREFIX}(\d+)$", re.IGNORECASE)
+_TASK_REF_RE = re.compile(rf"^{TASK_REF_PREFIX}([0-9]+)$", re.IGNORECASE)
+_FACT_REF_RE = re.compile(rf"^{FACT_REF_PREFIX}([0-9]+)$", re.IGNORECASE)
+_TASK_GLOBAL_REF_RE = re.compile(rf"^{TASK_GLOBAL_REF_PREFIX}([0-9]+)$", re.IGNORECASE)
+_FACT_GLOBAL_REF_RE = re.compile(rf"^{FACT_GLOBAL_REF_PREFIX}([0-9]+)$", re.IGNORECASE)
+_BARE_REF_RE = re.compile(r"^[0-9]+$")
+
+# The largest value SQLite stores in an INTEGER column.
+_MAX_ID = 2**63 - 1
 
 
 @dataclass(frozen=True)
@@ -53,14 +57,29 @@ def fact_ref(fact_id: int, scope: Scope = "local") -> str:
     return f"{prefix}{fact_id}"
 
 
+def _ref_id(digits: str, value: str, kind: str) -> int:
+    """The integer form of an all-digit id, rejecting what SQLite cannot store.
+
+    The length check has to come first: int() refuses to convert a string
+    longer than 4300 digits at all.
+    """
+    if len(digits.lstrip("0")) > len(str(_MAX_ID)) or int(digits) > _MAX_ID:
+        raise UsageError(
+            f"invalid_{kind}_id",
+            f"{kind} id {value!r} is out of range: the largest id is {_MAX_ID}",
+            value=value,
+        )
+    return int(digits)
+
+
 def parse_task_ref(value: str) -> ParsedRef:
     """Accept "TASK-14", "TASK-GLOBAL-14", or bare "14" and normalize."""
     match = _TASK_GLOBAL_REF_RE.match(value)
     if match:
-        return ParsedRef(int(match.group(1)), "global")
+        return ParsedRef(_ref_id(match.group(1), value, "task"), "global")
     match = _TASK_REF_RE.match(value)
     if match:
-        return ParsedRef(int(match.group(1)), "local")
+        return ParsedRef(_ref_id(match.group(1), value, "task"), "local")
     if _FACT_GLOBAL_REF_RE.match(value) or _FACT_REF_RE.match(value):
         # Both id parsers otherwise accept a bare integer, so the two id
         # spaces would be silently ambiguous without this guard.
@@ -69,8 +88,8 @@ def parse_task_ref(value: str) -> ParsedRef:
             f"{value!r} is a fact id, not a task id; use `corvee fact show` instead",
             value=value,
         )
-    if value.isdigit():
-        return ParsedRef(int(value), "local")
+    if _BARE_REF_RE.match(value):
+        return ParsedRef(_ref_id(value, value, "task"), "local")
     raise UsageError(
         "invalid_task_id",
         f"invalid task id {value!r}: expected TASK-<n>, TASK-GLOBAL-<n>, or a bare integer",
@@ -82,18 +101,18 @@ def parse_fact_ref(value: str) -> ParsedRef:
     """Accept "FACT-7", "FACT-GLOBAL-7", or bare "7" and normalize."""
     match = _FACT_GLOBAL_REF_RE.match(value)
     if match:
-        return ParsedRef(int(match.group(1)), "global")
+        return ParsedRef(_ref_id(match.group(1), value, "fact"), "global")
     match = _FACT_REF_RE.match(value)
     if match:
-        return ParsedRef(int(match.group(1)), "local")
+        return ParsedRef(_ref_id(match.group(1), value, "fact"), "local")
     if _TASK_GLOBAL_REF_RE.match(value) or _TASK_REF_RE.match(value):
         raise UsageError(
             "wrong_id_namespace",
             f"{value!r} is a task id, not a fact id; use `corvee task show` instead",
             value=value,
         )
-    if value.isdigit():
-        return ParsedRef(int(value), "local")
+    if _BARE_REF_RE.match(value):
+        return ParsedRef(_ref_id(value, value, "fact"), "local")
     raise UsageError(
         "invalid_fact_id",
         f"invalid fact id {value!r}: expected FACT-<n>, FACT-GLOBAL-<n>, or a bare integer",
