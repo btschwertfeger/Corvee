@@ -653,7 +653,6 @@ def ready_tasks(
     conn: sqlite3.Connection,
     *,
     labels: Sequence[str] = (),
-    limit: int | None = None,
     scope: Scope = "local",
 ) -> list[TaskRow]:
     """Unclaimed open tasks with no open `blocks` predecessor.
@@ -679,9 +678,6 @@ def ready_tasks(
         params.append(label)
 
     sql = "SELECT * FROM tasks WHERE " + " AND ".join(conditions) + _ORDER_BY
-    if limit is not None:
-        sql += " LIMIT ?"
-        params.append(limit)
     rows = conn.execute(sql, params).fetchall()
     return [TaskRow.from_row(row, scope=scope) for row in rows]
 
@@ -692,7 +688,6 @@ def search_tasks(
     *,
     include_all: bool = False,
     include_comments: bool = False,
-    limit: int | None = None,
     scope: Scope = "local",
 ) -> list[TaskRow]:
     """Case-insensitive substring match over title/description.
@@ -716,16 +711,11 @@ def search_tasks(
         params.extend(OPEN_STATES)
 
     sql = "SELECT * FROM tasks WHERE " + " AND ".join(conditions) + _ORDER_BY
-    if limit is not None:
-        sql += " LIMIT ?"
-        params.append(limit)
     rows = conn.execute(sql, params).fetchall()
     return [TaskRow.from_row(row, scope=scope) for row in rows]
 
 
-def mine_tasks(
-    conn: sqlite3.Connection, actor: str, *, limit: int | None = None, scope: Scope = "local"
-) -> list[TaskRow]:
+def mine_tasks(conn: sqlite3.Connection, actor: str, *, scope: Scope = "local") -> list[TaskRow]:
     """Open tasks claimed by `actor`, plus open tasks assigned to `actor` that
     nobody has claimed yet (advisory routing, §4.4), most recently claimed
     first (assigned-but-unclaimed rows, with no `claimed_at`, sort last).
@@ -738,9 +728,6 @@ def mine_tasks(
         " ORDER BY claimed_at DESC, id DESC"
     )
     params: list[Any] = [actor, actor, *OPEN_STATES]
-    if limit is not None:
-        sql += " LIMIT ?"
-        params.append(limit)
     rows = conn.execute(sql, params).fetchall()
     return [TaskRow.from_row(row, scope=scope) for row in rows]
 

@@ -126,7 +126,6 @@ def search_facts(
     include_all: bool = False,
     include_proof: bool = False,
     verified_by: str | None = None,
-    limit: int | None = None,
     scope: Scope = "local",
 ) -> list[FactRow]:
     """Case-insensitive substring match over claim text, optionally
@@ -150,9 +149,6 @@ def search_facts(
         + " AND ".join(conditions)
         + " ORDER BY created_at DESC, id DESC"
     )
-    if limit is not None:
-        sql += " LIMIT ?"
-        params.append(limit)
     rows = conn.execute(sql, params).fetchall()
     return [FactRow.from_row(row, scope=scope) for row in rows]
 
