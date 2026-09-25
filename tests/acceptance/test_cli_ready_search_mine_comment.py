@@ -162,6 +162,11 @@ class TestMine:
         result = runner.invoke(cli, ["task", "mine", "--limit", "1", "--json"])
         assert [t["id"] for t in json.loads(result.output)] == [second]
 
+    def test_help_mentions_assigned_but_unclaimed_tasks(self, runner: CliRunner) -> None:
+        """--help documents that `mine` also returns assigned-but-unclaimed tasks (§4.4)."""
+        result = runner.invoke(cli, ["task", "mine", "--help"])
+        assert "assigned" in result.output
+
 
 class TestComment:
     def test_appears_in_show_timeline(
