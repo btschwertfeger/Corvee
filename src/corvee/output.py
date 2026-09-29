@@ -14,8 +14,11 @@ import click
 from corvee.constants import (
     FACT_LIST_FIELDS,
     FACT_LIST_TABLE_DEFAULT_FIELDS,
+    FACT_LIST_TABLE_WIDE_FIELDS,
     LIST_FIELDS,
     LIST_TABLE_DEFAULT_FIELDS,
+    LIST_TABLE_WIDE_FIELDS,
+    OutputFormat,
 )
 from corvee.errors import CorveeError
 
@@ -143,7 +146,7 @@ def render_detail_sections(row: dict[str, Any]) -> str:
 
     `render_table` only ever shows flat columns, so these nested keys (added
     on top of the base task/fact shape only by the `show` commands) would
-    otherwise be visible in `--json` output only.
+    otherwise be visible in `-o json` output only.
     """
     lines: list[str] = []
     if "labels" in row:
@@ -174,15 +177,17 @@ def render_detail_sections(row: dict[str, Any]) -> str:
 def _emit(
     rows: Sequence[dict[str, Any]],
     *,
-    as_json: bool,
+    output: OutputFormat,
     fields: Sequence[str] | None,
     default_fields: Sequence[str],
+    wide_fields: Sequence[str],
 ) -> None:
     projected = [filter_fields(row, fields) for row in rows]
-    if as_json:
+    if output == "json":
         click.echo(json.dumps(projected))
         return
-    table = render_table(projected, fields, default_fields=default_fields)
+    columns = wide_fields if output == "wide" else default_fields
+    table = render_table(projected, fields, default_fields=columns)
     if table:
         click.echo(table)
 
@@ -190,33 +195,45 @@ def _emit(
 def emit_tasks(
     tasks: Sequence[dict[str, Any]],
     *,
-    as_json: bool,
+    output: OutputFormat,
     fields: Sequence[str] | None = None,
 ) -> None:
     """Print `tasks` as a JSON array or a table — the one place that owns this shape."""
-    _emit(tasks, as_json=as_json, fields=fields, default_fields=LIST_TABLE_DEFAULT_FIELDS)
+    _emit(
+        tasks,
+        output=output,
+        fields=fields,
+        default_fields=LIST_TABLE_DEFAULT_FIELDS,
+        wide_fields=LIST_TABLE_WIDE_FIELDS,
+    )
 
 
 def emit_facts(
     facts: Sequence[dict[str, Any]],
     *,
-    as_json: bool,
+    output: OutputFormat,
     fields: Sequence[str] | None = None,
 ) -> None:
     """Print `facts` as a JSON array or a table — the fact-group equivalent of emit_tasks."""
-    _emit(facts, as_json=as_json, fields=fields, default_fields=FACT_LIST_TABLE_DEFAULT_FIELDS)
+    _emit(
+        facts,
+        output=output,
+        fields=fields,
+        default_fields=FACT_LIST_TABLE_DEFAULT_FIELDS,
+        wide_fields=FACT_LIST_TABLE_WIDE_FIELDS,
+    )
 
 
 def _emit_with_detail(
     rows: Sequence[dict[str, Any]],
     *,
-    as_json: bool,
+    output: OutputFormat,
     fields: Sequence[str] | None,
     default_fields: Sequence[str],
     block_field: str,
 ) -> None:
     projected = [filter_fields(row, fields) for row in rows]
-    if as_json:
+    if output == "json":
         click.echo(json.dumps(projected))
         return
     columns = list(fields) if fields is not None else list(default_fields)
@@ -233,31 +250,31 @@ def _emit_with_detail(
 def emit_task_detail(
     tasks: Sequence[dict[str, Any]],
     *,
-    as_json: bool,
+    output: OutputFormat,
     fields: Sequence[str] | None = None,
 ) -> None:
     """`emit_tasks`, but plain-text output also includes labels/links/subtasks/events
     -- for `task show`, where those keys are always present on each row.
     """
     _emit_with_detail(
-        tasks, as_json=as_json, fields=fields, default_fields=LIST_FIELDS, block_field="description"
+        tasks, output=output, fields=fields, default_fields=LIST_FIELDS, block_field="description"
     )
 
 
 def emit_fact_detail(
     facts: Sequence[dict[str, Any]],
     *,
-    as_json: bool,
+    output: OutputFormat,
     fields: Sequence[str] | None = None,
 ) -> None:
     """`emit_facts`, but plain-text output also includes the event history --
     for `fact show`, where the events key is always present on each row.
     """
     _emit_with_detail(
-        facts, as_json=as_json, fields=fields, default_fields=FACT_LIST_FIELDS, block_field="proof"
+        facts, output=output, fields=fields, default_fields=FACT_LIST_FIELDS, block_field="proof"
     )
 
 
 def emit_error(error: CorveeError) -> None:
-    """Failure always writes a JSON object to stderr, regardless of --json."""
+    """Failure always writes a JSON object to stderr, regardless of -o/--output."""
     click.echo(json.dumps(error.to_json()), err=True)

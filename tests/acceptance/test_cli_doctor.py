@@ -24,8 +24,8 @@ def _insert_blocks_cycle(runner: CliRunner, conn: sqlite3.Connection) -> tuple[s
     order (`edges` is built by row-insertion order, so `a`'s cycle is found
     walking `a -> b -> a`).
     """
-    a_result = runner.invoke(cli, ["task", "add", "a", "--description", "d", "--json"])
-    b_result = runner.invoke(cli, ["task", "add", "b", "--description", "d", "--json"])
+    a_result = runner.invoke(cli, ["task", "add", "a", "--description", "d", "-o", "json"])
+    b_result = runner.invoke(cli, ["task", "add", "b", "--description", "d", "-o", "json"])
     a_id = json.loads(a_result.output)[0]["id"]
     b_id = json.loads(b_result.output)[0]["id"]
     a = a_id.removeprefix("TASK-")
@@ -46,8 +46,8 @@ class TestDoctor:
     def test_reports_schema_version_and_db_path(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """`corvee doctor --json` yields one object with schema_version and local.db_path."""
-        result = runner.invoke(cli, ["doctor", "--json"])
+        """`corvee doctor -o json` yields one object with schema_version and local.db_path."""
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["schema_version"] == CURRENT_SCHEMA_VERSION
@@ -55,9 +55,9 @@ class TestDoctor:
 
     def test_reports_task_and_fact_counts(self, runner: CliRunner, project: ProjectConfig) -> None:
         """doctor reflects tasks/facts created since init, regardless of state/status."""
-        runner.invoke(cli, ["task", "add", "a task", "--description", "d", "--json"])
-        runner.invoke(cli, ["fact", "add", "a fact", "--json"])
-        result = runner.invoke(cli, ["doctor", "--json"])
+        runner.invoke(cli, ["task", "add", "a task", "--description", "d", "-o", "json"])
+        runner.invoke(cli, ["fact", "add", "a fact", "-o", "json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["local"]["tasks"]["total"] == 1
         assert payload["local"]["facts"]["total"] == 1
@@ -66,7 +66,7 @@ class TestDoctor:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """--stale (default 4h) is a tunable duration, mirroring task list --stale."""
-        result = runner.invoke(cli, ["doctor", "--stale", "0s", "--json"])
+        result = runner.invoke(cli, ["doctor", "--stale", "0s", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert "stale" in payload["local"]["tasks"]
@@ -74,13 +74,15 @@ class TestDoctor:
     def test_yields_one_object_not_an_array(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """Unlike every task/fact command, doctor's --json output is a single object."""
-        result = runner.invoke(cli, ["doctor", "--json"])
+        """Unlike every task/fact command, doctor's -o json output is a single object."""
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         payload = json.loads(result.output)
         assert isinstance(payload, dict)
 
     def test_table_output_is_non_empty(self, runner: CliRunner, project: ProjectConfig) -> None:
-        """Without --json, doctor prints readable key: value lines, not a JSON blob."""
+        """With `-o table` (the default), doctor prints readable key: value
+        lines, not a JSON blob.
+        """
         result = runner.invoke(cli, ["doctor"])
         assert result.exit_code == 0
         assert result.output.strip() != ""
@@ -89,8 +91,8 @@ class TestDoctor:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """A project with no cycles and no dangling rows reports an empty findings list."""
-        runner.invoke(cli, ["task", "add", "a task", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["doctor", "--json"])
+        runner.invoke(cli, ["task", "add", "a task", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["local"]["findings"] == []
 
@@ -100,7 +102,7 @@ class TestDoctor:
         """A blocks cycle in the database, impossible via normal `task link`, still surfaces."""
         a_id, b_id = _insert_blocks_cycle(runner, conn)
 
-        result = runner.invoke(cli, ["doctor", "--json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["local"]["findings"] == [
             {"kind": "cycle", "relation": "blocks", "task_ids": [a_id, b_id, a_id]}
@@ -124,7 +126,7 @@ class TestDoctor:
         something other than corvee itself.
         """
         task_id = json.loads(
-            runner.invoke(cli, ["task", "add", "a", "--description", "d", "--json"]).output
+            runner.invoke(cli, ["task", "add", "a", "--description", "d", "-o", "json"]).output
         )[0]["id"].removeprefix("TASK-")
         conn.execute("INSERT INTO labels (name) VALUES ('api')")
         conn.execute(
@@ -154,7 +156,7 @@ class TestDoctor:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """Non-JSON output prefixes the local stats block the same way global's is."""
-        runner.invoke(cli, ["task", "add", "a task", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "a task", "--description", "d", "-o", "json"])
         result = runner.invoke(cli, ["doctor"])
         assert "local.db_path:" in result.output
         assert "local.tasks.total: 1" in result.output
@@ -164,7 +166,7 @@ class TestDoctor:
     ) -> None:
         """Outside any project, doctor reports local: null instead of exit 6 (GH#23)."""
         monkeypatch.chdir(tmp_path)
-        result = runner.invoke(cli, ["doctor", "--json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["local"] is None
@@ -192,7 +194,7 @@ class TestDoctor:
         no_project_dir = tmp_path / "scratch"
         no_project_dir.mkdir()
         monkeypatch.chdir(no_project_dir)
-        result = runner.invoke(cli, ["doctor", "--json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["local"] is None
@@ -205,13 +207,13 @@ class TestDoctor:
         shared_actor_sessions finding (GH#24) -- the collision an unset
         CORVEE_ACTOR causes between two concurrent sessions.
         """
-        add_result = runner.invoke(cli, ["task", "add", "a", "--description", "d", "--json"])
+        add_result = runner.invoke(cli, ["task", "add", "a", "--description", "d", "-o", "json"])
         task_id = json.loads(add_result.output)[0]["id"]
 
         runner.invoke(cli, ["--session-id", "session-a", "task", "claim", task_id])
         runner.invoke(cli, ["--session-id", "session-b", "task", "claim", task_id])
 
-        result = runner.invoke(cli, ["doctor", "--json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["local"]["findings"] == [
             {
@@ -228,7 +230,7 @@ class TestDoctor:
         """Non-JSON output names the task, actor, and both sessions instead of
         crashing on a finding that is not a cycle (TASK-23).
         """
-        add_result = runner.invoke(cli, ["task", "add", "a", "--description", "d", "--json"])
+        add_result = runner.invoke(cli, ["task", "add", "a", "--description", "d", "-o", "json"])
         task_id = json.loads(add_result.output)[0]["id"]
         runner.invoke(cli, ["--session-id", "session-a", "task", "claim", task_id])
         runner.invoke(cli, ["--session-id", "session-b", "task", "claim", task_id])

@@ -21,11 +21,11 @@ class TestLink:
         parent = add_task("parent")
         child = add_task("child")
         result = runner.invoke(
-            cli, ["task", "link", parent, child, "--relation", "parent_of", "--json"]
+            cli, ["task", "link", parent, child, "--relation", "parent_of", "-o", "json"]
         )
         assert result.exit_code == 0
 
-        show_result = runner.invoke(cli, ["task", "show", parent, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", parent, "-o", "json"])
         payload = json.loads(show_result.output)
         assert payload[0]["subtasks"] == [child]
 
@@ -38,7 +38,7 @@ class TestLink:
         runner.invoke(cli, ["task", "update", parent, "--state", "done"])
 
         result = runner.invoke(
-            cli, ["task", "link", parent, child, "--relation", "parent_of", "--json"]
+            cli, ["task", "link", parent, child, "--relation", "parent_of", "-o", "json"]
         )
         assert result.exit_code == 0
         payload = {t["id"]: t for t in json.loads(result.output)}
@@ -56,7 +56,7 @@ class TestLink:
         runner.invoke(cli, ["task", "link", parent1, child, "--relation", "parent_of"])
 
         result = runner.invoke(
-            cli, ["task", "link", parent2, child, "--relation", "parent_of", "--json"]
+            cli, ["task", "link", parent2, child, "--relation", "parent_of", "-o", "json"]
         )
         assert result.exit_code == 5
         payload = json.loads(result.stderr)
@@ -75,7 +75,7 @@ class TestUnlink:
         runner.invoke(cli, ["task", "unlink", parent1, child, "--relation", "parent_of"])
 
         result = runner.invoke(
-            cli, ["task", "link", parent2, child, "--relation", "parent_of", "--json"]
+            cli, ["task", "link", parent2, child, "--relation", "parent_of", "-o", "json"]
         )
         assert result.exit_code == 0
 
@@ -90,7 +90,7 @@ class TestCascadeCancel:
         runner.invoke(cli, ["task", "link", parent, child, "--relation", "parent_of"])
 
         result = runner.invoke(
-            cli, ["task", "update", parent, "--state", "cancelled", "--cascade", "--json"]
+            cli, ["task", "update", parent, "--state", "cancelled", "--cascade", "-o", "json"]
         )
         assert result.exit_code == 0
         payload = json.loads(result.output)

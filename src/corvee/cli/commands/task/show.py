@@ -12,7 +12,8 @@ import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
-from corvee.constants import Scope
+from corvee.cli.params import output_option
+from corvee.constants import Scope, narrow_output_format
 from corvee.db.events import get_task_events
 from corvee.db.labels import list_task_labels
 from corvee.db.links import get_children, get_task_links
@@ -28,9 +29,9 @@ Examples:
 See full detail for one task, including its event timeline:
   corvee task show TASK-14
 Show several tasks at once, as JSON:
-  corvee task show 14 15 16 --json
+  corvee task show 14 15 16 -o json
 Only include events from the last week:
-  corvee task show TASK-14 --since 7d --json
+  corvee task show TASK-14 --since 7d -o json
 """
 
 
@@ -43,8 +44,10 @@ Only include events from the last week:
     is_flag=True,
     help="Drop the timeline; keep description/labels/links/subtasks.",
 )
-@click.option("--json", "-j", "as_json", is_flag=True)
-def show(ids: tuple[str, ...], since_duration: str | None, no_events: bool, as_json: bool) -> None:
+@output_option()
+def show(
+    ids: tuple[str, ...], since_duration: str | None, no_events: bool, output_format: str
+) -> None:
     """Full detail for one or more tasks: description, labels, links, subtasks, timeline."""
     task_ids, scope = parse_task_refs(ids)
     since = (
@@ -92,4 +95,4 @@ def show(ids: tuple[str, ...], since_duration: str | None, no_events: bool, as_j
                 other_scope_conn=other_conn,
             )
             results.append(detail)
-    emit_task_detail(results, as_json=as_json)
+    emit_task_detail(results, output=narrow_output_format(output_format))

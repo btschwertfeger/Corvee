@@ -9,7 +9,9 @@ from pathlib import Path
 
 import click
 
+from corvee.cli.params import output_option
 from corvee.config import AGENTS_BLOCK_GLOBAL, AGENTS_BLOCK_LOCAL, bootstrap_project
+from corvee.constants import narrow_output_format
 
 # `init` reports what it did/didn't do rather than returning a task array —
 # it never touches a task, so the documented "array of task objects" shape
@@ -20,7 +22,7 @@ Examples:
 Set up corvee in the current project:
   corvee init
 Get the paths it created as machine-readable output:
-  corvee init --json
+  corvee init -o json
 Re-run it any time; it never overwrites existing data:
   corvee init
 Share a backlog with a sibling git worktree by pointing both at one file:
@@ -42,8 +44,8 @@ _STATUS_TEXT = {
     help="Where to store the database, relative to .corvee/. Only used the "
     "first time a config is created.",
 )
-@click.option("--json", "-j", "as_json", is_flag=True, help="Emit a JSON report instead of text.")
-def init(db_path: str | None, as_json: bool) -> None:
+@output_option()
+def init(db_path: str | None, output_format: str) -> None:
     """Create .corvee/config.toml. Appends to .gitignore if present, never creates.
 
     Never touches AGENTS.md. Prints two pointer blocks instead: one for this
@@ -52,7 +54,7 @@ def init(db_path: str | None, as_json: bool) -> None:
     """
     result = bootstrap_project(Path.cwd(), db_path=db_path)
 
-    if as_json:
+    if narrow_output_format(output_format) == "json":
         click.echo(
             json.dumps(
                 {

@@ -8,7 +8,8 @@ import click
 
 from corvee.cli.completion import complete_fact_ids
 from corvee.cli.context import corvee_context
-from corvee.cli.params import StdinOrValue
+from corvee.cli.params import StdinOrValue, output_option
+from corvee.constants import narrow_output_format
 from corvee.db.facts import verify_fact
 from corvee.models import parse_fact_ref
 from corvee.output import emit_facts
@@ -21,21 +22,21 @@ Verify a claim with a reproducible command as proof:
     "pip download requests --no-deps -d /tmp && unzip -q /tmp/requests-*.whl -d /tmp/requests-whl \\
     && grep -i '^License:' /tmp/requests-whl/*/METADATA"
 Verify against a computed result, and get the result as JSON:
-  corvee fact verify 7 --proof "grep -c '^def ' src/widgets.py  # -> 42" --json
+  corvee fact verify 7 --proof "grep -c '^def ' src/widgets.py  # -> 42" -o json
 Read long or multi-line proof from stdin instead of an argument:
-  corvee fact verify 7 --proof - --json <<< "multi-line proof text"
+  corvee fact verify 7 --proof - -o json <<< "multi-line proof text"
 """
 
 
 @click.command(epilog=EPILOG)
 @click.argument("fact_ref", shell_complete=complete_fact_ids)
 @click.option("--proof", "-p", type=StdinOrValue(), required=True)
-@click.option("--json", "-j", "as_json", is_flag=True)
-def verify(fact_ref: str, proof: str, as_json: bool) -> None:
+@output_option()
+def verify(fact_ref: str, proof: str, output_format: str) -> None:
     """Mark a fact verified, recording proof and a timestamp."""
     ref = parse_fact_ref(fact_ref)
     with corvee_context(scope=ref.scope) as ctx:
         fact = verify_fact(
             ctx.conn, ref.id, proof, ctx.actor, session_id=ctx.session_id, scope=ref.scope
         )
-    emit_facts([fact.to_dict()], as_json=as_json)
+    emit_facts([fact.to_dict()], output=narrow_output_format(output_format))

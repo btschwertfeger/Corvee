@@ -20,7 +20,9 @@ class TestTaskAssign:
     ) -> None:
         """`task assign` routes a task to an actor and leaves it unclaimed (GH#27)."""
         task_id = add_task("task")
-        result = runner.invoke(cli, ["task", "assign", task_id, "--to", "agent:claude", "--json"])
+        result = runner.invoke(
+            cli, ["task", "assign", task_id, "--to", "agent:claude", "-o", "json"]
+        )
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["assigned_to"] == "agent:claude"
@@ -39,7 +41,9 @@ class TestTaskAssign:
         runner.invoke(cli, ["task", "claim", task_id])
         monkeypatch.setenv("CORVEE_ACTOR", "agent:test")
 
-        result = runner.invoke(cli, ["task", "assign", task_id, "--to", "agent:claude", "--json"])
+        result = runner.invoke(
+            cli, ["task", "assign", task_id, "--to", "agent:claude", "-o", "json"]
+        )
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["assigned_to"] == "agent:claude"
@@ -51,7 +55,7 @@ class TestTaskAssign:
         first = add_task("first")
         second = add_task("second")
         result = runner.invoke(
-            cli, ["task", "assign", first, second, "--to", "agent:claude", "--json"]
+            cli, ["task", "assign", first, second, "--to", "agent:claude", "-o", "json"]
         )
         assert result.exit_code == 0
         payload = json.loads(result.output)
@@ -61,7 +65,7 @@ class TestTaskAssign:
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
         task_id = add_task("task")
-        result = runner.invoke(cli, ["task", "assign", task_id, "--to", "   ", "--json"])
+        result = runner.invoke(cli, ["task", "assign", task_id, "--to", "   ", "-o", "json"])
         assert result.exit_code == 2
 
     def test_missing_task_is_not_found(self, runner: CliRunner, project: ProjectConfig) -> None:
@@ -75,7 +79,7 @@ class TestTaskUnassign:
     ) -> None:
         task_id = add_task("task")
         runner.invoke(cli, ["task", "assign", task_id, "--to", "agent:claude"])
-        result = runner.invoke(cli, ["task", "unassign", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "unassign", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["assigned_to"] is None
@@ -84,7 +88,7 @@ class TestTaskUnassign:
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
         task_id = add_task("task")
-        result = runner.invoke(cli, ["task", "unassign", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "unassign", task_id, "-o", "json"])
         assert result.exit_code == 0
 
 
@@ -96,7 +100,7 @@ class TestTaskListAssignedToFilter:
         add_task("unrouted")
         runner.invoke(cli, ["task", "assign", routed, "--to", "agent:claude"])
 
-        result = runner.invoke(cli, ["task", "list", "--assigned-to", "agent:claude", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--assigned-to", "agent:claude", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [routed]
 
@@ -109,7 +113,7 @@ class TestTaskMineIncludesAssignments:
         task_id = add_task("task")
         runner.invoke(cli, ["task", "assign", task_id, "--to", "agent:test"])
 
-        result = runner.invoke(cli, ["task", "mine", "--json"])
+        result = runner.invoke(cli, ["task", "mine", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [task_id]
 
@@ -119,5 +123,5 @@ class TestTaskMineIncludesAssignments:
         task_id = add_task("task")
         runner.invoke(cli, ["task", "assign", task_id, "--to", "agent:other"])
 
-        result = runner.invoke(cli, ["task", "mine", "--json"])
+        result = runner.invoke(cli, ["task", "mine", "-o", "json"])
         assert json.loads(result.output) == []

@@ -19,7 +19,7 @@ class TestTaskAddGlobal:
     ) -> None:
         """`task add --global` files into the global database, TASK-GLOBAL-<n> id (§3.3)."""
         result = runner.invoke(
-            cli, ["task", "add", "renew CA cert", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "renew CA cert", "--description", "d", "--global", "-o", "json"]
         )
         assert result.exit_code == 0
         payload = json.loads(result.output)[0]
@@ -30,9 +30,11 @@ class TestTaskAddGlobal:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """Each database's id sequence is its own — TASK-1 and TASK-GLOBAL-1 can coexist."""
-        local_result = runner.invoke(cli, ["task", "add", "local", "--description", "d", "--json"])
+        local_result = runner.invoke(
+            cli, ["task", "add", "local", "--description", "d", "-o", "json"]
+        )
         global_result = runner.invoke(
-            cli, ["task", "add", "global", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global", "--description", "d", "--global", "-o", "json"]
         )
         assert json.loads(local_result.output)[0]["id"] == "TASK-1"
         assert json.loads(global_result.output)[0]["id"] == "TASK-GLOBAL-1"
@@ -44,24 +46,24 @@ class TestTaskGlobalLifecycle:
     ) -> None:
         """A TASK-GLOBAL-<n> ref routes every id-based command to the global database."""
         add_result = runner.invoke(
-            cli, ["task", "add", "renew CA cert", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "renew CA cert", "--description", "d", "--global", "-o", "json"]
         )
         task_id = json.loads(add_result.output)[0]["id"]
 
-        claim_result = runner.invoke(cli, ["task", "claim", task_id, "--json"])
+        claim_result = runner.invoke(cli, ["task", "claim", task_id, "-o", "json"])
         assert claim_result.exit_code == 0
         assert json.loads(claim_result.output)[0]["claimed_by"] is not None
 
         update_result = runner.invoke(
-            cli, ["task", "update", task_id, "--state", "in_progress", "--json"]
+            cli, ["task", "update", task_id, "--state", "in_progress", "-o", "json"]
         )
         assert update_result.exit_code == 0
         assert json.loads(update_result.output)[0]["state"] == "in_progress"
 
-        comment_result = runner.invoke(cli, ["task", "comment", task_id, "renewed", "--json"])
+        comment_result = runner.invoke(cli, ["task", "comment", task_id, "renewed", "-o", "json"])
         assert comment_result.exit_code == 0
 
-        show_result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         assert show_result.exit_code == 0
         detail = json.loads(show_result.output)[0]
         assert detail["id"] == task_id
@@ -72,7 +74,7 @@ class TestTaskGlobalLifecycle:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """A TASK-GLOBAL-<n> id that doesn't exist exits 3, same as a missing local id."""
-        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-99", "--json"])
+        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-99", "-o", "json"])
         assert result.exit_code == 3
 
     def test_show_on_missing_global_db_does_not_create_it(
@@ -80,7 +82,7 @@ class TestTaskGlobalLifecycle:
     ) -> None:
         """A read-only `task show TASK-GLOBAL-<n>` never materializes ~/.corvee/corvee.db (§3.3)."""
         assert not global_db_path().is_file()
-        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-5", "--json"])
+        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-5", "-o", "json"])
         assert result.exit_code == 3
         assert not global_db_path().is_file()
 
@@ -89,7 +91,7 @@ class TestTaskGlobalLifecycle:
     ) -> None:
         """Same guarantee for `fact show`."""
         assert not global_db_path().is_file()
-        result = runner.invoke(cli, ["fact", "show", "FACT-GLOBAL-5", "--json"])
+        result = runner.invoke(cli, ["fact", "show", "FACT-GLOBAL-5", "-o", "json"])
         assert result.exit_code == 3
         assert not global_db_path().is_file()
 
@@ -99,24 +101,24 @@ class TestTaskListMergesScope:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """task list with no --scope shows local and global tasks together."""
-        runner.invoke(cli, ["task", "add", "local one", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "local one", "--description", "d", "-o", "json"])
         runner.invoke(
-            cli, ["task", "add", "global one", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global one", "--description", "d", "--global", "-o", "json"]
         )
 
-        result = runner.invoke(cli, ["task", "list", "--json"])
+        result = runner.invoke(cli, ["task", "list", "-o", "json"])
         assert result.exit_code == 0
         ids = {t["id"] for t in json.loads(result.output)}
         assert ids == {"TASK-1", "TASK-GLOBAL-1"}
 
     def test_scope_local_excludes_global(self, runner: CliRunner, project: ProjectConfig) -> None:
         """--scope local narrows the merge down to the project database only."""
-        runner.invoke(cli, ["task", "add", "local one", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "local one", "--description", "d", "-o", "json"])
         runner.invoke(
-            cli, ["task", "add", "global one", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global one", "--description", "d", "--global", "-o", "json"]
         )
 
-        result = runner.invoke(cli, ["task", "list", "--scope", "local", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--scope", "local", "-o", "json"])
         ids = {t["id"] for t in json.loads(result.output)}
         assert ids == {"TASK-1"}
 
@@ -124,7 +126,7 @@ class TestTaskListMergesScope:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """--scope global with no global rows ever filed returns [], not an error."""
-        result = runner.invoke(cli, ["task", "list", "--scope", "global", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--scope", "global", "-o", "json"])
         assert result.exit_code == 0
         assert json.loads(result.output) == []
 
@@ -138,22 +140,22 @@ class TestTaskListRefFiltersRespectScope:
         sequences (§3.3/§4.2), and cross-scope parent_of links are impossible.
         """
         # Local: id 1 is parent_of local id 2.
-        runner.invoke(cli, ["task", "add", "local parent", "--description", "d", "--json"])
-        runner.invoke(cli, ["task", "add", "local child", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "local parent", "--description", "d", "-o", "json"])
+        runner.invoke(cli, ["task", "add", "local child", "--description", "d", "-o", "json"])
         runner.invoke(cli, ["task", "link", "TASK-1", "TASK-2", "--relation", "parent_of"])
 
         # Global: id 1 is parent_of global id 2, an entirely unrelated pair.
         runner.invoke(
-            cli, ["task", "add", "global parent", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global parent", "--description", "d", "--global", "-o", "json"]
         )
         runner.invoke(
-            cli, ["task", "add", "global child", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global child", "--description", "d", "--global", "-o", "json"]
         )
         runner.invoke(
             cli, ["task", "link", "TASK-GLOBAL-1", "TASK-GLOBAL-2", "--relation", "parent_of"]
         )
 
-        result = runner.invoke(cli, ["task", "list", "--parent", "TASK-GLOBAL-1", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--parent", "TASK-GLOBAL-1", "-o", "json"])
         assert result.exit_code == 0
         ids = {t["id"] for t in json.loads(result.output)}
         assert ids == {"TASK-GLOBAL-2"}
@@ -162,21 +164,21 @@ class TestTaskListRefFiltersRespectScope:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """The reverse direction: a local --parent ref must not match a global task."""
-        runner.invoke(cli, ["task", "add", "local parent", "--description", "d", "--json"])
-        runner.invoke(cli, ["task", "add", "local child", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "local parent", "--description", "d", "-o", "json"])
+        runner.invoke(cli, ["task", "add", "local child", "--description", "d", "-o", "json"])
         runner.invoke(cli, ["task", "link", "TASK-1", "TASK-2", "--relation", "parent_of"])
 
         runner.invoke(
-            cli, ["task", "add", "global parent", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global parent", "--description", "d", "--global", "-o", "json"]
         )
         runner.invoke(
-            cli, ["task", "add", "global child", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global child", "--description", "d", "--global", "-o", "json"]
         )
         runner.invoke(
             cli, ["task", "link", "TASK-GLOBAL-1", "TASK-GLOBAL-2", "--relation", "parent_of"]
         )
 
-        result = runner.invoke(cli, ["task", "list", "--parent", "TASK-1", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--parent", "TASK-1", "-o", "json"])
         assert result.exit_code == 0
         ids = {t["id"] for t in json.loads(result.output)}
         assert ids == {"TASK-2"}
@@ -185,11 +187,11 @@ class TestTaskListRefFiltersRespectScope:
 class TestFactGlobal:
     def test_add_global_and_merged_list(self, runner: CliRunner, project: ProjectConfig) -> None:
         """fact add --global files a FACT-GLOBAL-<n> fact that shows up in the merged list."""
-        runner.invoke(cli, ["fact", "add", "local claim", "--json"])
-        add_result = runner.invoke(cli, ["fact", "add", "global claim", "--global", "--json"])
+        runner.invoke(cli, ["fact", "add", "local claim", "-o", "json"])
+        add_result = runner.invoke(cli, ["fact", "add", "global claim", "--global", "-o", "json"])
         assert json.loads(add_result.output)[0]["id"] == "FACT-GLOBAL-1"
 
-        list_result = runner.invoke(cli, ["fact", "list", "--json"])
+        list_result = runner.invoke(cli, ["fact", "list", "-o", "json"])
         ids = {f["id"] for f in json.loads(list_result.output)}
         assert ids == {"FACT-1", "FACT-GLOBAL-1"}
 
@@ -197,14 +199,16 @@ class TestFactGlobal:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """A FACT-GLOBAL-<n> ref routes verify/retract to the global database."""
-        add_result = runner.invoke(cli, ["fact", "add", "global claim", "--global", "--json"])
+        add_result = runner.invoke(cli, ["fact", "add", "global claim", "--global", "-o", "json"])
         fact_id = json.loads(add_result.output)[0]["id"]
 
-        verify_result = runner.invoke(cli, ["fact", "verify", fact_id, "--proof", "p", "--json"])
+        verify_result = runner.invoke(
+            cli, ["fact", "verify", fact_id, "--proof", "p", "-o", "json"]
+        )
         assert verify_result.exit_code == 0
         assert json.loads(verify_result.output)[0]["status"] == "verified"
 
-        retract_result = runner.invoke(cli, ["fact", "retract", fact_id, "--json"])
+        retract_result = runner.invoke(cli, ["fact", "retract", fact_id, "-o", "json"])
         assert retract_result.exit_code == 0
         assert json.loads(retract_result.output)[0]["status"] == "retracted"
 
@@ -215,16 +219,16 @@ class TestCrossScopeGuard:
     ) -> None:
         """Linking a local task to a global one is rejected, not silently applied (§3.3)."""
         local_id = json.loads(
-            runner.invoke(cli, ["task", "add", "local", "--description", "d", "--json"]).output
+            runner.invoke(cli, ["task", "add", "local", "--description", "d", "-o", "json"]).output
         )[0]["id"]
         global_id = json.loads(
             runner.invoke(
-                cli, ["task", "add", "global", "--description", "d", "--global", "--json"]
+                cli, ["task", "add", "global", "--description", "d", "--global", "-o", "json"]
             ).output
         )[0]["id"]
 
         result = runner.invoke(
-            cli, ["task", "link", local_id, global_id, "--relation", "blocks", "--json"]
+            cli, ["task", "link", local_id, global_id, "--relation", "blocks", "-o", "json"]
         )
         assert result.exit_code == 5
 
@@ -234,7 +238,8 @@ class TestCrossScopeGuard:
         """A new local task cannot --parent to a global one, or vice versa (§3.3)."""
         global_parent = json.loads(
             runner.invoke(
-                cli, ["task", "add", "global parent", "--description", "d", "--global", "--json"]
+                cli,
+                ["task", "add", "global parent", "--description", "d", "--global", "-o", "json"],
             ).output
         )[0]["id"]
 
@@ -248,7 +253,8 @@ class TestCrossScopeGuard:
                 "d",
                 "--parent",
                 global_parent,
-                "--json",
+                "-o",
+                "json",
             ],
         )
         assert result.exit_code == 5
@@ -258,15 +264,15 @@ class TestCrossScopeGuard:
     ) -> None:
         """`task show` with both a local and a global id in one call exits 2 (§3.3)."""
         local_id = json.loads(
-            runner.invoke(cli, ["task", "add", "local", "--description", "d", "--json"]).output
+            runner.invoke(cli, ["task", "add", "local", "--description", "d", "-o", "json"]).output
         )[0]["id"]
         global_id = json.loads(
             runner.invoke(
-                cli, ["task", "add", "global", "--description", "d", "--global", "--json"]
+                cli, ["task", "add", "global", "--description", "d", "--global", "-o", "json"]
             ).output
         )[0]["id"]
 
-        result = runner.invoke(cli, ["task", "show", local_id, global_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", local_id, global_id, "-o", "json"])
         assert result.exit_code == 2
 
 
@@ -275,7 +281,7 @@ class TestDoctorGlobal:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """doctor's global section is null on a project that has never used --global."""
-        result = runner.invoke(cli, ["doctor", "--json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["global"] is None
 
@@ -284,7 +290,7 @@ class TestDoctorGlobal:
     ) -> None:
         """doctor's global section reports real counts once a --global task exists."""
         runner.invoke(cli, ["task", "add", "global one", "--description", "d", "--global"])
-        result = runner.invoke(cli, ["doctor", "--json"])
+        result = runner.invoke(cli, ["doctor", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["global"] is not None
         assert payload["global"]["tasks"]["total"] == 1
@@ -296,7 +302,7 @@ class TestGlobalLinkScope:
         return str(
             json.loads(
                 runner.invoke(
-                    cli, ["task", "add", title, "--description", "d", "--global", "--json"]
+                    cli, ["task", "add", title, "--description", "d", "--global", "-o", "json"]
                 ).output
             )[0]["id"]
         )
@@ -316,7 +322,7 @@ class TestGlobalLinkScope:
         )
         assert link_result.exit_code == 0
 
-        detail = json.loads(runner.invoke(cli, ["task", "show", first, "--json"]).output)[0]
+        detail = json.loads(runner.invoke(cli, ["task", "show", first, "-o", "json"]).output)[0]
         assert detail["links"] == [
             {"relation": "relates_to", "task_id": second, "direction": "outgoing"}
         ]
@@ -332,7 +338,7 @@ class TestGlobalLinkScope:
         runner.invoke(cli, ["task", "link", first, second, "--relation", "duplicates"])
         runner.invoke(cli, ["task", "unlink", first, second, "--relation", "duplicates"])
 
-        detail = json.loads(runner.invoke(cli, ["task", "show", first, "--json"]).output)[0]
+        detail = json.loads(runner.invoke(cli, ["task", "show", first, "-o", "json"]).output)[0]
         assert detail["links"] == []
         unlink_events = [
             event
@@ -354,6 +360,6 @@ class TestGlobalLinkScope:
         second = self._add_global(runner, "global two")
         runner.invoke(cli, ["task", "link", first, second, "--relation", "relates_to"])
 
-        detail = json.loads(runner.invoke(cli, ["task", "show", first, "--json"]).output)[0]
+        detail = json.loads(runner.invoke(cli, ["task", "show", first, "-o", "json"]).output)[0]
         assert second in detail["referenced"]
         assert "TASK-2" not in detail["referenced"]

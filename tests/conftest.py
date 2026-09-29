@@ -79,7 +79,9 @@ def add_task(runner: CliRunner) -> Callable[[str], str]:
     """
 
     def _add(title: str) -> str:
-        result = runner.invoke(cli, ["task", "add", title, "--description", "test task", "--json"])
+        result = runner.invoke(
+            cli, ["task", "add", title, "--description", "test task", "-o", "json"]
+        )
         return str(json.loads(result.output)[0]["id"])
 
     return _add
@@ -92,7 +94,7 @@ def add_fact(runner: CliRunner) -> Callable[[str], str]:
     """
 
     def _add(claim: str) -> str:
-        result = runner.invoke(cli, ["fact", "add", claim, "--json"])
+        result = runner.invoke(cli, ["fact", "add", claim, "-o", "json"])
         return str(json.loads(result.output)[0]["id"])
 
     return _add

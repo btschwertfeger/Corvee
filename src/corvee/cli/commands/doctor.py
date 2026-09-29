@@ -12,8 +12,9 @@ from typing import Any
 import click
 
 from corvee.cli.context import corvee_context
+from corvee.cli.params import output_option
 from corvee.config import global_db_path, project_exists
-from corvee.constants import DEFAULT_STALE_DURATION, Scope
+from corvee.constants import DEFAULT_STALE_DURATION, Scope, narrow_output_format
 from corvee.db.connection import open_connection
 from corvee.db.schema import CURRENT_SCHEMA_VERSION
 from corvee.db.stats import integrity_findings, project_stats
@@ -25,9 +26,9 @@ Examples:
 Check the project's overall health at a glance:
   corvee doctor
 Get the same report as machine-readable output:
-  corvee doctor --json
+  corvee doctor -o json
 Flag claims idle for over an hour as stale:
-  corvee doctor --stale 1h --json
+  corvee doctor --stale 1h -o json
 """
 
 
@@ -136,8 +137,8 @@ def _global_stats(*, stale_before: str) -> dict[str, Any] | None:
 
 @click.command(epilog=EPILOG)
 @click.option("--stale", "-i", "stale_duration", default=DEFAULT_STALE_DURATION, show_default=True)
-@click.option("--json", "-j", "as_json", is_flag=True)
-def doctor(stale_duration: str, as_json: bool) -> None:
+@output_option()
+def doctor(stale_duration: str, output_format: str) -> None:
     """Project health: task/fact counts, staleness, and schema version."""
     cutoff = datetime.now(UTC) - parse_duration(stale_duration)
     stale_before = timestamp(cutoff)
@@ -146,7 +147,7 @@ def doctor(stale_duration: str, as_json: bool) -> None:
         "local": _local_stats(stale_before=stale_before),
         "global": _global_stats(stale_before=stale_before),
     }
-    if as_json:
+    if narrow_output_format(output_format) == "json":
         click.echo(json.dumps(payload))
     else:
         click.echo(_render_text(payload))

@@ -23,7 +23,7 @@ class TestTaskTree:
     ) -> None:
         """A task with no parent_of children returns itself with an empty children list."""
         task_id = add_task("solo")
-        result = runner.invoke(cli, ["task", "tree", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "tree", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["id"] == task_id
@@ -43,7 +43,7 @@ class TestTaskTree:
         runner.invoke(cli, ["task", "update", done_child, "--state", "done"])
         runner.invoke(cli, ["task", "update", in_progress_child, "--state", "in_progress"])
 
-        result = runner.invoke(cli, ["task", "tree", root, "--json"])
+        result = runner.invoke(cli, ["task", "tree", root, "-o", "json"])
         payload = json.loads(result.output)
         assert payload["id"] == root
         assert payload["state"] == "open"
@@ -58,7 +58,7 @@ class TestTaskTree:
 
     def test_missing_task_exits_three(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A tree rooted at a nonexistent id exits 3, same as `task show`."""
-        result = runner.invoke(cli, ["task", "tree", "TASK-99", "--json"])
+        result = runner.invoke(cli, ["task", "tree", "TASK-99", "-o", "json"])
         assert result.exit_code == 3
 
     def test_plain_text_indents_by_depth(
@@ -96,7 +96,7 @@ class TestTaskTree:
         conn.commit()
         conn.close()
 
-        result = runner.invoke(cli, ["task", "tree", a, "--json"])
+        result = runner.invoke(cli, ["task", "tree", a, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["id"] == a

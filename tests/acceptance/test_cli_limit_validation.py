@@ -63,5 +63,5 @@ class TestLimitValidation:
     ) -> None:
         """A valid positive --limit is unaffected by the added bound."""
         add_task("a")
-        result = runner.invoke(cli, [group, *args, "--limit", "1", "--json"])
+        result = runner.invoke(cli, [group, *args, "--limit", "1", "-o", "json"])
         assert result.exit_code == 0

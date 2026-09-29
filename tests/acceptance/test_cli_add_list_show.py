@@ -18,7 +18,7 @@ from corvee.config import ProjectConfig
 class TestAdd:
     def test_requires_description(self, runner: CliRunner, project: ProjectConfig) -> None:
         """`task add` without --description exits 2; a title alone is not enough."""
-        result = runner.invoke(cli, ["task", "add", "Fix the bug", "--json"])
+        result = runner.invoke(cli, ["task", "add", "Fix the bug", "-o", "json"])
         assert result.exit_code == 2
 
     def test_rejects_whitespace_only_description(
@@ -26,24 +26,24 @@ class TestAdd:
     ) -> None:
         """--description " " cannot be used to route around the requirement."""
         result = runner.invoke(
-            cli, ["task", "add", "Fix the bug", "--description", "   ", "--json"]
+            cli, ["task", "add", "Fix the bug", "--description", "   ", "-o", "json"]
         )
         assert result.exit_code == 2
 
     def test_rejects_whitespace_only_title(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A title of only whitespace is as unidentifiable as an empty one."""
-        result = runner.invoke(cli, ["task", "add", "   ", "--description", "d", "--json"])
+        result = runner.invoke(cli, ["task", "add", "   ", "--description", "d", "-o", "json"])
         assert result.exit_code == 2
 
     def test_rejects_empty_title(self, runner: CliRunner, project: ProjectConfig) -> None:
         """An empty title exits 2 the same as a whitespace-only one."""
-        result = runner.invoke(cli, ["task", "add", "", "--description", "d", "--json"])
+        result = runner.invoke(cli, ["task", "add", "", "--description", "d", "-o", "json"])
         assert result.exit_code == 2
 
     def test_creates_task_and_returns_it(self, runner: CliRunner, project: ProjectConfig) -> None:
         """`task add` creates an open task, unclaimed, and returns it with the TASK-1 id."""
         result = runner.invoke(
-            cli, ["task", "add", "Fix the bug", "--description", "steps to reproduce", "--json"]
+            cli, ["task", "add", "Fix the bug", "--description", "steps to reproduce", "-o", "json"]
         )
         assert result.exit_code == 0
         payload = json.loads(result.output)
@@ -67,7 +67,8 @@ class TestAdd:
                 "bug",
                 "--priority",
                 "critical",
-                "--json",
+                "-o",
+                "json",
             ],
         )
         payload = json.loads(result.output)
@@ -77,7 +78,7 @@ class TestAdd:
     def test_reads_title_from_stdin(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A "-" title argument reads the title from stdin instead of argv."""
         result = runner.invoke(
-            cli, ["task", "add", "-", "--description", "d", "--json"], input="From stdin"
+            cli, ["task", "add", "-", "--description", "d", "-o", "json"], input="From stdin"
         )
         payload = json.loads(result.output)
         assert payload[0]["title"] == "From stdin"
@@ -96,26 +97,27 @@ class TestAdd:
                 "API",
                 "--label",
                 "urgent",
-                "--json",
+                "-o",
+                "json",
             ],
         )
         task_id = json.loads(result.output)[0]["id"]
-        show_result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         assert sorted(json.loads(show_result.output)[0]["labels"]) == ["api", "urgent"]
 
     def test_with_parent(self, runner: CliRunner, project: ProjectConfig) -> None:
         """--parent <id> links the new task as a child of an existing task."""
         parent_result = runner.invoke(
-            cli, ["task", "add", "parent", "--description", "d", "--json"]
+            cli, ["task", "add", "parent", "--description", "d", "-o", "json"]
         )
         parent_id = json.loads(parent_result.output)[0]["id"]
 
         child_result = runner.invoke(
-            cli, ["task", "add", "child", "--description", "d", "--parent", parent_id, "--json"]
+            cli, ["task", "add", "child", "--description", "d", "--parent", parent_id, "-o", "json"]
         )
         assert child_result.exit_code == 0
 
-        show_result = runner.invoke(cli, ["task", "show", parent_id, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", parent_id, "-o", "json"])
         payload = json.loads(show_result.output)[0]
         assert len(payload["subtasks"]) == 1
 
@@ -124,10 +126,10 @@ class TestAdd:
     ) -> None:
         """--parent naming a nonexistent task exits 3, and nothing is created."""
         result = runner.invoke(
-            cli, ["task", "add", "orphan", "--description", "d", "--parent", "999", "--json"]
+            cli, ["task", "add", "orphan", "--description", "d", "--parent", "999", "-o", "json"]
         )
         assert result.exit_code == 3
-        assert json.loads(runner.invoke(cli, ["task", "list", "--json"]).output) == []
+        assert json.loads(runner.invoke(cli, ["task", "list", "-o", "json"]).output) == []
 
 
 class TestList:
@@ -135,8 +137,8 @@ class TestList:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """`task list` with no filter returns only open tasks."""
-        runner.invoke(cli, ["task", "add", "open task", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["task", "list", "--json"])
+        runner.invoke(cli, ["task", "add", "open task", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["task", "list", "-o", "json"])
         payload = json.loads(result.output)
         assert len(payload) == 1
         assert payload[0]["title"] == "open task"
@@ -144,37 +146,38 @@ class TestList:
     def test_plain_output_renders_unclaimed_columns_blank(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """Without --json, an unclaimed task's CLAIMED_BY/CLAIMED_AT/ASSIGNED_TO
+        """With `-o wide`, an unclaimed task's CLAIMED_BY/CLAIMED_AT/ASSIGNED_TO
         columns render blank, not the string "None" (TASK-35).
         """
-        runner.invoke(cli, ["task", "add", "open task", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["task", "list"])
+        runner.invoke(cli, ["task", "add", "open task", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["task", "list", "-o", "wide"])
+        assert "CLAIMED_BY" in result.output
         assert "None" not in result.output
 
     def test_no_match_returns_empty_array(self, runner: CliRunner, project: ProjectConfig) -> None:
         """An empty backlog returns [] rather than an error."""
-        result = runner.invoke(cli, ["task", "list", "--json"])
+        result = runner.invoke(cli, ["task", "list", "-o", "json"])
         assert result.exit_code == 0
         assert json.loads(result.output) == []
 
     def test_fields_projection(self, runner: CliRunner, project: ProjectConfig) -> None:
         """--fields projects the JSON objects down to exactly the requested keys."""
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["task", "list", "--json", "--fields", "id,title"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["task", "list", "-o", "json", "--fields", "id,title"])
         payload = json.loads(result.output)
         assert payload == [{"id": "TASK-1", "title": "task one"}]
 
     def test_rejects_unknown_field(self, runner: CliRunner, project: ProjectConfig) -> None:
         """An unrecognized --fields column exits 2 with the unknown_field error code."""
-        result = runner.invoke(cli, ["task", "list", "--json", "--fields", "bogus"])
+        result = runner.invoke(cli, ["task", "list", "-o", "json", "--fields", "bogus"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "unknown_field"
 
     def test_ls_is_an_alias_for_list(self, runner: CliRunner, project: ProjectConfig) -> None:
         """`task ls` behaves exactly like `task list`, flags included."""
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["task", "ls", "--json", "--fields", "id,title"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["task", "ls", "-o", "json", "--fields", "id,title"])
         assert result.exit_code == 0
         assert json.loads(result.output) == [{"id": "TASK-1", "title": "task one"}]
 
@@ -186,10 +189,12 @@ class TestList:
         blocked = add_task("blocked")
         runner.invoke(cli, ["task", "link", blocker, blocked, "--relation", "blocks"])
 
-        blocks_result = runner.invoke(cli, ["task", "list", "--blocks", blocker, "--json"])
+        blocks_result = runner.invoke(cli, ["task", "list", "--blocks", blocker, "-o", "json"])
         assert [t["id"] for t in json.loads(blocks_result.output)] == [blocked]
 
-        blocked_by_result = runner.invoke(cli, ["task", "list", "--blocked-by", blocked, "--json"])
+        blocked_by_result = runner.invoke(
+            cli, ["task", "list", "--blocked-by", blocked, "-o", "json"]
+        )
         assert [t["id"] for t in json.loads(blocked_by_result.output)] == [blocker]
 
     def test_relates_to_filter_is_symmetric(
@@ -200,7 +205,7 @@ class TestList:
         b = add_task("b")
         runner.invoke(cli, ["task", "link", a, b, "--relation", "relates_to"])
 
-        result = runner.invoke(cli, ["task", "list", "--relates-to", a, "--json"])
+        result = runner.invoke(cli, ["task", "list", "--relates-to", a, "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [b]
 
     def test_since_filters_out_tasks_updated_before_the_cutoff(
@@ -219,7 +224,7 @@ class TestList:
         )
         conn.commit()
 
-        result = runner.invoke(cli, ["task", "list", "--since", "7d", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--since", "7d", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [recent_id]
 
     def test_state_filter_narrows_to_one_state(
@@ -232,16 +237,16 @@ class TestList:
         runner.invoke(cli, ["task", "update", in_progress_id, "--state", "in_progress"])
         runner.invoke(cli, ["task", "update", done_id, "--state", "done"])
 
-        result = runner.invoke(cli, ["task", "list", "--state", "in_progress", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--state", "in_progress", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [in_progress_id]
 
-        result = runner.invoke(cli, ["task", "list", "--state", "open", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--state", "open", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [open_id]
 
         # --state must replace the default open-states filter, not narrow it
         # further -- "done" is excluded by default, so this only passes if
         # --state on its own is sufficient to surface it.
-        result = runner.invoke(cli, ["task", "list", "--state", "done", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--state", "done", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [done_id]
 
     def test_claimed_by_filters_to_that_actor(
@@ -258,7 +263,7 @@ class TestList:
         monkeypatch.setenv("CORVEE_ACTOR", "agent:other")
         runner.invoke(cli, ["task", "claim", theirs])
 
-        result = runner.invoke(cli, ["task", "list", "--claimed-by", "agent:other", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--claimed-by", "agent:other", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [theirs]
 
     def test_unclaimed_excludes_claimed_tasks(
@@ -269,7 +274,7 @@ class TestList:
         claimed_id = add_task("claimed")
         runner.invoke(cli, ["task", "claim", claimed_id])
 
-        result = runner.invoke(cli, ["task", "list", "--unclaimed", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--unclaimed", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [unclaimed_id]
 
     def test_stale_filters_to_claims_older_than_the_duration(
@@ -291,7 +296,7 @@ class TestList:
         )
         conn.commit()
 
-        result = runner.invoke(cli, ["task", "list", "--stale", "1h", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--stale", "1h", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [stale_id]
 
     def test_limit_truncates_the_merged_result(
@@ -302,15 +307,15 @@ class TestList:
         b_id = add_task("b")
         c_id = add_task("c")
 
-        result = runner.invoke(cli, ["task", "list", "--limit", "2", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--limit", "2", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [c_id, b_id]
 
 
 class TestShow:
     def test_returns_full_detail_shape(self, runner: CliRunner, project: ProjectConfig) -> None:
         """`task show` adds labels/links/subtasks/events to the base task shape."""
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["task", "show", "1", "--json"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["task", "show", "1", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["labels"] == []
@@ -325,8 +330,8 @@ class TestShow:
         """`task add` used to write no event at all (TASK-29) -- unlike
         every other mutating command, which always has.
         """
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["task", "show", "1", "--json"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["task", "show", "1", "-o", "json"])
         payload = json.loads(result.output)
         created = [e for e in payload[0]["events"] if e["kind"] == "created"]
         assert len(created) == 1
@@ -335,7 +340,7 @@ class TestShow:
 
     def test_missing_task_exits_three(self, runner: CliRunner, project: ProjectConfig) -> None:
         """Showing a nonexistent task id exits 3 with the task_not_found error code."""
-        result = runner.invoke(cli, ["task", "show", "999", "--json"])
+        result = runner.invoke(cli, ["task", "show", "999", "-o", "json"])
         assert result.exit_code == 3
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "task_not_found"
@@ -345,26 +350,26 @@ class TestShow:
         self, runner: CliRunner, project: ProjectConfig, value: str
     ) -> None:
         """A non-ASCII-digit or out-of-range id exits 2, never as an internal error."""
-        result = runner.invoke(cli, ["task", "show", value, "--json"])
+        result = runner.invoke(cli, ["task", "show", value, "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "invalid_task_id"
 
     def test_preserves_given_id_order(self, runner: CliRunner, project: ProjectConfig) -> None:
         """Multiple ids to `task show` come back in the order they were given, not id order."""
-        runner.invoke(cli, ["task", "add", "a", "--description", "d", "--json"])
-        runner.invoke(cli, ["task", "add", "b", "--description", "d", "--json"])
-        result = runner.invoke(cli, ["task", "show", "2", "1", "--json"])
+        runner.invoke(cli, ["task", "add", "a", "--description", "d", "-o", "json"])
+        runner.invoke(cli, ["task", "add", "b", "--description", "d", "-o", "json"])
+        result = runner.invoke(cli, ["task", "show", "2", "1", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == ["TASK-2", "TASK-1"]
 
     def test_plain_output_renders_unclaimed_fields_as_none_placeholder(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """Without --json, `task show` renders an unset claimed_by as (none),
+        """With `-o table` (the default), `task show` renders an unset claimed_by as (none),
         not the string "None" (TASK-35).
         """
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
         result = runner.invoke(cli, ["task", "show", "1"])
         assert "claimed_by: (none)" in result.output
         assert "None" not in result.output
@@ -372,10 +377,11 @@ class TestShow:
     def test_plain_output_includes_comments_and_labels(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """Without --json, `task show` still surfaces comments and labels, not just the
-        bare row -- a human has no other way to read a task's history.
+        """With `-o table` (the default), `task show` still surfaces comments and
+        labels, not just the bare row -- a human has no other way to read a
+        task's history.
         """
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
         runner.invoke(cli, ["task", "label", "1", "--add", "api"])
         runner.invoke(cli, ["task", "comment", "1", "found the root cause"])
         result = runner.invoke(cli, ["task", "show", "1"])

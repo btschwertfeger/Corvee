@@ -11,7 +11,8 @@ import click
 
 from corvee.cli.completion import complete_fact_ids
 from corvee.cli.context import corvee_context
-from corvee.constants import Scope
+from corvee.cli.params import output_option
+from corvee.constants import Scope, narrow_output_format
 from corvee.db.events import get_fact_events
 from corvee.db.facts import require_facts
 from corvee.models import parse_fact_refs
@@ -24,16 +25,16 @@ Examples:
 See full detail for one fact:
   corvee fact show FACT-7
 Show several facts at once, as JSON:
-  corvee fact show 7 8 9 --json
+  corvee fact show 7 8 9 -o json
 Pull out just the revision/verification history:
-  corvee fact show FACT-7 --json | jq '.[0].events'
+  corvee fact show FACT-7 -o json | jq '.[0].events'
 """
 
 
 @click.command(epilog=EPILOG)
 @click.argument("ids", nargs=-1, required=True, shell_complete=complete_fact_ids)
-@click.option("--json", "-j", "as_json", is_flag=True)
-def show(ids: tuple[str, ...], as_json: bool) -> None:
+@output_option()
+def show(ids: tuple[str, ...], output_format: str) -> None:
     """Full detail for one or more facts: claim, status, current proof, timeline."""
     fact_ids, scope = parse_fact_refs(ids)
     other_scope: Scope = "global" if scope == "local" else "local"
@@ -69,4 +70,4 @@ def show(ids: tuple[str, ...], as_json: bool) -> None:
                 other_scope_conn=other_conn,
             )
             results.append(detail)
-    emit_fact_detail(results, as_json=as_json)
+    emit_fact_detail(results, output=narrow_output_format(output_format))

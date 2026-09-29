@@ -8,11 +8,12 @@ import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
-from corvee.cli.params import StdinOrValue
+from corvee.cli.params import StdinOrValue, output_option
 from corvee.constants import (
     PRIORITIES,
     STATES,
     TASK_TYPES,
+    narrow_output_format,
     narrow_priority,
     narrow_state,
     narrow_task_type,
@@ -27,7 +28,7 @@ Examples:
 Move a task into progress:
   corvee task update TASK-14 --state in_progress
 Bump the priority of several tasks at once, as JSON:
-  corvee task update 14 15 16 --priority high --json
+  corvee task update 14 15 16 --priority high -o json
 Finish a task even though someone else holds the claim:
   corvee task update 14 --state done --force
 """
@@ -47,7 +48,7 @@ Finish a task even though someone else holds the claim:
     is_flag=True,
     help="Cancel every open descendant along with the parent.",
 )
-@click.option("--json", "-j", "as_json", is_flag=True)
+@output_option()
 def update(
     task_refs: tuple[str, ...],
     state: str | None,
@@ -57,7 +58,7 @@ def update(
     description: str | None,
     force: bool,
     cascade: bool,
-    as_json: bool,
+    output_format: str,
 ) -> None:
     """Mutate one or more tasks in a single transaction."""
     task_ids, scope = parse_task_refs(task_refs)
@@ -79,4 +80,4 @@ def update(
                 scope=scope,
             )
             results.extend(updated)
-    emit_tasks([task.to_dict() for task in results], as_json=as_json)
+    emit_tasks([task.to_dict() for task in results], output=narrow_output_format(output_format))

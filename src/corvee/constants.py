@@ -14,6 +14,7 @@ Relation = Literal["blocks", "relates_to", "duplicates", "parent_of"]
 FactStatus = Literal["unverified", "verified", "retracted"]
 Scope = Literal["local", "global"]
 ScopeFilter = Literal["local", "global", "all"]
+OutputFormat = Literal["table", "wide", "json"]
 
 STATES: tuple[State, ...] = get_args(State)
 PRIORITIES: tuple[Priority, ...] = get_args(Priority)
@@ -22,6 +23,7 @@ RELATIONS: tuple[Relation, ...] = get_args(Relation)
 FACT_STATUSES: tuple[FactStatus, ...] = get_args(FactStatus)
 SCOPE_FILTERS: tuple[ScopeFilter, ...] = get_args(ScopeFilter)
 SCOPES: tuple[Scope, ...] = get_args(Scope)
+OUTPUT_FORMATS: tuple[OutputFormat, ...] = get_args(OutputFormat)
 
 
 # The seven functions below narrow an already-validated `str` to its
@@ -75,6 +77,12 @@ def narrow_scope(value: str) -> Scope:
 def narrow_scope_filter(value: str) -> ScopeFilter:
     if value not in SCOPE_FILTERS:
         raise AssertionError(f"unexpected scope filter: {value!r}")
+    return value
+
+
+def narrow_output_format(value: str) -> OutputFormat:
+    if value not in OUTPUT_FORMATS:
+        raise AssertionError(f"unexpected output format: {value!r}")
     return value
 
 
@@ -133,11 +141,25 @@ FACT_LIST_FIELDS: tuple[str, ...] = (
     "scope",
 )
 
-# Table columns shown when list/ready/search/mine is run without --fields:
-# LIST_FIELDS minus "description", the long free-text column that blows up a
-# fixed-width table's row length. --fields can still request it explicitly.
-# Does not affect --json, which always returns the full row shape.
+# Table columns shown when list/ready/search/mine (and every other table-
+# rendering command) is run with `-o table` (the default) and no --fields:
+# just enough to identify and triage a row. `-o wide` shows
+# LIST_TABLE_WIDE_FIELDS instead; --fields can request any LIST_FIELDS
+# column, including "description", regardless of `-o`. Does not affect
+# `-o json`, which always returns the full row shape.
 LIST_TABLE_DEFAULT_FIELDS: tuple[str, ...] = (
+    "id",
+    "title",
+    "type",
+    "priority",
+    "state",
+    "scope",
+)
+
+# `-o wide` on the same commands: LIST_FIELDS minus "description", the long
+# free-text column that blows up a fixed-width table's row length even at
+# this level -- --fields can still request it explicitly.
+LIST_TABLE_WIDE_FIELDS: tuple[str, ...] = (
     "id",
     "title",
     "type",
@@ -151,9 +173,17 @@ LIST_TABLE_DEFAULT_FIELDS: tuple[str, ...] = (
     "scope",
 )
 
-# The fact-group equivalent of LIST_TABLE_DEFAULT_FIELDS: FACT_LIST_FIELDS
-# minus "proof".
+# The fact-group equivalent of LIST_TABLE_DEFAULT_FIELDS.
 FACT_LIST_TABLE_DEFAULT_FIELDS: tuple[str, ...] = (
+    "id",
+    "claim",
+    "status",
+    "scope",
+)
+
+# The fact-group equivalent of LIST_TABLE_WIDE_FIELDS: FACT_LIST_FIELDS minus
+# "proof".
+FACT_LIST_TABLE_WIDE_FIELDS: tuple[str, ...] = (
     "id",
     "claim",
     "status",

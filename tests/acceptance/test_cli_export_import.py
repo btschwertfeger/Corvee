@@ -17,8 +17,8 @@ from corvee.config import ProjectConfig, global_db_path
 class TestExport:
     def test_to_stdout_is_valid_json(self, runner: CliRunner, project: ProjectConfig) -> None:
         """`export` with no --output writes the whole-project JSON, tasks and facts, to stdout."""
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
-        runner.invoke(cli, ["fact", "add", "fact one", "--json"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
+        runner.invoke(cli, ["fact", "add", "fact one", "-o", "json"])
         result = runner.invoke(cli, ["export"])
         assert result.exit_code == 0
         data = json.loads(result.output)
@@ -28,7 +28,7 @@ class TestExport:
 
     def test_to_file(self, runner: CliRunner, project: ProjectConfig, tmp_path: Path) -> None:
         """--output writes the export document to a file instead of stdout."""
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
         output_file = tmp_path / "backup.json"
         result = runner.invoke(cli, ["export", "--output", str(output_file)])
         assert result.exit_code == 0
@@ -40,9 +40,9 @@ class TestExport:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """--scope global exports ~/.corvee/corvee.db, not the local project database."""
-        runner.invoke(cli, ["task", "add", "local task", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "local task", "--description", "d", "-o", "json"])
         runner.invoke(
-            cli, ["task", "add", "global task", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global task", "--description", "d", "--global", "-o", "json"]
         )
 
         result = runner.invoke(cli, ["export", "--scope", "global"])
@@ -60,8 +60,8 @@ class TestImport:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Exporting a populated project and importing it into a fresh one restores every task."""
-        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "--json"])
-        runner.invoke(cli, ["task", "add", "task two", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "task one", "--description", "d", "-o", "json"])
+        runner.invoke(cli, ["task", "add", "task two", "--description", "d", "-o", "json"])
         output_file = tmp_path / "backup.json"
         runner.invoke(cli, ["export", "--output", str(output_file)])
 
@@ -69,7 +69,7 @@ class TestImport:
         new_project_dir.mkdir()
         monkeypatch.chdir(new_project_dir)
         runner.invoke(cli, ["init"])
-        result = runner.invoke(cli, ["import", str(output_file), "--json"])
+        result = runner.invoke(cli, ["import", str(output_file), "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert len(payload) == 2
@@ -79,7 +79,7 @@ class TestImport:
     ) -> None:
         """--scope global on both export and import restores into the global database."""
         runner.invoke(
-            cli, ["task", "add", "global task", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global task", "--description", "d", "--global", "-o", "json"]
         )
         output_file = tmp_path / "global-backup.json"
         runner.invoke(cli, ["export", "--scope", "global", "--output", str(output_file)])
@@ -87,7 +87,7 @@ class TestImport:
         # Wipe the global db (a fresh one gets created lazily) and restore into it.
         runner.invoke(cli, ["task", "add", "throwaway", "--description", "d", "--global"])
         global_db_path().unlink()
-        result = runner.invoke(cli, ["import", str(output_file), "--scope", "global", "--json"])
+        result = runner.invoke(cli, ["import", str(output_file), "--scope", "global", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert [t["title"] for t in payload] == ["global task"]
@@ -98,11 +98,11 @@ class TestImport:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """Importing into a project that already holds tasks exits 2, not a silent merge."""
-        runner.invoke(cli, ["task", "add", "existing task", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "existing task", "--description", "d", "-o", "json"])
         output_file = "backup.json"
         runner.invoke(cli, ["export", "--output", output_file])
 
-        result = runner.invoke(cli, ["import", output_file, "--json"])
+        result = runner.invoke(cli, ["import", output_file, "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "import_into_nonempty_project"
@@ -114,7 +114,7 @@ class TestImport:
         bad_file = tmp_path / "bad.json"
         bad_file.write_text("{not valid json")
 
-        result = runner.invoke(cli, ["import", str(bad_file), "--json"])
+        result = runner.invoke(cli, ["import", str(bad_file), "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] != "internal_error"
@@ -126,7 +126,7 @@ class TestImport:
         dump_file = tmp_path / "no-version.json"
         dump_file.write_text(json.dumps({"tasks": [], "facts": []}))
 
-        result = runner.invoke(cli, ["import", str(dump_file), "--json"])
+        result = runner.invoke(cli, ["import", str(dump_file), "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] != "internal_error"

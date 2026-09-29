@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v35)
+# corvee — Technical Specification (v36)
 
 ## 1. Purpose
 
@@ -530,7 +530,7 @@ concurrently.
 Each can be set two ways, with the global `--actor`/`--session-id` options
 (available on `corvee` itself, before the subcommand) taking precedence
 over the `CORVEE_ACTOR`/`CORVEE_SESSION_ID` environment variables:
-`corvee --actor agent:claude --session-id session-42 task list --json`.
+`corvee --actor agent:claude --session-id session-42 task list -o json`.
 The flags exist for the same value as the env vars but as literal argument
 text rather than a shell assignment — an agent harness with a permission
 allowlist that matches on the literal command (e.g. anything starting with
@@ -894,9 +894,22 @@ corvee
 ```
 
 All commands emit human-readable table output by default. Every command
-accepts `--json`, mutating ones included, except `explain`, `completion`,
-and `mcp serve`, which have no `--json` flag, and `export`, which always
-writes JSON without needing one.
+accepts `-o`/`--output`, mutating ones included, except `explain`,
+`completion`, and `mcp serve`, which have no `-o`/`--output` flag, and
+`export`, which always writes JSON without needing one. `-o` takes `table`
+(the default), `wide`, or `json` -- `table`/`wide` render the plain-text
+shapes described throughout this section; `json` is the machine-readable
+array (or single object, where noted) every example in this spec passes
+`-o json` to get. `wide` is accepted only where the table already has a
+narrower default to widen from (§5.1): the row-listing commands (`task
+list`/`ready`/`search`/`mine`, `fact list`/`search`, `brief`), and
+`task claim`/`unclaim`/`start`/`assign`/`unassign`, whose whole purpose is
+setting exactly the `claimed_by`/`claimed_at`/`assigned_to` columns the
+narrow default drops -- without `wide` there, the table echo of a
+successful claim/assignment shows no sign it did anything. Every other
+command rejects `wide` as a usage error (exit 2) rather than accepting it
+as a silent no-op, since its table already shows everything relevant to
+one mutated row, one full-detail view, or a fixed-shape aggregate.
 
 **Success output is always a JSON array of objects on stdout, uniform
 within a command group**, one element per affected row, whether the command
@@ -904,17 +917,17 @@ read or wrote. Every task and fact object carries a `scope` key
 (`"local"` or `"global"`, §3.3) alongside its already-namespaced `id`, in
 every command, not only listings — one uniform shape rather than a key
 that appears only when a query happens to merge both databases. Under
-`task`: `corvee task add --json` returns the created task (this is how an
+`task`: `corvee task add -o json` returns the created task (this is how an
 agent learns the new ID), `corvee task
 claim`/`update`/`label`/`comment` return the affected task in its
 post-mutation state, and `corvee task link`/`unlink` return both endpoints.
-`corvee task show --json` returns the same task objects with four extra
+`corvee task show -o json` returns the same task objects with four extra
 keys per element (`labels`, `links`, `subtasks`, `events`), and `corvee
 task mine` adds one (`last_comment`, null when the task has none), so both
 are supersets of the common shape rather than second shapes. Under `fact`:
-`corvee fact add --json` returns the created fact, and `corvee fact
+`corvee fact add -o json` returns the created fact, and `corvee fact
 verify`/`unverify`/`revise`/`retract` return the affected fact in its
-post-mutation state; `corvee fact show --json` adds one extra key,
+post-mutation state; `corvee fact show -o json` adds one extra key,
 `events`. `corvee fact delete` is the one exception: it returns the
 deleted fact's *last* state, since there is no post-mutation state for a
 row that no longer exists (§4.6). An agent parsing either array never
@@ -927,11 +940,11 @@ is never a reason to reject the write, so its absence is not itself
 meaningful — a caller that doesn't check for it loses nothing).
 
 A few commands step outside that shape because what they return is not a
-task or a fact. `corvee task labels --json` yields an array of `{"name":
-..., "task_count": ...}`; `corvee task claims --json` yields an array of
+task or a fact. `corvee task labels -o json` yields an array of `{"name":
+..., "task_count": ...}`; `corvee task claims -o json` yields an array of
 `{"actor": ..., "scope": ..., "count": ..., "oldest_claimed_at": ...}`,
-oldest first. `corvee export`, `corvee doctor --json`, `corvee brief --json`,
-`corvee init --json`, and `corvee task tree --json` each yield a single
+oldest first. `corvee export`, `corvee doctor -o json`, `corvee brief -o json`,
+`corvee init -o json`, and `corvee task tree -o json` each yield a single
 JSON object rather than an array, since a backup, a stats report, a
 session snapshot, a bootstrap report, and a subtree are all documents, not
 flat query results (§3.1, §5.1.2, §5.4, §5.5, §5.8).
@@ -979,11 +992,11 @@ Exit codes are distinct enough to branch on without parsing at all.
 | `corvee task comment <id> <text>` | Append a progress/handoff note (session stamped from `CORVEE_SESSION_ID`) |
 | `corvee task link <source-id> <target-id> --relation blocks\|relates_to\|duplicates\|parent_of` | Relate two tasks, including hierarchy (cycle-checked for `parent_of`). Both ids must share one scope (§3.3); a local/global pair is a guard violation |
 | `corvee task unlink <source-id> <target-id> --relation <r>` | Remove a link |
-| `corvee task tree <id> [--json]` | The full `parent_of` subtree rooted at `<id>`, as an indented tree (or nested JSON, §5.1.2) rather than a flat row set |
+| `corvee task tree <id> [-o table\|json]` | The full `parent_of` subtree rooted at `<id>`, as an indented tree (or nested JSON, §5.1.2) rather than a flat row set |
 | `corvee task purge <id> [<id> ...]` | Permanently remove one or more already-`cancelled`, unlinked tasks and their event history, in one transaction (§4.5.1) |
 
 `--fields` keeps a session's opening query cheap: `corvee task list --fields
-id,title --json` returns only those keys per object (still a JSON array of
+id,title -o json` returns only those keys per object (still a JSON array of
 objects, never bare tuples, so the shape stays uniform). It accepts a fixed
 allow-list of flat columns (`id`, `title`, `description`, `type`,
 `priority`, `state`, `claimed_by`, `claimed_at`, `assigned_to`,
@@ -991,14 +1004,25 @@ allow-list of flat columns (`id`, `title`, `description`, `type`,
 a non-zero exit and the valid list; labels, links, events, and `task
 mine`'s `last_comment` stay out
 of projection and require `corvee task show`/`task mine` itself.
-Table (non-JSON) output also respects `--fields`, showing only the
-requested columns. Without `--fields`, table output on `list`/`ready`/
-`search`/`mine` and their fact equivalents uses a narrower default than
-the `--fields` allow-list: `description` (tasks) and `proof` (facts) are
-dropped, since a long free-text value is what blows a fixed-width row
-past a normal terminal's width; `--fields description`/`--fields proof`
-still shows it on request. `--json` is unaffected — it always returns the
-full row shape regardless of table defaults.
+`--fields` wins outright whenever given, on top of any `-o` value: `-o
+wide --fields id,title` shows exactly `id`/`title`, the same as `-o table
+--fields id,title` -- an explicit projection is a stronger statement than
+a preset and is never overridden by one.
+
+Without `--fields`, `-o table` (the default) on `list`/`ready`/`search`/
+`mine` and their fact equivalents (also `brief`, which renders the same
+task rows) shows only enough to identify and triage a row: `id`, `title`,
+`type`, `priority`, `state`, `scope` for tasks, `id`, `claim`, `status`,
+`scope` for facts. `-o wide` restores the rest of the `--fields`
+allow-list except `description`/`proof`: `claimed_by`, `claimed_at`,
+`assigned_to`, `created_at`, `updated_at` for tasks, `verified_at`,
+`verified_by`, `created_at`, `updated_at` for facts. `description`/`proof`
+are dropped even under `-o wide`, since a long free-text value is what
+blows a fixed-width row past a normal terminal's width regardless of how
+many other columns are showing; `--fields description`/`--fields proof`
+still shows it on request, at any `-o` value. `-o json` is unaffected by
+any of this -- it always returns the full row shape regardless of table
+defaults.
 
 `corvee task show`/`corvee fact show` always return full detail, and
 render it differently from the other commands' fixed-width table: since
@@ -1012,7 +1036,7 @@ show. That header block is followed by one `labels:`/`links:`/
 `subtasks:`/`events:` block per task — lowercase, the same vocabulary as
 the header fields above them, not a second capitalized one — since those
 four keys are not flat columns and would otherwise only be reachable
-through `--json`. `corvee fact show` does the same with its one extra
+through `-o json`. `corvee fact show` does the same with its one extra
 key, `events:`. Showing several ids at once repeats the whole block once
 per id, in the order given, separated by a blank line; there is no
 separate `== id ==` divider between the header and the labels/links/
@@ -1087,8 +1111,8 @@ entirely under `--scope local`) — only its priority, `created_at`, and id
 place it in the order, the same way a page boundary does not need to be a
 visible row itself. Passing the last id of one page as the next call's
 `--after` therefore walks the whole backlog in fixed-size, non-overlapping
-pages: `corvee task list --limit 50 --json`, then `corvee task list
---after <last-id-seen> --limit 50 --json`, repeated until a page comes
+pages: `corvee task list --limit 50 -o json`, then `corvee task list
+--after <last-id-seen> --limit 50 -o json`, repeated until a page comes
 back shorter than the limit. An `--after <id>` naming a task that does not
 exist is a `task_not_found` error (exit 3), the same as any other command
 given a bad id.
@@ -1197,15 +1221,17 @@ quietly truncated history would make it unreliable for the audit case.
 
 #### 5.1.2 `task tree`
 
-`corvee task tree <id> [--json]` takes exactly one id, unlike every other
-command in this table — a tree has one root, and the nested shape below
-has no natural flat-array form to batch across several roots. It walks the
-`parent_of` subtree under `<id>` (`db/links.py:get_children`), including
-descendants in every state; "what's left under this epic" needs the done
-and in-progress ones visible too, not just the open ones, to show how much
-of the tree is actually finished.
+`corvee task tree <id> [-o table\|json]` takes exactly one id, unlike every
+other command in this table — a tree has one root, and the nested shape
+below has no natural flat-array form to batch across several roots. It
+walks the `parent_of` subtree under `<id>` (`db/links.py:get_children`),
+including descendants in every state; "what's left under this epic" needs
+the done and in-progress ones visible too, not just the open ones, to show
+how much of the tree is actually finished. It has no narrow/wide
+distinction of its own -- `-o wide` is a usage error here, same as on
+every other non-row-listing command (§5).
 
-`--json` returns one nested object instead of the flat array every other
+`-o json` returns one nested object instead of the flat array every other
 command in §5.1 returns, the same reasoning `export`/`doctor` already use
 for a single-object response (§5.4/§5.5): a tree describes a shape, not a
 row set.
@@ -1294,7 +1320,7 @@ a second one exits 2.
 space.** `render_table`'s fixed-width columns assume one physical line per
 row; a raw multi-line value would otherwise print as an actual line break,
 splitting the row and leaving its remaining columns trailing after it
-instead of aligned under their headers. `--json` is unaffected, since a
+instead of aligned under their headers. `-o json` is unaffected, since a
 JSON string already escapes embedded newlines — the raw value with real
 newlines intact is always available there, or via `task show`.
 
@@ -1448,7 +1474,7 @@ alongside it, depends on one file surviving on one machine.
 
 ### 5.5 `corvee doctor`
 
-`corvee doctor [--stale <duration>] [--json]` reports project health as one
+`corvee doctor [--stale <duration>] [-o table\|json]` reports project health as one
 JSON object (not an array — a stats report is a document, like `export`):
 a top-level `schema_version`, plus a `local` key and a `global` key that
 each report the same `db_path`/`tasks` (`total`, `by_state`, `claimed`,
@@ -1554,7 +1580,7 @@ trial and error.
 
 The three cover different ground rather than restating one call with
 different values. The plain everyday form, a form combining the flags that
-are usually combined (`--json` with `--fields`, a filter with `--limit`), and
+are usually combined (`-o json` with `--fields`, a filter with `--limit`), and
 the awkward case that is otherwise learned by hitting an error (`--force`
 after a claim conflict, `--relation parent_of` with the argument order that
 trips people, `--state` values that a given state can reach).
@@ -1568,7 +1594,7 @@ new subcommand cannot ship without them.
 ### 5.7.1 Short option aliases
 
 Every option across every command also has a one-character alias
-(`--description` / `-d`, `--json` / `-j`, and so on), shown automatically in
+(`--description` / `-d`, `--output` / `-o`, and so on), shown automatically in
 `--help` output alongside the long form — there is nothing beyond the
 `click.option` declaration to keep in sync, and no epilog rewrite, since the
 existing long-form examples remain valid documentation on their own.
@@ -1582,11 +1608,19 @@ never have `--fields`; `-p` is `--priority` on `task` commands and
 for `-a`/`--all`+`--add`, `-i`/`--stale`+`--include-comments`+
 `--include-proof`, `-n`/`--limit`+`--no-events`, `-r`/`--relates-to`+
 `--relation`+`--remove`+`--reason`, `-d`/`--description`+`--since`+
-`--db-path`, `-o`/`--output`, `-c`/`--claimed-by`+`--cascade`,
-`-s`/`--scope`, `-t`/`--type`, `-l`/`--label`, `-j`/`--json`, `-v`/
+`--db-path`, `-c`/`--claimed-by`+`--cascade`,
+`-s`/`--scope`, `-t`/`--type`, `-l`/`--label`, `-v`/
 `--verified-by`, `-g`/`--global`, `-m`/`--note`). Reuse only ever happens
 between options that cannot collide in practice; within any single
 command every alias is unique, exactly as click itself requires.
+
+`-o`/`--output` is a related but distinct case: same option *name* and
+letter everywhere, but a different meaning on one command. On every
+command that has it except `export`, it is the output-format selector
+(§5). On `export`, which never needed a format selector (it always writes
+JSON, §5.4), `-o`/`--output` instead names the destination file path. The
+two meanings never collide within one call for the same reason the letter
+reuses above don't: no command carries both.
 
 A few option names collide within one command and get an uppercase
 variant instead of a second unrelated letter, so the pair stays visibly
@@ -1599,12 +1633,15 @@ command), and `--title`/`-T` next to `--type`/`-t` (`task update`).
 
 ### 5.8 `corvee brief`
 
-`corvee brief [--scope local|global|all] [--json]` combines the three
-session-start queries `corvee explain`'s own guidance tells every agent to
-run separately — `task mine`, `task ready`, `task list --stale` — into one
-read-only call, pure composition over the existing `mine_tasks`/
-`ready_tasks`/`TaskFilter(stale_before=...)` functions with no new query
-logic. `--json` returns one object:
+`corvee brief [--scope local|global|all] [-o table\|wide\|json]` combines
+the three session-start queries `corvee explain`'s own guidance tells every
+agent to run separately — `task mine`, `task ready`, `task list --stale`
+— into one read-only call, pure composition over the existing
+`mine_tasks`/`ready_tasks`/`TaskFilter(stale_before=...)` functions with no
+new query logic. Its plain-text table renders the `mine`/`ready`/`stale`
+sections with the same narrow/wide task columns `task list` uses (§5.1),
+since `brief` is rendering the same task rows, not a shape of its own.
+`-o json` returns one object:
 
 ```json
 {
@@ -1656,7 +1693,7 @@ The block is grouped under three plain headers, `TASKS`, `FACTS`, then a
 closing `GENERAL` section, so task-only and fact-only content never
 interleaves and a `task`-only agent can skim past `FACTS` entirely.
 Content that genuinely applies to both (`--global`, `--actor`/
-`--session-id`, the `--json` convention, the `--help` pointer) stays in
+`--session-id`, the `-o json` convention, the `--help` pointer) stays in
 `GENERAL` rather than being duplicated into both sections.
 
 - The one-line purpose of corvee, including that it supports multiple
@@ -1709,7 +1746,7 @@ Content that genuinely applies to both (`--global`, `--actor`/
 - That a task claim goes stale after 4h of silence and can then be taken by
   another agent, and that re-running `corvee task claim <id>` on a task
   already held refreshes it.
-- The convention that `--json` is always passed, and that it yields an array
+- The convention that `-o json` is always passed, and that it yields an array
   of objects on stdout or an `{"error": {"code": ...}}` object on stderr.
 - Where to find full flag reference (`corvee <command> --help`) if genuinely
   needed.
@@ -1729,7 +1766,7 @@ blocks to stdout for a human to paste in by hand, wherever they want them
 to apply.
 
 The first is for this project's own `AGENTS.md` (`agents_block_local` in
-`--json`):
+`-o json`):
 
 ```markdown
 ## Task tracking and facts (corvee)
@@ -1751,7 +1788,7 @@ that stays `unverified`.
 ```
 
 The second is for a global, cross-project agents config such as
-`~/.claude/CLAUDE.md` (`agents_block_global` in `--json`). It carries the
+`~/.claude/CLAUDE.md` (`agents_block_global` in `-o json`). It carries the
 same guidance but drops the local block's "this project"/"this codebase"
 framing, which is only true of the project `init` ran in, not of every
 project such a global config applies to — including ones that never ran
@@ -1871,7 +1908,7 @@ suite stays deliberately small.
   conditional `UPDATE`, partial unique indexes) lives in SQLite itself and a
   mock would assert only that the code calls the functions it calls.
 - **Command-level tests through click's `CliRunner`**, exercising parsing,
-  exit codes, and `--json` payloads together. These are the contract an
+  exit codes, and `-o json` payloads together. These are the contract an
   agent actually consumes, so they carry the bulk of the coverage.
 - **Unit tests for the pure guards** — the transition table, the ancestor
   walk, the `--fields` allow-list, the timestamp helper. These are ordinary

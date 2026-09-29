@@ -8,6 +8,8 @@ import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
+from corvee.cli.params import output_option
+from corvee.constants import narrow_output_format
 from corvee.db.tasks import assign_task
 from corvee.errors import UsageError
 from corvee.models import parse_task_refs
@@ -18,18 +20,20 @@ EPILOG = """\
 Examples:
 Route a task to a specific actor without claiming it:
   corvee task assign TASK-14 --to agent:claude
+See the assigned_to column the default table drops:
+  corvee task assign 14 --to agent:claude -o wide
 Assign a batch of tasks in one call:
-  corvee task assign 14 15 16 --to agent:claude --json
+  corvee task assign 14 15 16 --to agent:claude -o json
 Reassign a task already assigned to someone else:
-  corvee task assign 14 --to human:alice --json
+  corvee task assign 14 --to human:alice -o json
 """
 
 
 @click.command(epilog=EPILOG)
 @click.argument("task_refs", nargs=-1, required=True, shell_complete=complete_task_ids)
 @click.option("--to", "-t", "target", required=True, help="The actor this task is routed to.")
-@click.option("--json", "-j", "as_json", is_flag=True)
-def assign(task_refs: tuple[str, ...], target: str, as_json: bool) -> None:
+@output_option(wide=True)
+def assign(task_refs: tuple[str, ...], target: str, output_format: str) -> None:
     """Route one or more tasks to a specific actor, without claiming them.
 
     Advisory only: not gated by an existing claim, and does not itself claim
@@ -45,4 +49,4 @@ def assign(task_refs: tuple[str, ...], target: str, as_json: bool) -> None:
             )
             for task_id in task_ids
         ]
-    emit_tasks([task.to_dict() for task in tasks], as_json=as_json)
+    emit_tasks([task.to_dict() for task in tasks], output=narrow_output_format(output_format))

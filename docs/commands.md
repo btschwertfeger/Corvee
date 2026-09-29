@@ -1,14 +1,17 @@
 # Commands
 
-Every command below accepts `--json` and prints a JSON array of objects
-on success, except `explain`, `completion`, and `mcp serve`, which have
-no `--json` flag, and `export`, which always writes JSON without needing
-one. `brief`, `doctor`, `init`, and `task tree` accept `--json` but print
-one object rather than an array, since each returns a document rather
-than query results. `corvee <command> --help` shows runnable
-examples for any of them. This page covers usage and flags only. Standalone,
-checked-true (or not-yet-checked, or retracted) facts are not linked to
-tasks by the schema (see [Specification](spec.md#46-facts)).
+Every command below accepts `-o`/`--output table|wide|json` and, with
+`json`, prints a JSON array of objects on success, except `explain`,
+`completion`, and `mcp serve`, which have no `-o`/`--output` flag, and
+`export`, which always writes JSON without needing one. `wide` only
+applies to the row-listing commands (`task list`/`ready`/`search`/`mine`,
+`fact list`/`search`, `brief`); every other command rejects it. `brief`,
+`doctor`, `init`, and `task tree` print one object rather than an array
+under `-o json`, since each returns a document rather than query results.
+`corvee <command> --help` shows runnable examples for any of them. This
+page covers usage and flags only. Standalone, checked-true (or
+not-yet-checked, or retracted) facts are not linked to tasks by the schema
+(see [Specification](spec.md#46-facts)).
 
 ::: mkdocs-click
     :module: corvee.cli.main

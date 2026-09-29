@@ -5,12 +5,37 @@
 #
 
 import sys
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from typing import Any
 
 import click
+from click.decorators import FC
+
+from corvee.constants import OUTPUT_FORMATS
 
 _STDIN_CONSUMED_KEY = "corvee_stdin_consumed"
+
+
+def output_option(*, wide: bool = False) -> Callable[[FC], FC]:
+    """`-o/--output`, defaulting to `table`.
+
+    `wide=True` (the row-listing commands: `task list`/`ready`/`search`/
+    `mine`, `fact list`/`search`, `brief`) also accepts `wide`, which widens
+    the table's default column set (`constants.py`'s `*_TABLE_WIDE_FIELDS`)
+    without becoming a full `--fields` projection. Every other command
+    keeps `wide` out of its choice set entirely rather than accepting it as
+    a silent no-op, since its table already shows everything relevant to
+    one mutated row or a fixed-shape aggregate.
+    """
+    choices = OUTPUT_FORMATS if wide else ("table", "json")
+    return click.option(
+        "--output",
+        "-o",
+        "output_format",
+        type=click.Choice(choices),
+        default="table",
+        show_default=True,
+    )
 
 
 class AliasGroup(click.Group):

@@ -14,14 +14,17 @@ import click
 
 from corvee.actor import resolve_actor
 from corvee.cli.context import corvee_context
+from corvee.cli.params import output_option
 from corvee.cli.scope import fetch_merged, sort_tasks
 from corvee.config import project_exists
 from corvee.constants import (
     DEFAULT_STALE_DURATION,
     LIST_TABLE_DEFAULT_FIELDS,
+    LIST_TABLE_WIDE_FIELDS,
     SCOPE_FILTERS,
     Scope,
     ScopeFilter,
+    narrow_output_format,
     narrow_scope_filter,
 )
 from corvee.db.events import get_last_comment
@@ -37,12 +40,14 @@ EPILOG = """\
 Examples:
 Reorient at the start of a session in one call:
   corvee brief
+See the claim/assignment/timestamp columns the default table drops:
+  corvee brief -o wide
 Get the same snapshot as machine-readable output:
-  corvee brief --json
+  corvee brief -o json
 See the machine-wide backlog alongside this project's:
-  corvee brief --scope all --json
+  corvee brief --scope all -o json
 Check only what's filed in the shared global database:
-  corvee brief --scope global --json
+  corvee brief --scope global -o json
 """
 
 
@@ -160,13 +165,14 @@ def labels_section(
 
 @click.command(epilog=EPILOG)
 @click.option("--scope", "-s", "scope_filter", type=click.Choice(SCOPE_FILTERS), default="all")
-@click.option("--json", "-j", "as_json", is_flag=True)
-def brief(scope_filter: str, as_json: bool) -> None:
+@output_option(wide=True)
+def brief(scope_filter: str, output_format: str) -> None:
     """Session-start snapshot: what's claimed, what's ready, what's gone stale.
 
     Combines `task mine`, `task ready` and `task list --stale` into one
     read-only call.
     """
+    output = narrow_output_format(output_format)
     scope = narrow_scope_filter(scope_filter)
     sections = {
         "mine": mine_section(scope),
@@ -174,11 +180,12 @@ def brief(scope_filter: str, as_json: bool) -> None:
         "stale": stale_section(scope),
         "labels": labels_section(),
     }
-    if as_json:
+    if output == "json":
         click.echo(json.dumps(sections))
         return
+    task_columns = LIST_TABLE_WIDE_FIELDS if output == "wide" else LIST_TABLE_DEFAULT_FIELDS
     blocks = [
-        f"{name}:\n{render_table(rows, default_fields=LIST_TABLE_DEFAULT_FIELDS)}"
+        f"{name}:\n{render_table(rows, default_fields=task_columns)}"
         for name, rows in sections.items()
         if name != "labels" and rows
     ]

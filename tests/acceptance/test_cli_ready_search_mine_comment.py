@@ -22,7 +22,7 @@ class TestReady:
         claimed_id = add_task("claimed one")
         runner.invoke(cli, ["task", "claim", claimed_id])
 
-        result = runner.invoke(cli, ["task", "ready", "--json"])
+        result = runner.invoke(cli, ["task", "ready", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [ready_id]
 
@@ -34,7 +34,7 @@ class TestReady:
         runner.invoke(cli, ["task", "label", labeled_id, "--add", "api"])
         add_task("unlabeled")
 
-        result = runner.invoke(cli, ["task", "ready", "--label", "api", "--json"])
+        result = runner.invoke(cli, ["task", "ready", "--label", "api", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [labeled_id]
 
@@ -45,7 +45,7 @@ class TestReady:
         labeled_id = add_task("labeled")
         runner.invoke(cli, ["task", "label", labeled_id, "--add", "API"])
 
-        result = runner.invoke(cli, ["task", "ready", "--label", "API", "--json"])
+        result = runner.invoke(cli, ["task", "ready", "--label", "API", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [labeled_id]
 
@@ -53,7 +53,7 @@ class TestReady:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """--label is normalized the same way as `task label --add`, so a bad pattern exits 2."""
-        result = runner.invoke(cli, ["task", "ready", "--label", "has space", "--json"])
+        result = runner.invoke(cli, ["task", "ready", "--label", "has space", "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "invalid_label"
@@ -64,7 +64,7 @@ class TestReady:
         """--limit caps the sorted result to the first N, not an arbitrary N."""
         add_task("a")
         b_id = add_task("b")
-        result = runner.invoke(cli, ["task", "ready", "--limit", "1", "--json"])
+        result = runner.invoke(cli, ["task", "ready", "--limit", "1", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [b_id]
 
 
@@ -75,7 +75,7 @@ class TestSearch:
         """`task search` matches a case-insensitive substring of the title."""
         add_task("Fix the flaky auth test")
         add_task("unrelated task")
-        result = runner.invoke(cli, ["task", "search", "flaky auth", "--json"])
+        result = runner.invoke(cli, ["task", "search", "flaky auth", "-o", "json"])
         payload = json.loads(result.output)
         assert len(payload) == 1
 
@@ -87,11 +87,12 @@ class TestSearch:
         runner.invoke(cli, ["task", "comment", task_id, "root cause was a stale cache"])
 
         assert (
-            json.loads(runner.invoke(cli, ["task", "search", "stale cache", "--json"]).output) == []
+            json.loads(runner.invoke(cli, ["task", "search", "stale cache", "-o", "json"]).output)
+            == []
         )
 
         result = runner.invoke(
-            cli, ["task", "search", "stale cache", "--include-comments", "--json"]
+            cli, ["task", "search", "stale cache", "--include-comments", "-o", "json"]
         )
         assert [t["id"] for t in json.loads(result.output)] == [task_id]
 
@@ -102,9 +103,11 @@ class TestSearch:
         done_id = add_task("archived flaky fix")
         runner.invoke(cli, ["task", "update", done_id, "--state", "done"])
 
-        assert json.loads(runner.invoke(cli, ["task", "search", "flaky", "--json"]).output) == []
+        assert (
+            json.loads(runner.invoke(cli, ["task", "search", "flaky", "-o", "json"]).output) == []
+        )
 
-        result = runner.invoke(cli, ["task", "search", "flaky", "--all", "--json"])
+        result = runner.invoke(cli, ["task", "search", "flaky", "--all", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [done_id]
 
     def test_limit_caps_the_result(
@@ -113,7 +116,7 @@ class TestSearch:
         """--limit caps the sorted result to the first N, not an arbitrary N."""
         add_task("matching one")
         second_id = add_task("matching two")
-        result = runner.invoke(cli, ["task", "search", "matching", "--limit", "1", "--json"])
+        result = runner.invoke(cli, ["task", "search", "matching", "--limit", "1", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [second_id]
 
 
@@ -126,7 +129,7 @@ class TestMine:
         runner.invoke(cli, ["task", "claim", task_id])
         runner.invoke(cli, ["task", "comment", task_id, "starting now"])
 
-        result = runner.invoke(cli, ["task", "mine", "--json"])
+        result = runner.invoke(cli, ["task", "mine", "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["id"] == task_id
         assert payload[0]["last_comment"]["body"] == "starting now"
@@ -137,7 +140,7 @@ class TestMine:
         """A claimed task with no comments yet reports last_comment as null, not missing."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "claim", task_id])
-        result = runner.invoke(cli, ["task", "mine", "--json"])
+        result = runner.invoke(cli, ["task", "mine", "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["last_comment"] is None
 
@@ -147,7 +150,7 @@ class TestMine:
         """--fields trims the result to the requested columns, like list/ready/search."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "claim", task_id])
-        result = runner.invoke(cli, ["task", "mine", "--fields", "id,title", "--json"])
+        result = runner.invoke(cli, ["task", "mine", "--fields", "id,title", "-o", "json"])
         payload = json.loads(result.output)
         assert payload == [{"id": task_id, "title": "task"}]
 
@@ -159,7 +162,7 @@ class TestMine:
         second = add_task("second")
         runner.invoke(cli, ["task", "claim", first])
         runner.invoke(cli, ["task", "claim", second])
-        result = runner.invoke(cli, ["task", "mine", "--limit", "1", "--json"])
+        result = runner.invoke(cli, ["task", "mine", "--limit", "1", "-o", "json"])
         assert [t["id"] for t in json.loads(result.output)] == [second]
 
 
@@ -170,7 +173,7 @@ class TestComment:
         """A comment shows up as a "comment"-kind event in `task show`'s timeline."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, "a note"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         comment_events = [e for e in payload[0]["events"] if e["kind"] == "comment"]
         assert len(comment_events) == 1
@@ -183,7 +186,7 @@ class TestComment:
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, "note one"])
         runner.invoke(cli, ["task", "comment", task_id, "note two"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--no-events", "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "--no-events", "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["events"] == []
         # created (from add_task) + the two comments

@@ -7,8 +7,9 @@
 import click
 
 from corvee.cli.completion import complete_labels, complete_task_ids
+from corvee.cli.params import output_option
 from corvee.cli.scope import fetch_merged, paginate_after, resolve_cursor, sort_tasks
-from corvee.constants import SCOPE_FILTERS, narrow_scope_filter
+from corvee.constants import SCOPE_FILTERS, narrow_output_format, narrow_scope_filter
 from corvee.db.tasks import ready_tasks
 from corvee.guards.fields import validate_fields
 from corvee.guards.labels import normalize_label
@@ -18,15 +19,15 @@ EPILOG = """\
 \b
 Examples:
 See what's unclaimed, unblocked, and could be started right now:
-  corvee task ready --json
+  corvee task ready -o json
 Narrow to one label, trimmed to a couple of fields:
-  corvee task ready --label api --json --fields id,title
+  corvee task ready --label api -o json --fields id,title
 Cap the result to the five highest-priority candidates:
-  corvee task ready --limit 5 --json
+  corvee task ready --limit 5 -o json
 List only the ready tasks filed with --global:
-  corvee task ready --scope global --json
+  corvee task ready --scope global -o json
 Page through a long ready list, 20 rows at a time:
-  corvee task ready --after TASK-88 --limit 20 --json
+  corvee task ready --after TASK-88 --limit 20 -o json
 """
 
 
@@ -42,14 +43,14 @@ Page through a long ready list, 20 rows at a time:
 )
 @click.option("--limit", "-n", type=click.IntRange(min=1))
 @click.option("--fields", "-f", "fields_csv")
-@click.option("--json", "-j", "as_json", is_flag=True)
+@output_option(wide=True)
 def ready(
     labels: tuple[str, ...],
     scope_filter: str,
     after_ref: str | None,
     limit: int | None,
     fields_csv: str | None,
-    as_json: bool,
+    output_format: str,
 ) -> None:
     """Unclaimed open tasks with no open blocks predecessor — what can start right now."""
     fields = validate_fields(fields_csv.split(",")) if fields_csv else None
@@ -65,4 +66,6 @@ def ready(
         tasks = paginate_after(tasks, resolve_cursor(after_ref))
     if limit is not None:
         tasks = tasks[:limit]
-    emit_tasks([t.to_dict() for t in tasks], as_json=as_json, fields=fields)
+    emit_tasks(
+        [t.to_dict() for t in tasks], output=narrow_output_format(output_format), fields=fields
+    )

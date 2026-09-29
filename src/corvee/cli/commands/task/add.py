@@ -13,13 +13,14 @@ import click
 
 from corvee.cli.completion import complete_labels, complete_task_ids
 from corvee.cli.context import corvee_context
-from corvee.cli.params import StdinOrValue
+from corvee.cli.params import StdinOrValue, output_option
 from corvee.constants import (
     DEFAULT_PRIORITY,
     DEFAULT_TASK_TYPE,
     PRIORITIES,
     TASK_TYPES,
     Scope,
+    narrow_output_format,
     narrow_priority,
     narrow_task_type,
 )
@@ -39,17 +40,17 @@ File a task with a title and a description of how to reproduce it:
   corvee task add "Fix the flaky auth test" --description "repro: run make test twice in a row"
 Set its type and priority, and get the result as JSON:
   corvee task add "Investigate slow query" --description "p99 up 3x since Tuesday's deploy" \\
-    --type bug --priority high --json
+    --type bug --priority high -o json
 Read a long or multi-line title from stdin instead of an argument:
   corvee task add - --description "multi-line body read separately" <<< "Title from stdin"
 Attach a label at creation time:
-  corvee task add "Write the migration" --description "adds facts table" --label api --json
+  corvee task add "Write the migration" --description "adds facts table" --label api -o json
 File it as a subtask of an existing task:
-  corvee task add "Add index" --description "on tasks.claimed_by" --parent TASK-1 --json
+  corvee task add "Add index" --description "on tasks.claimed_by" --parent TASK-1 -o json
 File a task that isn't specific to this project:
   corvee task add "Renew the CA cert" --description "expires yearly, not project-specific" --global
 File a whole batch from a JSON array in one all-or-nothing transaction:
-  corvee task add --from-file backlog.json --json
+  corvee task add --from-file backlog.json -o json
 """
 
 FROM_FILE_HELP = """\
@@ -181,7 +182,7 @@ def _insert_one(
     is_flag=True,
     help="File into the shared, machine-wide database instead of this project's.",
 )
-@click.option("--json", "-j", "as_json", is_flag=True)
+@output_option()
 def add(
     title: str | None,
     description: str | None,
@@ -191,7 +192,7 @@ def add(
     parent_ref: str | None,
     from_file: Path | None,
     is_global: bool,
-    as_json: bool,
+    output_format: str,
 ) -> None:
     """Create a task, or a whole batch from --from-file in one transaction."""
     if from_file is not None:
@@ -223,4 +224,4 @@ def add(
             )
             for item in items
         ]
-    emit_tasks([task.to_dict() for task in tasks], as_json=as_json)
+    emit_tasks([task.to_dict() for task in tasks], output=narrow_output_format(output_format))

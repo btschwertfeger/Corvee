@@ -21,7 +21,9 @@ class TestClaimAndUpdate:
         """The claimant can update a task it holds, and the update keeps the claim."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "claim", task_id])
-        result = runner.invoke(cli, ["task", "update", task_id, "--state", "in_progress", "--json"])
+        result = runner.invoke(
+            cli, ["task", "update", task_id, "--state", "in_progress", "-o", "json"]
+        )
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["state"] == "in_progress"
@@ -39,7 +41,7 @@ class TestClaimAndUpdate:
         runner.invoke(cli, ["task", "claim", task_id])
 
         monkeypatch.setenv("CORVEE_ACTOR", "agent:other")
-        result = runner.invoke(cli, ["task", "update", task_id, "--title", "stolen", "--json"])
+        result = runner.invoke(cli, ["task", "update", task_id, "--title", "stolen", "-o", "json"])
         assert result.exit_code == 4
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "claim_conflict"
@@ -54,11 +56,11 @@ class TestClaimAndUpdate:
         runner.invoke(cli, ["task", "update", b, "--state", "done"])  # b is now in a terminal state
 
         # b: done -> cancelled is not a valid transition (guard violation).
-        result = runner.invoke(cli, ["task", "update", a, b, "--state", "cancelled", "--json"])
+        result = runner.invoke(cli, ["task", "update", a, b, "--state", "cancelled", "-o", "json"])
         assert result.exit_code == 5
 
         # a must be untouched since the batch rolled back.
-        show_result = runner.invoke(cli, ["task", "show", a, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", a, "-o", "json"])
         assert json.loads(show_result.output)[0]["state"] == "open"
 
     def test_reopening_child_of_done_parent_warns(
@@ -71,7 +73,7 @@ class TestClaimAndUpdate:
         runner.invoke(cli, ["task", "update", child, "--state", "done"])
         runner.invoke(cli, ["task", "update", parent, "--state", "done"])
 
-        result = runner.invoke(cli, ["task", "update", child, "--state", "open", "--json"])
+        result = runner.invoke(cli, ["task", "update", child, "--state", "open", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["state"] == "open"
@@ -83,7 +85,7 @@ class TestClaimAndUpdate:
         """`task claim` batches several ids into one transaction, like `task update`."""
         a = add_task("a")
         b = add_task("b")
-        result = runner.invoke(cli, ["task", "claim", a, b, "--json"])
+        result = runner.invoke(cli, ["task", "claim", a, b, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert [t["claimed_by"] for t in payload] == ["agent:test", "agent:test"]
@@ -102,10 +104,10 @@ class TestClaimAndUpdate:
         runner.invoke(cli, ["task", "claim", b])  # b is now held by agent:other
 
         monkeypatch.setenv("CORVEE_ACTOR", "agent:test")
-        result = runner.invoke(cli, ["task", "claim", a, b, "--json"])
+        result = runner.invoke(cli, ["task", "claim", a, b, "-o", "json"])
         assert result.exit_code == 4
 
-        show_result = runner.invoke(cli, ["task", "show", a, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", a, "-o", "json"])
         assert json.loads(show_result.output)[0]["claimed_by"] is None
 
 
@@ -116,7 +118,7 @@ class TestUnclaim:
         """`task unclaim` clears claimed_by on a task the caller holds."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "claim", task_id])
-        result = runner.invoke(cli, ["task", "unclaim", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "unclaim", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["claimed_by"] is None
@@ -129,7 +131,7 @@ class TestUnclaim:
         b = add_task("b")
         runner.invoke(cli, ["task", "claim", a, b])
 
-        result = runner.invoke(cli, ["task", "unclaim", a, b, "--json"])
+        result = runner.invoke(cli, ["task", "unclaim", a, b, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert [t["claimed_by"] for t in payload] == [None, None]

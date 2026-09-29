@@ -19,7 +19,7 @@ class TestBrief:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """A project with nothing claimed, ready, or stale returns empty arrays, not an error."""
-        result = runner.invoke(cli, ["brief", "--json"])
+        result = runner.invoke(cli, ["brief", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload == {"mine": [], "ready": [], "stale": [], "labels": []}
@@ -46,7 +46,7 @@ class TestBrief:
         )
         conn.commit()
 
-        result = runner.invoke(cli, ["brief", "--json"])
+        result = runner.invoke(cli, ["brief", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert {t["id"] for t in payload["mine"]} == {stale_id, mine_id}
@@ -60,7 +60,7 @@ class TestBrief:
         for i in range(8):
             add_task(f"task {i}")
 
-        result = runner.invoke(cli, ["brief", "--json"])
+        result = runner.invoke(cli, ["brief", "-o", "json"])
         payload = json.loads(result.output)
         assert len(payload["ready"]) == 5
 
@@ -90,7 +90,8 @@ class TestBrief:
                 "ready to start",
                 "--description",
                 "a long free-text description",
-                "--json",
+                "-o",
+                "json",
             ],
         )
         result = runner.invoke(cli, ["brief"])
@@ -102,9 +103,9 @@ class TestBrief:
     ) -> None:
         """--scope behaves like task list's: all merges local and global."""
         runner.invoke(
-            cli, ["task", "add", "global task", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global task", "--description", "d", "--global", "-o", "json"]
         )
-        result = runner.invoke(cli, ["brief", "--json"])
+        result = runner.invoke(cli, ["brief", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload["ready"]] == ["TASK-GLOBAL-1"]
 
@@ -115,7 +116,7 @@ class TestBrief:
         task_id = add_task("tagged")
         runner.invoke(cli, ["task", "label", task_id, "--add", "api"])
 
-        result = runner.invoke(cli, ["brief", "--json"])
+        result = runner.invoke(cli, ["brief", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["labels"] == [{"name": "api", "task_count": 1}]
 
@@ -124,12 +125,12 @@ class TestBrief:
     ) -> None:
         """A global task's labels stay out of `labels`, regardless of --scope (§3.3)."""
         global_result = runner.invoke(
-            cli, ["task", "add", "global task", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global task", "--description", "d", "--global", "-o", "json"]
         )
         global_id = json.loads(global_result.output)[0]["id"]
         runner.invoke(cli, ["task", "label", global_id, "--add", "global-only"])
 
-        result = runner.invoke(cli, ["brief", "--scope", "all", "--json"])
+        result = runner.invoke(cli, ["brief", "--scope", "all", "-o", "json"])
         payload = json.loads(result.output)
         assert payload["labels"] == []
 

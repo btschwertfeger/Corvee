@@ -18,7 +18,7 @@ class TestClaims:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """No claims at all returns [], not an error."""
-        result = runner.invoke(cli, ["task", "claims", "--json"])
+        result = runner.invoke(cli, ["task", "claims", "-o", "json"])
         assert result.exit_code == 0
         assert json.loads(result.output) == []
 
@@ -36,7 +36,7 @@ class TestClaims:
         monkeypatch.setenv("CORVEE_ACTOR", "agent:other")
         runner.invoke(cli, ["task", "claim", second])
 
-        result = runner.invoke(cli, ["task", "claims", "--json"])
+        result = runner.invoke(cli, ["task", "claims", "-o", "json"])
         payload = {row["actor"]: row for row in json.loads(result.output)}
         assert payload["agent:test"]["count"] == 1
         assert payload["agent:other"]["count"] == 1

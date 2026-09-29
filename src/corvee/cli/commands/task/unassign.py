@@ -8,6 +8,8 @@ import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
+from corvee.cli.params import output_option
+from corvee.constants import narrow_output_format
 from corvee.db.tasks import unassign_task
 from corvee.models import parse_task_refs
 from corvee.output import emit_tasks
@@ -18,16 +20,16 @@ Examples:
 Clear a task's assignment:
   corvee task unassign TASK-14
 Unassign and get the result as JSON:
-  corvee task unassign 14 --json
+  corvee task unassign 14 -o json
 Clear a batch of assignments in one call:
-  corvee task unassign 14 15 16 --json
+  corvee task unassign 14 15 16 -o json
 """
 
 
 @click.command(epilog=EPILOG)
 @click.argument("task_refs", nargs=-1, required=True, shell_complete=complete_task_ids)
-@click.option("--json", "-j", "as_json", is_flag=True)
-def unassign(task_refs: tuple[str, ...], as_json: bool) -> None:
+@output_option(wide=True)
+def unassign(task_refs: tuple[str, ...], output_format: str) -> None:
     """Clear the assignment on one or more tasks."""
     task_ids, scope = parse_task_refs(task_refs)
     with corvee_context(scope=scope) as ctx:
@@ -35,4 +37,4 @@ def unassign(task_refs: tuple[str, ...], as_json: bool) -> None:
             unassign_task(ctx.conn, task_id, ctx.actor, session_id=ctx.session_id, scope=scope)
             for task_id in task_ids
         ]
-    emit_tasks([task.to_dict() for task in tasks], as_json=as_json)
+    emit_tasks([task.to_dict() for task in tasks], output=narrow_output_format(output_format))
