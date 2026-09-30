@@ -20,8 +20,8 @@ class TestExplain:
         assert "--actor" in result.output
 
     def test_does_not_accept_json(self, runner: CliRunner) -> None:
-        """`explain` has no --json flag; its output is fixed plain text, not a query result."""
-        result = runner.invoke(cli, ["explain", "--json"])
+        """`explain` has no -o/--output flag; its output is fixed plain text, not a query result."""
+        result = runner.invoke(cli, ["explain", "-o", "json"])
         assert result.exit_code == 2
 
     def test_splits_tasks_and_facts_into_separate_sections(self, runner: CliRunner) -> None:

@@ -8,8 +8,9 @@ from typing import Any
 
 import click
 
+from corvee.cli.params import output_option
 from corvee.cli.scope import fetch_merged
-from corvee.constants import SCOPE_FILTERS, Scope, narrow_scope_filter
+from corvee.constants import SCOPE_FILTERS, Scope, narrow_output_format, narrow_scope_filter
 from corvee.db.stats import claims_summary
 from corvee.output import emit_tasks
 
@@ -17,11 +18,11 @@ EPILOG = """\
 \b
 Examples:
 See which actors currently hold live claims, oldest claim first:
-  corvee task claims --json
+  corvee task claims -o json
 Check only the global backlog:
-  corvee task claims --scope global --json
+  corvee task claims --scope global -o json
 Find one actor's claim count:
-  corvee task claims --json | jq '.[] | select(.actor == "agent:claude")'
+  corvee task claims -o json | jq '.[] | select(.actor == "agent:claude")'
 """
 
 
@@ -38,9 +39,13 @@ def _oldest_claimed_at(row: dict[str, Any]) -> str:
 
 @click.command(name="claims", epilog=EPILOG)
 @click.option("--scope", "-s", "scope_filter", type=click.Choice(SCOPE_FILTERS), default="all")
-@click.option("--json", "-j", "as_json", is_flag=True)
-def claims(scope_filter: str, as_json: bool) -> None:
+@output_option()
+def claims(scope_filter: str, output_format: str) -> None:
     """Actors currently holding live task claims, with a count and the oldest claimed_at."""
     rows = fetch_merged(narrow_scope_filter(scope_filter), _fetch)
     rows.sort(key=_oldest_claimed_at)
-    emit_tasks(rows, as_json=as_json, fields=("actor", "scope", "count", "oldest_claimed_at"))
+    emit_tasks(
+        rows,
+        output=narrow_output_format(output_format),
+        fields=("actor", "scope", "count", "oldest_claimed_at"),
+    )

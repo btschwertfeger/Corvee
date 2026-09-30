@@ -22,7 +22,7 @@ class TestTaskStart:
         state=in_progress, in one call.
         """
         task_id = add_task("task")
-        result = runner.invoke(cli, ["task", "start", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "start", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["state"] == "in_progress"
@@ -40,7 +40,7 @@ class TestTaskStart:
         runner.invoke(cli, ["task", "claim", task_id])
 
         monkeypatch.setenv("CORVEE_ACTOR", "agent:other")
-        result = runner.invoke(cli, ["task", "start", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "start", task_id, "-o", "json"])
         assert result.exit_code == 4
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "claim_conflict"
@@ -58,7 +58,7 @@ class TestTaskStart:
         runner.invoke(cli, ["task", "claim", task_id])
 
         monkeypatch.setenv("CORVEE_ACTOR", "agent:other")
-        result = runner.invoke(cli, ["task", "start", task_id, "--force", "--json"])
+        result = runner.invoke(cli, ["task", "start", task_id, "--force", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["state"] == "in_progress"
@@ -71,7 +71,7 @@ class TestTaskStart:
         task_id = add_task("task")
         runner.invoke(cli, ["task", "update", task_id, "--state", "cancelled"])
 
-        result = runner.invoke(cli, ["task", "start", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "start", task_id, "-o", "json"])
         assert result.exit_code == 5
 
     def test_accepts_multiple_ids_in_one_transaction(
@@ -80,7 +80,7 @@ class TestTaskStart:
         """`task start` batches several ids, matching `claim`/`update`."""
         a = add_task("a")
         b = add_task("b")
-        result = runner.invoke(cli, ["task", "start", a, b, "--json"])
+        result = runner.invoke(cli, ["task", "start", a, b, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert [t["state"] for t in payload] == ["in_progress", "in_progress"]
@@ -92,7 +92,7 @@ class TestTaskStart:
         """Starting an already-in_progress task held by the caller succeeds without error."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "start", task_id])
-        result = runner.invoke(cli, ["task", "start", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "start", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["state"] == "in_progress"

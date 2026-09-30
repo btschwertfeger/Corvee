@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 
 import click
 
+from corvee.cli.params import output_option
 from corvee.cli.scope import fetch_merged, sort_facts
 from corvee.constants import (
     DEFAULT_STALE_DURATION,
@@ -15,6 +16,7 @@ from corvee.constants import (
     FACT_STATUSES,
     SCOPE_FILTERS,
     narrow_fact_status,
+    narrow_output_format,
     narrow_scope_filter,
 )
 from corvee.db.facts import FactFilter, list_facts
@@ -26,21 +28,23 @@ EPILOG = """\
 \b
 Examples:
 List every non-retracted fact, newest first:
-  corvee fact list --json
+  corvee fact list -o json
+See the verification/timestamp columns a plain list drops by default:
+  corvee fact list -o wide
 Narrow to facts currently verified:
-  corvee fact list --status verified --json
+  corvee fact list --status verified -o json
 Include retracted facts too, trimmed to a few fields:
-  corvee fact list --all --json --fields id,claim,status
+  corvee fact list --all -o json --fields id,claim,status
 List only the facts filed with --global:
-  corvee fact list --scope global --json
+  corvee fact list --scope global -o json
 See everything that changed while you were away:
-  corvee fact list --since 7d --all --json
+  corvee fact list --since 7d --all -o json
 Check what a specific actor has verified:
-  corvee fact list --verified-by agent:claude --json
+  corvee fact list --verified-by agent:claude -o json
 Find verified facts whose proof hasn't been rechecked in a while:
-  corvee fact list --stale --json
+  corvee fact list --stale -o json
 Use a longer cutoff than the default:
-  corvee fact list --stale 30d --json
+  corvee fact list --stale 30d -o json
 """
 
 
@@ -60,7 +64,7 @@ Use a longer cutoff than the default:
 @click.option("--scope", "-s", "scope_filter", type=click.Choice(SCOPE_FILTERS), default="all")
 @click.option("--limit", "-n", type=click.IntRange(min=1))
 @click.option("--fields", "-f", "fields_csv")
-@click.option("--json", "-j", "as_json", is_flag=True)
+@output_option(wide=True)
 def list_command(
     status: str | None,
     since_duration: str | None,
@@ -70,7 +74,7 @@ def list_command(
     scope_filter: str,
     limit: int | None,
     fields_csv: str | None,
-    as_json: bool,
+    output_format: str,
 ) -> None:
     """List facts. Default excludes retracted; --all includes them. Also runs as `ls`."""
     fields = (
@@ -97,4 +101,6 @@ def list_command(
     )
     if limit is not None:
         facts = facts[:limit]
-    emit_facts([f.to_dict() for f in facts], as_json=as_json, fields=fields)
+    emit_facts(
+        [f.to_dict() for f in facts], output=narrow_output_format(output_format), fields=fields
+    )

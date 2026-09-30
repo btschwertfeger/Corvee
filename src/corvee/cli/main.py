@@ -67,7 +67,7 @@ Examples:
 Identify the caller without exporting environment variables first, so a
 bare "corvee ..." prefix stays allowlist-friendly for a permission-gated
 agent harness:
-  corvee --actor agent:claude --session-id session-42 task list --json
+  corvee --actor agent:claude --session-id session-42 task list -o json
 """
 
 

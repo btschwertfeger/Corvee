@@ -10,8 +10,9 @@ from typing import Any
 import click
 
 from corvee.actor import resolve_actor
+from corvee.cli.params import output_option
 from corvee.cli.scope import fetch_merged
-from corvee.constants import SCOPE_FILTERS, Scope, narrow_scope_filter
+from corvee.constants import SCOPE_FILTERS, Scope, narrow_output_format, narrow_scope_filter
 from corvee.db.events import get_last_comment
 from corvee.db.tasks import TaskRow, mine_tasks
 from corvee.guards.fields import validate_fields
@@ -21,13 +22,13 @@ EPILOG = """\
 \b
 Examples:
 See everything the calling actor is already working on:
-  corvee task mine --json
+  corvee task mine -o json
 Cap it to the five most recent:
-  corvee task mine --limit 5 --json
+  corvee task mine --limit 5 -o json
 Pull out just the ids:
-  corvee task mine --json | jq '.[].id'
+  corvee task mine -o json | jq '.[].id'
 Keep the session-start check cheap:
-  corvee task mine --fields id,title --json
+  corvee task mine --fields id,title -o json
 """
 
 
@@ -40,8 +41,8 @@ def _fetch(conn: sqlite3.Connection, scope: Scope) -> list[tuple[TaskRow, dict[s
 @click.option("--scope", "-s", "scope_filter", type=click.Choice(SCOPE_FILTERS), default="all")
 @click.option("--limit", "-n", type=click.IntRange(min=1))
 @click.option("--fields", "-f", "fields_csv")
-@click.option("--json", "-j", "as_json", is_flag=True)
-def mine(scope_filter: str, limit: int | None, fields_csv: str | None, as_json: bool) -> None:
+@output_option(wide=True)
+def mine(scope_filter: str, limit: int | None, fields_csv: str | None, output_format: str) -> None:
     """Open tasks claimed by (or assigned and unclaimed to) $CORVEE_ACTOR,
     each with its last comment.
 
@@ -61,4 +62,4 @@ def mine(scope_filter: str, limit: int | None, fields_csv: str | None, as_json: 
         detail = task.to_dict()
         detail["last_comment"] = last_comment
         results.append(detail)
-    emit_tasks(results, as_json=as_json, fields=fields)
+    emit_tasks(results, output=narrow_output_format(output_format), fields=fields)

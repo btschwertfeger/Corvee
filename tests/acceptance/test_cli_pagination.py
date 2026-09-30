@@ -23,7 +23,9 @@ class TestTaskListAfter:
         expected = list(reversed(ids))
 
         first_page = json.loads(
-            runner.invoke(cli, ["task", "list", "--limit", "2", "--fields", "id", "--json"]).output
+            runner.invoke(
+                cli, ["task", "list", "--limit", "2", "--fields", "id", "-o", "json"]
+            ).output
         )
         assert [t["id"] for t in first_page] == expected[:2]
 
@@ -39,7 +41,8 @@ class TestTaskListAfter:
                     "2",
                     "--fields",
                     "id",
-                    "--json",
+                    "-o",
+                    "json",
                 ],
             ).output
         )
@@ -49,13 +52,13 @@ class TestTaskListAfter:
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
         task_id = add_task("only")
-        result = runner.invoke(cli, ["task", "list", "--after", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "list", "--after", task_id, "-o", "json"])
         assert json.loads(result.output) == []
 
     def test_missing_cursor_id_is_not_found(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        result = runner.invoke(cli, ["task", "list", "--after", "TASK-999", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--after", "TASK-999", "-o", "json"])
         assert result.exit_code == 3
 
 
@@ -67,14 +70,16 @@ class TestTaskReadyAfter:
         expected = list(reversed(ids))
 
         first_page = json.loads(
-            runner.invoke(cli, ["task", "ready", "--limit", "1", "--fields", "id", "--json"]).output
+            runner.invoke(
+                cli, ["task", "ready", "--limit", "1", "--fields", "id", "-o", "json"]
+            ).output
         )
         assert [t["id"] for t in first_page] == expected[:1]
 
         second_page = json.loads(
             runner.invoke(
                 cli,
-                ["task", "ready", "--after", first_page[0]["id"], "--fields", "id", "--json"],
+                ["task", "ready", "--after", first_page[0]["id"], "--fields", "id", "-o", "json"],
             ).output
         )
         assert [t["id"] for t in second_page] == expected[1:]
@@ -89,7 +94,7 @@ class TestTaskSearchAfter:
 
         first_page = json.loads(
             runner.invoke(
-                cli, ["task", "search", "needle", "--limit", "1", "--fields", "id", "--json"]
+                cli, ["task", "search", "needle", "--limit", "1", "--fields", "id", "-o", "json"]
             ).output
         )
         assert [t["id"] for t in first_page] == expected[:1]
@@ -105,7 +110,8 @@ class TestTaskSearchAfter:
                     first_page[0]["id"],
                     "--fields",
                     "id",
-                    "--json",
+                    "-o",
+                    "json",
                 ],
             ).output
         )

@@ -53,7 +53,7 @@ class TestConfigProblems:
         """
         project.db_path.chmod(0o444)
         try:
-            result = runner.invoke(cli, ["task", "add", "x", "--description", "d", "--json"])
+            result = runner.invoke(cli, ["task", "add", "x", "--description", "d", "-o", "json"])
         finally:
             project.db_path.chmod(0o644)
 
@@ -76,7 +76,7 @@ class TestConfigProblems:
         monkeypatch.setenv("HOME", str(fake_home))
         monkeypatch.setenv("USERPROFILE", str(fake_home))
 
-        result = runner.invoke(cli, ["fact", "add", "x", "--global", "--json"])
+        result = runner.invoke(cli, ["fact", "add", "x", "--global", "-o", "json"])
 
         assert result.exit_code == 6
         assert result.stdout == ""

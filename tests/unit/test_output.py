@@ -166,7 +166,7 @@ class TestEmitTaskDetail:
         no uppercased column-header row.
         """
         row = self._row(description="a long free-text description explaining repro steps")
-        emit_task_detail([row], as_json=False)
+        emit_task_detail([row], output="table")
         out = capsys.readouterr().out
         assert "id: TASK-1" in out
         assert "description:" in out
@@ -180,14 +180,14 @@ class TestEmitTaskDetail:
     ) -> None:
         """Each id given to `show` gets its own header block, in the order given."""
         rows = [self._row(id="TASK-2"), self._row(id="TASK-1")]
-        emit_task_detail(rows, as_json=False)
+        emit_task_detail(rows, output="table")
         out = capsys.readouterr().out
         assert out.index("id: TASK-2") < out.index("id: TASK-1")
 
     def test_json_output_unaffected(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """--json still returns the full row shape, ignoring the plain-text layout change."""
+        """-o json still returns the full row shape, ignoring the plain-text layout change."""
         row = self._row()
-        emit_task_detail([row], as_json=True)
+        emit_task_detail([row], output="json")
         payload = json.loads(capsys.readouterr().out)
         assert payload == [row]
 
@@ -198,7 +198,7 @@ class TestEmitTaskDetail:
         row = self._row(
             links=[{"direction": "outgoing", "relation": "blocks", "task_id": "TASK-2"}]
         )
-        emit_task_detail([row], as_json=False)
+        emit_task_detail([row], output="table")
         out = capsys.readouterr().out
         assert "links:" in out
         assert "outgoing blocks TASK-2" in out
@@ -209,7 +209,7 @@ class TestEmitFactDetail:
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         row = {**FACT, "events": []}
-        emit_fact_detail([row], as_json=False)
+        emit_fact_detail([row], output="table")
         out = capsys.readouterr().out
         assert "id: FACT-1" in out
         assert "claim: package X is MIT-licensed" in out
@@ -241,7 +241,7 @@ class TestEmitFactDetail:
                 },
             ],
         }
-        emit_fact_detail([row], as_json=False)
+        emit_fact_detail([row], output="table")
         out = capsys.readouterr().out
         assert "'package X is MIT-licensed' -> 'package X is Apache-2.0-licensed'" in out
         assert "license file changed upstream" in out
@@ -249,68 +249,100 @@ class TestEmitFactDetail:
 
 class TestEmitTasks:
     def test_json_prints_array(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """--json output is a JSON array containing exactly the given task objects."""
-        emit_tasks([TASK], as_json=True)
+        """-o json output is a JSON array containing exactly the given task objects."""
+        emit_tasks([TASK], output="json")
         payload = json.loads(capsys.readouterr().out)
         assert payload == [TASK]
 
     def test_json_empty_list_prints_empty_array(self, capsys: pytest.CaptureFixture[str]) -> None:
         """An empty task list still prints a valid empty JSON array, not nothing."""
-        emit_tasks([], as_json=True)
+        emit_tasks([], output="json")
         assert json.loads(capsys.readouterr().out) == []
 
     def test_table_respects_fields(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Table output shows only the requested columns, omitting the rest."""
-        emit_tasks([TASK], as_json=False, fields=["id", "title"])
+        emit_tasks([TASK], output="table", fields=["id", "title"])
         out = capsys.readouterr().out
         assert "TITLE" in out
         assert "DESCRIPTION" not in out
 
-    def test_table_default_omits_description(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """With no --fields, the table drops the long free-text description column
-        by default -- it's what blows up a fixed-width row past terminal width.
+    def test_table_default_shows_only_the_triage_columns(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """With no --fields, `-o table` shows only id/title/type/priority/state/scope --
+        everything else needs `-o wide` or an explicit --fields.
         """
-        emit_tasks([TASK], as_json=False)
+        emit_tasks([TASK], output="table")
         out = capsys.readouterr().out
         assert "TITLE" in out
+        assert "STATE" in out
         assert "DESCRIPTION" not in out
+        assert "CLAIMED_BY" not in out
+        assert "CREATED_AT" not in out
+
+    def test_wide_adds_the_dropped_columns(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """`-o wide` restores the columns `-o table` drops, still without description."""
+        emit_tasks([TASK], output="wide")
+        out = capsys.readouterr().out
+        assert "CLAIMED_BY" in out
+        assert "CREATED_AT" in out
+        assert "DESCRIPTION" not in out
+
+    def test_fields_wins_over_wide(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """--fields is an explicit projection and overrides -o wide outright."""
+        emit_tasks([TASK], output="wide", fields=["id", "title"])
+        out = capsys.readouterr().out
+        assert "TITLE" in out
+        assert "CLAIMED_BY" not in out
 
     def test_table_fields_can_still_request_description(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """--fields can still ask for description explicitly; only the default omits it."""
-        emit_tasks([TASK], as_json=False, fields=["id", "description"])
+        emit_tasks([TASK], output="table", fields=["id", "description"])
         out = capsys.readouterr().out
         assert "DESCRIPTION" in out
 
     def test_json_default_still_includes_description(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """--json is unaffected by the table's narrower default -- it always returns
+        """-o json is unaffected by the table's narrower default -- it always returns
         the full row shape.
         """
-        emit_tasks([TASK], as_json=True)
+        emit_tasks([TASK], output="json")
         payload = json.loads(capsys.readouterr().out)
         assert "description" in payload[0]
 
 
 class TestEmitFacts:
     def test_json_prints_array(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """--json output is a JSON array containing exactly the given fact objects."""
-        emit_facts([FACT], as_json=True)
+        """-o json output is a JSON array containing exactly the given fact objects."""
+        emit_facts([FACT], output="json")
         payload = json.loads(capsys.readouterr().out)
         assert payload == [FACT]
 
-    def test_table_defaults_to_fact_columns(self, capsys: pytest.CaptureFixture[str]) -> None:
-        """With no --fields, the table falls back to the fact column set, not the task one."""
-        emit_facts([FACT], as_json=False)
+    def test_table_defaults_to_the_minimal_fact_columns(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """With no --fields, `-o table` shows only id/claim/status/scope."""
+        emit_facts([FACT], output="table")
         out = capsys.readouterr().out
         assert "CLAIM" in out
         assert "STATUS" in out
+        assert "VERIFIED_BY" not in out
+        assert "CREATED_AT" not in out
+
+    def test_wide_adds_the_dropped_columns(self, capsys: pytest.CaptureFixture[str]) -> None:
+        """`-o wide` restores the columns `-o table` drops, still without proof."""
+        emit_facts([FACT], output="wide")
+        out = capsys.readouterr().out
+        assert "VERIFIED_BY" in out
+        assert "CREATED_AT" in out
+        assert "PROOF" not in out
 
     def test_table_respects_fields(self, capsys: pytest.CaptureFixture[str]) -> None:
         """Table output for facts shows only the requested columns, omitting the rest."""
-        emit_facts([FACT], as_json=False, fields=["id", "claim"])
+        emit_facts([FACT], output="table", fields=["id", "claim"])
         out = capsys.readouterr().out
         assert "CLAIM" in out
         assert "STATUS" not in out
@@ -319,14 +351,14 @@ class TestEmitFacts:
         """With no --fields, the table drops the long free-text proof column by
         default -- the fact-group equivalent of description on tasks.
         """
-        emit_facts([FACT], as_json=False)
+        emit_facts([FACT], output="table")
         out = capsys.readouterr().out
         assert "CLAIM" in out
         assert "PROOF" not in out
 
     def test_table_fields_can_still_request_proof(self, capsys: pytest.CaptureFixture[str]) -> None:
         """--fields can still ask for proof explicitly; only the default omits it."""
-        emit_facts([FACT], as_json=False, fields=["id", "proof"])
+        emit_facts([FACT], output="table", fields=["id", "proof"])
         out = capsys.readouterr().out
         assert "PROOF" in out
 

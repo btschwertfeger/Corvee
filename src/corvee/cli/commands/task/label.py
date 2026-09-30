@@ -8,6 +8,8 @@ import click
 
 from corvee.cli.completion import complete_labels, complete_task_ids
 from corvee.cli.context import corvee_context
+from corvee.cli.params import output_option
+from corvee.constants import narrow_output_format
 from corvee.db.labels import add_label, remove_label
 from corvee.db.tasks import require_tasks
 from corvee.guards.labels import normalize_label
@@ -20,11 +22,11 @@ Examples:
 Attach a label to a task, creating it if it's new:
   corvee task label TASK-14 --add api
 Attach two labels at once, and get the result as JSON:
-  corvee task label 14 --add api --add urgent --json
+  corvee task label 14 --add api --add urgent -o json
 Removals apply first, so this ends with the label attached:
   corvee task label 14 --remove urgent --add urgent
 Tag a whole batch of tasks with one label in one call:
-  corvee task label 14 15 16 --add urgent --json
+  corvee task label 14 15 16 --add urgent -o json
 """
 
 
@@ -41,9 +43,12 @@ Tag a whole batch of tasks with one label in one call:
     help="Repeatable.",
     shell_complete=complete_labels,
 )
-@click.option("--json", "-j", "as_json", is_flag=True)
+@output_option()
 def label(
-    task_refs: tuple[str, ...], to_add: tuple[str, ...], to_remove: tuple[str, ...], as_json: bool
+    task_refs: tuple[str, ...],
+    to_add: tuple[str, ...],
+    to_remove: tuple[str, ...],
+    output_format: str,
 ) -> None:
     """Manage labels on one or more tasks; removals apply before additions."""
     task_ids, scope = parse_task_refs(task_refs)
@@ -56,4 +61,4 @@ def label(
             for name in to_add:
                 add_label(ctx.conn, task_id, normalize_label(name), ctx.actor, ctx.session_id)
         tasks = require_tasks(ctx.conn, task_ids, scope=scope)
-    emit_tasks([task.to_dict() for task in tasks], as_json=as_json)
+    emit_tasks([task.to_dict() for task in tasks], output=narrow_output_format(output_format))

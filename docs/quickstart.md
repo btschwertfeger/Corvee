@@ -29,7 +29,7 @@ and an optional per-session token. Set them with global flags, before the
 subcommand:
 
 ```bash
-corvee --actor agent:claude --session-id session-42 task list --json
+corvee --actor agent:claude --session-id session-42 task list -o json
 ```
 
 or with environment variables, which the flags override when both are
@@ -53,29 +53,39 @@ shell use needs no setup.
 ## The core loop
 
 ```bash
-corvee task mine --json                             # what am I already working on?
-corvee task ready --json                             # what could I start right now?
-corvee task search "auth token" --json               # does a task for this exist already?
-corvee task add "Fix the flaky auth test" --description "..." --json  # file one if not
-corvee task claim TASK-14 --json                     # start it
-corvee task update TASK-14 --state in_progress --json
-corvee task comment TASK-14 "found the root cause" --json
-corvee task update TASK-14 --state done --json       # finish it, claim clears automatically
+corvee task mine -o json                             # what am I already working on?
+corvee task ready -o json                            # what could I start right now?
+corvee task search "auth token" -o json              # does a task for this exist already?
+corvee task add "Fix the flaky auth test" --description "..." -o json  # file one if not
+corvee task claim TASK-14 -o json                    # start it
+corvee task update TASK-14 --state in_progress -o json
+corvee task comment TASK-14 "found the root cause" -o json
+corvee task update TASK-14 --state done -o json      # finish it, claim clears automatically
 ```
 
-Most commands accept `--json` and, on success, print a JSON array of
-objects to stdout. A handful of exceptions are covered in
+Most commands accept `-o`/`--output` and, with `json`, print a JSON array
+of objects to stdout. A handful of exceptions are covered in
 [Commands](commands.md). On failure, nothing is written to stdout and a
 JSON error object goes to stderr instead, so a caller can parse stdout
 unconditionally.
 
 ## What the output looks like
 
-Without `--json`, mutating commands print a fixed-width table of the
-affected row(s):
+With `-o table` (the default), mutating commands print a fixed-width table
+of just enough to identify and triage the affected row(s):
 
 ```
 $ corvee task add "Fix the flaky auth test" --description "Retry logic in test_auth.py::test_login_retry is racy under load"
+ID      TITLE                    TYPE  PRIORITY  STATE  SCOPE
+TASK-1  Fix the flaky auth test  task  medium    open   local
+```
+
+`-o wide` restores the columns the default drops, on the row-listing
+commands (`task list`/`ready`/`search`/`mine`, `fact list`/`search`,
+`brief`):
+
+```
+$ corvee task list -o wide
 ID      TITLE                    TYPE  PRIORITY  STATE  CLAIMED_BY  CLAIMED_AT  ASSIGNED_TO  CREATED_AT                UPDATED_AT                SCOPE
 TASK-1  Fix the flaky auth test  task  medium    open                                        2026-09-15T06:28:27.641Z  2026-09-15T06:28:27.641Z  local
 ```
@@ -121,8 +131,8 @@ Facts follow the same two shapes. `fact add --proof` verifies immediately;
 
 ```
 $ corvee fact add "requests is Apache-2.0 licensed" --proof "pip show requests | grep License"
-ID      CLAIM                            STATUS    VERIFIED_AT               VERIFIED_BY   CREATED_AT                UPDATED_AT                SCOPE
-FACT-1  requests is Apache-2.0 licensed  verified  2026-09-15T06:28:27.892Z  agent:claude  2026-09-15T06:28:27.892Z  2026-09-15T06:28:27.892Z  local
+ID      CLAIM                            STATUS    SCOPE
+FACT-1  requests is Apache-2.0 licensed  verified  local
 
 $ corvee fact show FACT-1
 id: FACT-1
@@ -150,11 +160,11 @@ claims (a place to record something as verified, with proof and a date), so
 an agent can retrieve it later instead of re-deriving or hallucinating it:
 
 ```bash
-corvee fact search "license" --json    # does a fact for this exist already?
-corvee fact add "requests is Apache-2.0 licensed" --json --proof \
+corvee fact search "license" -o json    # does a fact for this exist already?
+corvee fact add "requests is Apache-2.0 licensed" -o json --proof \
   "pip download requests --no-deps -d /tmp && unzip -q /tmp/requests-*.whl -d /tmp/requests-whl \
   && grep -i '^License:' /tmp/requests-whl/*/METADATA"
-corvee fact verify FACT-1 --json --proof \
+corvee fact verify FACT-1 -o json --proof \
   "pip download requests --no-deps -d /tmp && unzip -q /tmp/requests-*.whl -d /tmp/requests-whl \
   && grep -i '^License:' /tmp/requests-whl/*/METADATA"   # re-verify later
 ```
@@ -169,9 +179,9 @@ project on the machine (`~/.corvee/corvee.db`), created on first use, with
 no extra setup:
 
 ```bash
-corvee task add "renew the CA cert" --description "expires yearly" --global --json
-corvee task list --json                    # merges local and global by default
-corvee task list --scope local --json      # this project's backlog only
+corvee task add "renew the CA cert" --description "expires yearly" --global -o json
+corvee task list -o json                    # merges local and global by default
+corvee task list --scope local -o json      # this project's backlog only
 ```
 
 Every id-based command (`claim`, `show`, `update`, ...) works on a global

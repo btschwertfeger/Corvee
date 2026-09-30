@@ -11,11 +11,14 @@ import pytest
 from corvee.constants import (
     FACT_LIST_FIELDS,
     FACT_LIST_TABLE_DEFAULT_FIELDS,
+    FACT_LIST_TABLE_WIDE_FIELDS,
     FACT_STATUSES,
     LABEL_PATTERN,
     LIST_FIELDS,
     LIST_TABLE_DEFAULT_FIELDS,
+    LIST_TABLE_WIDE_FIELDS,
     OPEN_STATES,
+    OUTPUT_FORMATS,
     PRIORITIES,
     RELATIONS,
     SCOPE_FILTERS,
@@ -24,6 +27,7 @@ from corvee.constants import (
     TASK_TYPES,
     TRANSITIONS,
     narrow_fact_status,
+    narrow_output_format,
     narrow_priority,
     narrow_relation,
     narrow_scope,
@@ -53,6 +57,10 @@ class TestValueSets:
     def test_fact_statuses_cover_all_documented_values(self) -> None:
         """FACT_STATUSES matches the exact set the spec documents for fact status."""
         assert FACT_STATUSES == ("unverified", "verified", "retracted")
+
+    def test_output_formats_cover_all_documented_values(self) -> None:
+        """OUTPUT_FORMATS matches the exact set the spec documents for -o/--output."""
+        assert OUTPUT_FORMATS == ("table", "wide", "json")
 
     def test_open_states_excludes_done_and_cancelled(self) -> None:
         """OPEN_STATES excludes exactly the two terminal states, matching the "open" filter rule."""
@@ -91,17 +99,25 @@ class TestValueSets:
             "scope",
         )
 
-    def test_list_table_default_fields_is_list_fields_minus_description(self) -> None:
-        """The table's default column set is LIST_FIELDS with the long free-text
-        description column dropped, in the same order.
-        """
-        assert tuple(f for f in LIST_FIELDS if f != "description") == LIST_TABLE_DEFAULT_FIELDS
+    def test_list_table_default_fields_is_the_minimal_triage_set(self) -> None:
+        """`-o table` (the default) shows only enough to identify and triage a row."""
+        assert LIST_TABLE_DEFAULT_FIELDS == ("id", "title", "type", "priority", "state", "scope")
 
-    def test_fact_list_table_default_fields_is_fact_list_fields_minus_proof(self) -> None:
-        """The fact table's default column set is FACT_LIST_FIELDS with the long
-        free-text proof column dropped, in the same order.
+    def test_list_table_wide_fields_is_list_fields_minus_description(self) -> None:
+        """`-o wide` is LIST_FIELDS with the long free-text description column
+        dropped, in the same order.
         """
-        assert tuple(f for f in FACT_LIST_FIELDS if f != "proof") == FACT_LIST_TABLE_DEFAULT_FIELDS
+        assert tuple(f for f in LIST_FIELDS if f != "description") == LIST_TABLE_WIDE_FIELDS
+
+    def test_fact_list_table_default_fields_is_the_minimal_triage_set(self) -> None:
+        """`-o table` (the default) shows only enough to identify and triage a fact."""
+        assert FACT_LIST_TABLE_DEFAULT_FIELDS == ("id", "claim", "status", "scope")
+
+    def test_fact_list_table_wide_fields_is_fact_list_fields_minus_proof(self) -> None:
+        """`-o wide` is FACT_LIST_FIELDS with the long free-text proof column
+        dropped, in the same order.
+        """
+        assert tuple(f for f in FACT_LIST_FIELDS if f != "proof") == FACT_LIST_TABLE_WIDE_FIELDS
 
 
 class TestNarrowers:
@@ -121,6 +137,7 @@ class TestNarrowers:
             (narrow_fact_status, FACT_STATUSES),
             (narrow_scope, SCOPES),
             (narrow_scope_filter, SCOPE_FILTERS),
+            (narrow_output_format, OUTPUT_FORMATS),
         ],
     )
     def test_returns_every_valid_value_unchanged(
@@ -139,6 +156,7 @@ class TestNarrowers:
             narrow_fact_status,
             narrow_scope,
             narrow_scope_filter,
+            narrow_output_format,
         ],
     )
     def test_raises_for_a_value_outside_its_tuple(self, narrow: Callable[[str], str]) -> None:

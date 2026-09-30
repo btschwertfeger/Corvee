@@ -12,7 +12,8 @@ import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
-from corvee.constants import Scope
+from corvee.cli.params import output_option
+from corvee.constants import Scope, narrow_output_format
 from corvee.db.links import get_children
 from corvee.db.tasks import require_task
 from corvee.models import parse_task_ref, task_ref
@@ -23,9 +24,9 @@ Examples:
 See everything under an epic, several levels deep:
   corvee task tree TASK-1
 Get the same tree as nested JSON:
-  corvee task tree TASK-1 --json
+  corvee task tree TASK-1 -o json
 Pull out every id in the subtree with jq:
-  corvee task tree TASK-1 --json | jq -r '.. | .id? // empty'
+  corvee task tree TASK-1 -o json | jq -r '.. | .id? // empty'
 """
 
 
@@ -76,13 +77,13 @@ def _render_lines(root: dict[str, Any]) -> list[str]:
 
 @click.command(name="tree", epilog=EPILOG)
 @click.argument("ref", shell_complete=complete_task_ids)
-@click.option("--json", "-j", "as_json", is_flag=True)
-def tree(ref: str, as_json: bool) -> None:
+@output_option()
+def tree(ref: str, output_format: str) -> None:
     """The full parent_of subtree rooted at <id>, as a tree instead of a flat list."""
     parsed = parse_task_ref(ref)
     with corvee_context(write=False, scope=parsed.scope) as ctx:
         result = _build_tree(ctx.conn, parsed.id, parsed.scope)
-    if as_json:
+    if narrow_output_format(output_format) == "json":
         click.echo(json.dumps(result))
     else:
         click.echo("\n".join(_render_lines(result)))

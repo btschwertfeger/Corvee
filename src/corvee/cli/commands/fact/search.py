@@ -6,8 +6,14 @@
 
 import click
 
+from corvee.cli.params import output_option
 from corvee.cli.scope import fetch_merged, sort_facts
-from corvee.constants import FACT_LIST_FIELDS, SCOPE_FILTERS, narrow_scope_filter
+from corvee.constants import (
+    FACT_LIST_FIELDS,
+    SCOPE_FILTERS,
+    narrow_output_format,
+    narrow_scope_filter,
+)
 from corvee.db.facts import search_facts
 from corvee.guards.fields import validate_fields
 from corvee.output import emit_facts
@@ -16,15 +22,15 @@ EPILOG = """\
 \b
 Examples:
 Check whether a fact for this already exists:
-  corvee fact search "license" --json
+  corvee fact search "license" -o json
 Include retracted facts in the search:
-  corvee fact search "page number" --all --json
+  corvee fact search "page number" --all -o json
 Cap the result and trim it to a couple of fields:
-  corvee fact search "MIT" --limit 5 --fields id,claim --json
+  corvee fact search "MIT" --limit 5 --fields id,claim -o json
 Check what a specific actor has verified matching this text:
-  corvee fact search "license" --verified-by agent:claude --json
+  corvee fact search "license" --verified-by agent:claude -o json
 Also match text buried in the proof, not just the claim:
-  corvee fact search "PR #123" --include-proof --json
+  corvee fact search "PR #123" --include-proof -o json
 """
 
 
@@ -41,7 +47,7 @@ Also match text buried in the proof, not just the claim:
 @click.option("--scope", "-s", "scope_filter", type=click.Choice(SCOPE_FILTERS), default="all")
 @click.option("--limit", "-n", type=click.IntRange(min=1))
 @click.option("--fields", "-f", "fields_csv")
-@click.option("--json", "-j", "as_json", is_flag=True)
+@output_option(wide=True)
 def search(
     text: str,
     include_all: bool,
@@ -50,7 +56,7 @@ def search(
     scope_filter: str,
     limit: int | None,
     fields_csv: str | None,
-    as_json: bool,
+    output_format: str,
 ) -> None:
     """Facts whose claim contains <text>, case-insensitive."""
     fields = (
@@ -72,4 +78,6 @@ def search(
     )
     if limit is not None:
         facts = facts[:limit]
-    emit_facts([f.to_dict() for f in facts], as_json=as_json, fields=fields)
+    emit_facts(
+        [f.to_dict() for f in facts], output=narrow_output_format(output_format), fields=fields
+    )

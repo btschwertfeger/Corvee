@@ -20,11 +20,11 @@ class TestTaskShowReferenced:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """A TASK-<n> mention in another task's description is surfaced."""
-        runner.invoke(cli, ["task", "add", "target", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "target", "--description", "d", "-o", "json"])
         runner.invoke(
-            cli, ["task", "add", "source", "--description", "depends on TASK-1", "--json"]
+            cli, ["task", "add", "source", "--description", "depends on TASK-1", "-o", "json"]
         )
-        result = runner.invoke(cli, ["task", "show", "TASK-2", "--json"])
+        result = runner.invoke(cli, ["task", "show", "TASK-2", "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == ["TASK-1"]
 
@@ -33,9 +33,9 @@ class TestTaskShowReferenced:
     ) -> None:
         """A FACT-<n> mention in a comment is surfaced, not just description text."""
         task_id = add_task("task")
-        runner.invoke(cli, ["fact", "add", "requests is Apache-2.0 licensed", "--json"])
+        runner.invoke(cli, ["fact", "add", "requests is Apache-2.0 licensed", "-o", "json"])
         runner.invoke(cli, ["task", "comment", task_id, "verified via FACT-1"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == ["FACT-1"]
 
@@ -45,7 +45,7 @@ class TestTaskShowReferenced:
         """A task mentioning its own id is not listed as referencing itself."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, f"as discussed in {task_id}"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
 
@@ -55,7 +55,7 @@ class TestTaskShowReferenced:
         """A mention that doesn't resolve to a real row is silently dropped."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, "blocked on TASK-999"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
 
@@ -66,7 +66,7 @@ class TestTaskShowReferenced:
         4300-digit limit) is silently dropped, not an internal_error crash."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, f"see TASK-{'9' * 5000} here"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
@@ -78,7 +78,7 @@ class TestTaskShowReferenced:
         INTEGER range) is silently dropped, not an internal_error crash."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, "see TASK-99999999999999999999999"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
@@ -87,11 +87,11 @@ class TestTaskShowReferenced:
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
         """The same id mentioned twice appears once, in order of first appearance."""
-        runner.invoke(cli, ["task", "add", "target", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "target", "--description", "d", "-o", "json"])
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, "see TASK-1"])
         runner.invoke(cli, ["task", "comment", task_id, "still TASK-1"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == ["TASK-1"]
 
@@ -102,11 +102,11 @@ class TestTaskShowReferenced:
         global database, opened only because that mention was found.
         """
         runner.invoke(
-            cli, ["task", "add", "global target", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "global target", "--description", "d", "--global", "-o", "json"]
         )
         task_id = add_task("local task")
         runner.invoke(cli, ["task", "comment", task_id, "mirrors TASK-GLOBAL-1"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == ["TASK-GLOBAL-1"]
 
@@ -120,7 +120,7 @@ class TestTaskShowReferenced:
         assert not global_db_path().is_file()
         task_id = add_task("local task")
         runner.invoke(cli, ["task", "comment", task_id, "mirrors TASK-GLOBAL-1"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
         assert not global_db_path().is_file()
@@ -129,7 +129,7 @@ class TestTaskShowReferenced:
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
         """Plain-text output includes a referenced: line, like labels:/subtasks:."""
-        runner.invoke(cli, ["task", "add", "target", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "target", "--description", "d", "-o", "json"])
         task_id = add_task("task")
         runner.invoke(cli, ["task", "comment", task_id, "see TASK-1"])
         result = runner.invoke(cli, ["task", "show", task_id])
@@ -157,9 +157,18 @@ class TestGlobalRecordLocalMentionIsAmbiguous:
         monkeypatch.setenv("CORVEE_ACTOR", "agent:test")
         runner.invoke(
             cli,
-            ["task", "add", "global task", "--description", "mirrors TASK-1", "--global", "--json"],
+            [
+                "task",
+                "add",
+                "global task",
+                "--description",
+                "mirrors TASK-1",
+                "--global",
+                "-o",
+                "json",
+            ],
         )
-        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-1", "--json"])
+        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-1", "-o", "json"])
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
@@ -175,9 +184,18 @@ class TestGlobalRecordLocalMentionIsAmbiguous:
         add_task("local task")
         runner.invoke(
             cli,
-            ["task", "add", "global task", "--description", "mirrors TASK-1", "--global", "--json"],
+            [
+                "task",
+                "add",
+                "global task",
+                "--description",
+                "mirrors TASK-1",
+                "--global",
+                "-o",
+                "json",
+            ],
         )
-        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-1", "--json"])
+        result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-1", "-o", "json"])
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
@@ -186,27 +204,30 @@ class TestGlobalRecordLocalMentionIsAmbiguous:
 class TestFactShowReferenced:
     def test_mention_in_claim_resolves(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A TASK-<n> mention in a fact's claim text is surfaced."""
-        runner.invoke(cli, ["task", "add", "task", "--description", "d", "--json"])
-        runner.invoke(cli, ["fact", "add", "confirmed while working TASK-1", "--json"])
-        result = runner.invoke(cli, ["fact", "show", "FACT-1", "--json"])
+        runner.invoke(cli, ["task", "add", "task", "--description", "d", "-o", "json"])
+        runner.invoke(cli, ["fact", "add", "confirmed while working TASK-1", "-o", "json"])
+        result = runner.invoke(cli, ["fact", "show", "FACT-1", "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == ["TASK-1"]
 
     def test_mention_in_proof_resolves(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A mention inside --proof text is surfaced too, not just the claim."""
-        runner.invoke(cli, ["task", "add", "task", "--description", "d", "--json"])
+        runner.invoke(cli, ["task", "add", "task", "--description", "d", "-o", "json"])
         runner.invoke(
-            cli, ["fact", "add", "package is MIT", "--proof", "see TASK-1 for the repro", "--json"]
+            cli,
+            ["fact", "add", "package is MIT", "--proof", "see TASK-1 for the repro", "-o", "json"],
         )
-        result = runner.invoke(cli, ["fact", "show", "FACT-1", "--json"])
+        result = runner.invoke(cli, ["fact", "show", "FACT-1", "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == ["TASK-1"]
 
     def test_self_reference_is_excluded(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A fact mentioning its own id is not listed as referencing itself."""
-        runner.invoke(cli, ["fact", "add", "a claim", "--json"])
-        runner.invoke(cli, ["fact", "revise", "FACT-1", "a claim about FACT-1 itself", "--json"])
-        result = runner.invoke(cli, ["fact", "show", "FACT-1", "--json"])
+        runner.invoke(cli, ["fact", "add", "a claim", "-o", "json"])
+        runner.invoke(
+            cli, ["fact", "revise", "FACT-1", "a claim about FACT-1 itself", "-o", "json"]
+        )
+        result = runner.invoke(cli, ["fact", "show", "FACT-1", "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
 
@@ -216,10 +237,10 @@ class TestFactShowReferenced:
         """A FACT-GLOBAL-<n> mention inside a local fact resolves against the
         global database, opened only because that mention was found.
         """
-        runner.invoke(cli, ["fact", "add", "global target", "--global", "--json"])
+        runner.invoke(cli, ["fact", "add", "global target", "--global", "-o", "json"])
         fact_id = add_fact("local claim")
-        runner.invoke(cli, ["fact", "revise", fact_id, "mirrors FACT-GLOBAL-1", "--json"])
-        result = runner.invoke(cli, ["fact", "show", fact_id, "--json"])
+        runner.invoke(cli, ["fact", "revise", fact_id, "mirrors FACT-GLOBAL-1", "-o", "json"])
+        result = runner.invoke(cli, ["fact", "show", fact_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == ["FACT-GLOBAL-1"]
 
@@ -232,8 +253,8 @@ class TestFactShowReferenced:
         """
         assert not global_db_path().is_file()
         fact_id = add_fact("local claim")
-        runner.invoke(cli, ["fact", "revise", fact_id, "mirrors FACT-GLOBAL-1", "--json"])
-        result = runner.invoke(cli, ["fact", "show", fact_id, "--json"])
+        runner.invoke(cli, ["fact", "revise", fact_id, "mirrors FACT-GLOBAL-1", "-o", "json"])
+        result = runner.invoke(cli, ["fact", "show", fact_id, "-o", "json"])
         payload = json.loads(result.output)
         assert payload[0]["referenced"] == []
         assert not global_db_path().is_file()

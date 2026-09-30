@@ -35,7 +35,7 @@ class TestConcurrentClaims:
         """Of 8 real processes racing to claim one task, exactly one wins and the rest exit 4."""
         bootstrap_project(tmp_path)
         add_result = _run(
-            ["task", "add", "contended task", "--description", "d", "--json"],
+            ["task", "add", "contended task", "--description", "d", "-o", "json"],
             tmp_path,
             "agent:setup",
         )
@@ -44,7 +44,7 @@ class TestConcurrentClaims:
         n = 8
         processes = [
             subprocess.Popen(
-                [sys.executable, "-c", _RUN_CLI, "task", "claim", task_id, "--json"],
+                [sys.executable, "-c", _RUN_CLI, "task", "claim", task_id, "-o", "json"],
                 cwd=tmp_path,
                 env={**os.environ, "CORVEE_ACTOR": f"agent:{i}"},
                 stdout=subprocess.PIPE,
@@ -83,7 +83,7 @@ class TestConcurrentMigration:
         n = 6
         processes = [
             subprocess.Popen(
-                [sys.executable, "-c", _RUN_CLI, "task", "list", "--json"],
+                [sys.executable, "-c", _RUN_CLI, "task", "list", "-o", "json"],
                 cwd=tmp_path,
                 env={**os.environ, "CORVEE_ACTOR": f"agent:{i}"},
                 stdout=subprocess.PIPE,

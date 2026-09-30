@@ -20,7 +20,7 @@ class TestLabelCommand:
         """--add attaches labels, visible afterward in `task show`."""
         task_id = add_task("task")
         runner.invoke(cli, ["task", "label", task_id, "--add", "API", "--add", "urgent"])
-        result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         payload = json.loads(result.output)
         assert sorted(payload[0]["labels"]) == ["api", "urgent"]
 
@@ -31,10 +31,10 @@ class TestLabelCommand:
         task_id = add_task("task")
         runner.invoke(cli, ["task", "label", task_id, "--add", "x"])
         result = runner.invoke(
-            cli, ["task", "label", task_id, "--remove", "x", "--add", "x", "--json"]
+            cli, ["task", "label", task_id, "--remove", "x", "--add", "x", "-o", "json"]
         )
         assert result.exit_code == 0
-        show_result = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         assert json.loads(show_result.output)[0]["labels"] == ["x"]
 
     def test_invalid_name_exits_two(
@@ -42,14 +42,14 @@ class TestLabelCommand:
     ) -> None:
         """A label name that fails the allowed pattern exits 2 with the invalid_label error code."""
         task_id = add_task("task")
-        result = runner.invoke(cli, ["task", "label", task_id, "--add", "has space", "--json"])
+        result = runner.invoke(cli, ["task", "label", task_id, "--add", "has space", "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "invalid_label"
 
     def test_on_missing_task_exits_three(self, runner: CliRunner, project: ProjectConfig) -> None:
         """Labeling a nonexistent task id exits 3."""
-        result = runner.invoke(cli, ["task", "label", "999", "--add", "x", "--json"])
+        result = runner.invoke(cli, ["task", "label", "999", "--add", "x", "-o", "json"])
         assert result.exit_code == 3
 
     def test_accepts_multiple_ids_in_one_call(
@@ -58,12 +58,12 @@ class TestLabelCommand:
         """`task label` applies --add/--remove to every id given, in one transaction."""
         a = add_task("a")
         b = add_task("b")
-        result = runner.invoke(cli, ["task", "label", a, b, "--add", "urgent", "--json"])
+        result = runner.invoke(cli, ["task", "label", a, b, "--add", "urgent", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [a, b]
 
-        show_result = runner.invoke(cli, ["task", "show", a, b, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", a, b, "-o", "json"])
         for task in json.loads(show_result.output):
             assert task["labels"] == ["urgent"]
 
@@ -72,10 +72,10 @@ class TestLabelCommand:
     ) -> None:
         """A missing id in the batch rolls back labels already applied earlier in the call."""
         a = add_task("a")
-        result = runner.invoke(cli, ["task", "label", a, "999", "--add", "urgent", "--json"])
+        result = runner.invoke(cli, ["task", "label", a, "999", "--add", "urgent", "-o", "json"])
         assert result.exit_code == 3
 
-        show_result = runner.invoke(cli, ["task", "show", a, "--json"])
+        show_result = runner.invoke(cli, ["task", "show", a, "-o", "json"])
         assert json.loads(show_result.output)[0]["labels"] == []
 
 
@@ -90,7 +90,7 @@ class TestLabelsCommand:
         runner.invoke(cli, ["task", "label", b, "--add", "api"])
         runner.invoke(cli, ["task", "label", a, "--add", "urgent"])
 
-        result = runner.invoke(cli, ["task", "labels", "--json"])
+        result = runner.invoke(cli, ["task", "labels", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         counts = {entry["name"]: entry["task_count"] for entry in payload}
@@ -108,7 +108,7 @@ class TestListLabelFilter:
         runner.invoke(cli, ["task", "label", b, "--add", "api"])
 
         result = runner.invoke(
-            cli, ["task", "list", "--label", "api", "--label", "urgent", "--json"]
+            cli, ["task", "list", "--label", "api", "--label", "urgent", "-o", "json"]
         )
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [a]
@@ -120,7 +120,7 @@ class TestListLabelFilter:
         task_id = add_task("task")
         runner.invoke(cli, ["task", "label", task_id, "--add", "API"])
 
-        result = runner.invoke(cli, ["task", "list", "--label", "API", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--label", "API", "-o", "json"])
         payload = json.loads(result.output)
         assert [t["id"] for t in payload] == [task_id]
 
@@ -128,7 +128,7 @@ class TestListLabelFilter:
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
         """--label is normalized the same way as --add, so a bad pattern exits 2."""
-        result = runner.invoke(cli, ["task", "list", "--label", "has space", "--json"])
+        result = runner.invoke(cli, ["task", "list", "--label", "has space", "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "invalid_label"

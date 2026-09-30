@@ -21,20 +21,20 @@ class TestTaskPurge:
         task_id = add_task("junk")
         runner.invoke(cli, ["task", "update", task_id, "--state", "cancelled"])
 
-        result = runner.invoke(cli, ["task", "purge", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "purge", task_id, "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload[0]["id"] == task_id
         assert payload[0]["state"] == "cancelled"
 
-        show = runner.invoke(cli, ["task", "show", task_id, "--json"])
+        show = runner.invoke(cli, ["task", "show", task_id, "-o", "json"])
         assert show.exit_code == 3
 
     def test_refuses_a_task_that_is_not_cancelled(
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
         task_id = add_task("junk")
-        result = runner.invoke(cli, ["task", "purge", task_id, "--json"])
+        result = runner.invoke(cli, ["task", "purge", task_id, "-o", "json"])
         assert result.exit_code == 5
 
     def test_shrinks_doctors_total(
@@ -43,12 +43,12 @@ class TestTaskPurge:
         """Purging removes the row from doctor's counts, unlike `cancelled` alone."""
         task_id = add_task("junk")
         runner.invoke(cli, ["task", "update", task_id, "--state", "cancelled"])
-        before = json.loads(runner.invoke(cli, ["doctor", "--json"]).output)
+        before = json.loads(runner.invoke(cli, ["doctor", "-o", "json"]).output)
         assert before["local"]["tasks"]["total"] == 1
 
         runner.invoke(cli, ["task", "purge", task_id])
 
-        after = json.loads(runner.invoke(cli, ["doctor", "--json"]).output)
+        after = json.loads(runner.invoke(cli, ["doctor", "-o", "json"]).output)
         assert after["local"]["tasks"]["total"] == 0
 
     def test_refuses_a_task_with_a_link(
@@ -59,7 +59,7 @@ class TestTaskPurge:
         runner.invoke(cli, ["task", "link", a, b, "--relation", "relates_to"])
         runner.invoke(cli, ["task", "update", a, "--state", "cancelled"])
 
-        result = runner.invoke(cli, ["task", "purge", a, "--json"])
+        result = runner.invoke(cli, ["task", "purge", a, "-o", "json"])
         assert result.exit_code == 5
 
     def test_multiple_ids_apply_in_one_transaction(
@@ -70,10 +70,10 @@ class TestTaskPurge:
         runner.invoke(cli, ["task", "update", cancelled, "--state", "cancelled"])
         still_open = add_task("open")
 
-        result = runner.invoke(cli, ["task", "purge", cancelled, still_open, "--json"])
+        result = runner.invoke(cli, ["task", "purge", cancelled, still_open, "-o", "json"])
         assert result.exit_code == 5
 
-        show = runner.invoke(cli, ["task", "show", cancelled, "--json"])
+        show = runner.invoke(cli, ["task", "show", cancelled, "-o", "json"])
         assert show.exit_code == 0
 
     def test_missing_task_is_not_found(self, runner: CliRunner, project: ProjectConfig) -> None:

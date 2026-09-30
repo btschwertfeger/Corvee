@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 import click
 
 from corvee.cli.completion import complete_labels, complete_task_ids
+from corvee.cli.params import output_option
 from corvee.cli.scope import fetch_merged, paginate_after, resolve_cursor, sort_tasks
 from corvee.constants import (
     DEFAULT_STALE_DURATION,
@@ -19,6 +20,7 @@ from corvee.constants import (
     STATES,
     TASK_TYPES,
     Scope,
+    narrow_output_format,
     narrow_priority,
     narrow_scope_filter,
     narrow_state,
@@ -35,25 +37,27 @@ EPILOG = """\
 \b
 Examples:
 List every open task, newest first:
-  corvee task list --json
+  corvee task list -o json
+See claim/assignment/timestamp columns a plain list drops by default:
+  corvee task list -o wide
 Narrow to one actor's tasks carrying a label, trimmed to a couple of fields:
-  corvee task list --label api --claimed-by agent:claude --json --fields id,title
+  corvee task list --label api --claimed-by agent:claude -o json --fields id,title
 Find what's been routed to a specific actor but not yet claimed:
-  corvee task list --assigned-to agent:claude --unclaimed --json
+  corvee task list --assigned-to agent:claude --unclaimed -o json
 Find claims that have gone quiet:
-  corvee task list --stale --json
+  corvee task list --stale -o json
 List only the tasks filed with --global:
-  corvee task list --scope global --json
+  corvee task list --scope global -o json
 Find what blocks TASK-9:
-  corvee task list --blocked-by TASK-9 --json
+  corvee task list --blocked-by TASK-9 -o json
 Find what TASK-9 blocks:
-  corvee task list --blocks TASK-9 --json
+  corvee task list --blocks TASK-9 -o json
 See everything that changed while you were away:
-  corvee task list --since 7d --all --json
+  corvee task list --since 7d --all -o json
 Page through a large backlog, 50 rows at a time:
-  corvee task list --limit 50 --json
+  corvee task list --limit 50 -o json
 Then fetch the next page, starting after the last id seen:
-  corvee task list --after TASK-233 --limit 50 --json
+  corvee task list --after TASK-233 --limit 50 -o json
 """
 
 
@@ -107,7 +111,7 @@ Then fetch the next page, starting after the last id seen:
 )
 @click.option("--limit", "-n", type=click.IntRange(min=1))
 @click.option("--fields", "-f", "fields_csv")
-@click.option("--json", "-j", "as_json", is_flag=True)
+@output_option(wide=True)
 def list_command(
     state: str | None,
     type_: str | None,
@@ -127,7 +131,7 @@ def list_command(
     after_ref: str | None,
     limit: int | None,
     fields_csv: str | None,
-    as_json: bool,
+    output_format: str,
 ) -> None:
     """List tasks with full filtering and column projection. Also runs as `ls`."""
     fields = validate_fields(fields_csv.split(",")) if fields_csv else None
@@ -178,4 +182,6 @@ def list_command(
         tasks = paginate_after(tasks, resolve_cursor(after_ref))
     if limit is not None:
         tasks = tasks[:limit]
-    emit_tasks([t.to_dict() for t in tasks], as_json=as_json, fields=fields)
+    emit_tasks(
+        [t.to_dict() for t in tasks], output=narrow_output_format(output_format), fields=fields
+    )

@@ -27,14 +27,14 @@ class TestDefaultScopeAllOutsideAProject:
     @pytest.mark.parametrize(
         "args",
         [
-            ["task", "list", "--json"],
-            ["task", "ready", "--json"],
-            ["task", "search", "x", "--json"],
-            ["task", "mine", "--json"],
-            ["task", "claims", "--json"],
-            ["fact", "list", "--json"],
-            ["fact", "search", "x", "--json"],
-            ["brief", "--json"],
+            ["task", "list", "-o", "json"],
+            ["task", "ready", "-o", "json"],
+            ["task", "search", "x", "-o", "json"],
+            ["task", "mine", "-o", "json"],
+            ["task", "claims", "-o", "json"],
+            ["fact", "list", "-o", "json"],
+            ["fact", "search", "x", "-o", "json"],
+            ["brief", "-o", "json"],
         ],
     )
     def test_succeeds_with_empty_result(self, runner: CliRunner, args: list[str]) -> None:
@@ -50,19 +50,19 @@ class TestDefaultScopeAllOutsideAProject:
         """
         monkeypatch.setenv("CORVEE_ACTOR", "agent:test")
         add_result = runner.invoke(
-            cli, ["task", "add", "renew CA cert", "--description", "d", "--global", "--json"]
+            cli, ["task", "add", "renew CA cert", "--description", "d", "--global", "-o", "json"]
         )
         assert add_result.exit_code == 0
         task_id = json.loads(add_result.output)[0]["id"]
 
-        claim_result = runner.invoke(cli, ["task", "claim", task_id, "--json"])
+        claim_result = runner.invoke(cli, ["task", "claim", task_id, "-o", "json"])
         assert claim_result.exit_code == 0
 
-        mine_result = runner.invoke(cli, ["task", "mine", "--json"])
+        mine_result = runner.invoke(cli, ["task", "mine", "-o", "json"])
         assert mine_result.exit_code == 0
         assert [t["id"] for t in json.loads(mine_result.output)] == [task_id]
 
-        ready_result = runner.invoke(cli, ["brief", "--json"])
+        ready_result = runner.invoke(cli, ["brief", "-o", "json"])
         assert ready_result.exit_code == 0
         assert [t["id"] for t in json.loads(ready_result.output)["mine"]] == [task_id]
 
@@ -71,8 +71,8 @@ class TestExplicitScopeLocalOutsideAProject:
     @pytest.mark.parametrize(
         "args",
         [
-            ["task", "list", "--scope", "local", "--json"],
-            ["fact", "list", "--scope", "local", "--json"],
+            ["task", "list", "--scope", "local", "-o", "json"],
+            ["fact", "list", "--scope", "local", "-o", "json"],
         ],
     )
     def test_still_fails_loudly(self, runner: CliRunner, args: list[str]) -> None:

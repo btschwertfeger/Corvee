@@ -111,12 +111,12 @@ cd your-project
 corvee init                              # once per project
 
 corvee task add "Fix the flaky auth test" --description "..."
-corvee task list --json
+corvee task list -o json
 corvee task claim TASK-1
 corvee task update TASK-1 --state done   # claim clears automatically
 
 corvee fact add "requests is Apache-2.0 licensed" --proof "pip show requests"
-corvee fact search "license" --json
+corvee fact search "license" -o json
 ```
 
 `corvee explain` prints a compact, agent-oriented cheat sheet from inside

@@ -33,7 +33,7 @@ class TestDurationValidation:
         bad_value: str,
     ) -> None:
         """A mistyped duration (e.g. "5x") exits 2, not 1 internal_error."""
-        result = runner.invoke(cli, [*args, bad_value, "--json"])
+        result = runner.invoke(cli, [*args, bad_value, "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] != "internal_error"
@@ -43,7 +43,7 @@ class TestDurationValidation:
     ) -> None:
         """`task show --since` goes through the same parse_duration call site."""
         task_id = add_task("task")
-        result = runner.invoke(cli, ["task", "show", task_id, "--since", "5x", "--json"])
+        result = runner.invoke(cli, ["task", "show", task_id, "--since", "5x", "-o", "json"])
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] != "internal_error"

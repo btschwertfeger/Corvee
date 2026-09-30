@@ -29,14 +29,14 @@ class TestInit:
         assert (tmp_path / ".corvee" / "config.toml").is_file()
 
     def test_json_reports_structured_result(self) -> None:
-        """`corvee init --json` reports the same result as a structured JSON object.
+        """`corvee init -o json` reports the same result as a structured JSON object.
 
         .gitignore doesn't exist in a fresh tmp_path, so it's skipped rather than
         created from scratch (GH#29) -- init only ever appends to a .gitignore a
         project already has. The pointer block is reported unconditionally, since
         init never writes AGENTS.md itself.
         """
-        result = CliRunner().invoke(cli, ["init", "--json"])
+        result = CliRunner().invoke(cli, ["init", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["config_created"] is True
@@ -47,7 +47,7 @@ class TestInit:
     def test_twice_is_idempotent(self) -> None:
         """Re-running `init` in an already-initialized directory changes nothing and reports so."""
         CliRunner().invoke(cli, ["init"])
-        result = CliRunner().invoke(cli, ["init", "--json"])
+        result = CliRunner().invoke(cli, ["init", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["config_created"] is False
@@ -56,7 +56,7 @@ class TestInit:
     def test_appends_to_an_existing_gitignore(self, tmp_path: Path) -> None:
         """A .gitignore that already exists gets the .corvee/ entry appended."""
         (tmp_path / ".gitignore").write_text("node_modules/\n")
-        result = CliRunner().invoke(cli, ["init", "--json"])
+        result = CliRunner().invoke(cli, ["init", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert payload["gitignore_status"] == "appended"
@@ -116,7 +116,7 @@ class TestInit:
         assert result.exit_code == 0
         written = (tmp_path / ".corvee" / "config.toml").read_text()
         assert tomllib.loads(written)["db_path"] == value
-        assert json.loads(CliRunner().invoke(cli, ["task", "list", "--json"]).output) == []
+        assert json.loads(CliRunner().invoke(cli, ["task", "list", "-o", "json"]).output) == []
 
     def test_db_path_is_ignored_on_a_second_init(self, tmp_path: Path) -> None:
         """--db-path on a re-run against an existing config changes nothing."""

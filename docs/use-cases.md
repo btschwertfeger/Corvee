@@ -28,8 +28,8 @@ Each agent session identifies itself, so two sessions never hold the same
 task at once:
 
 ```bash
-corvee --actor agent:claude --session-id session-42 task mine --json
-corvee --actor agent:claude --session-id session-42 task start TASK-14 --json
+corvee --actor agent:claude --session-id session-42 task mine -o json
+corvee --actor agent:claude --session-id session-42 task start TASK-14 -o json
 ```
 
 ## Research
@@ -97,7 +97,7 @@ see what an agent currently holds, and `corvee task assign` to route work
 without claiming it on someone else's behalf:
 
 ```bash
-corvee --actor human:alice task claims --json
+corvee --actor human:alice task claims -o json
 corvee --actor human:alice task assign TASK-14 --to agent:claude
 ```
 

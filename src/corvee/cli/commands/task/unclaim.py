@@ -8,6 +8,8 @@ import click
 
 from corvee.cli.completion import complete_task_ids
 from corvee.cli.context import corvee_context
+from corvee.cli.params import output_option
+from corvee.constants import narrow_output_format
 from corvee.db.tasks import unclaim_task
 from corvee.models import parse_task_refs
 from corvee.output import emit_tasks
@@ -18,9 +20,9 @@ Examples:
 Release a task you're done with for now, without finishing it:
   corvee task unclaim TASK-14
 Unclaim and get the result as JSON:
-  corvee task unclaim 14 --json
+  corvee task unclaim 14 -o json
 Release every claim before ending a session:
-  corvee task unclaim 14 15 16 --json
+  corvee task unclaim 14 15 16 -o json
 Release a claim held by another actor:
   corvee task unclaim 14 --force
 """
@@ -29,8 +31,8 @@ Release a claim held by another actor:
 @click.command(epilog=EPILOG)
 @click.argument("task_refs", nargs=-1, required=True, shell_complete=complete_task_ids)
 @click.option("--force", "-f", is_flag=True, help="Release a claim held by another actor.")
-@click.option("--json", "-j", "as_json", is_flag=True)
-def unclaim(task_refs: tuple[str, ...], force: bool, as_json: bool) -> None:
+@output_option(wide=True)
+def unclaim(task_refs: tuple[str, ...], force: bool, output_format: str) -> None:
     """Release a claim on one or more tasks."""
     task_ids, scope = parse_task_refs(task_refs)
     with corvee_context(scope=scope) as ctx:
@@ -40,4 +42,4 @@ def unclaim(task_refs: tuple[str, ...], force: bool, as_json: bool) -> None:
             )
             for task_id in task_ids
         ]
-    emit_tasks([task.to_dict() for task in tasks], as_json=as_json)
+    emit_tasks([task.to_dict() for task in tasks], output=narrow_output_format(output_format))
