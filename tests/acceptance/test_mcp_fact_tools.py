@@ -14,7 +14,7 @@ from mcp_helpers import call_error as _call_error
 
 from corvee.cli.context import corvee_context
 from corvee.config import ProjectConfig
-from corvee.db.facts import insert_fact
+from corvee.db.facts import insert_fact, verify_fact
 from corvee.mcp.server import build_server
 from corvee.mcp.server_config import ServerConfig
 
@@ -91,4 +91,64 @@ class TestFactVerify:
 
     def test_not_found_gives_a_clean_error(self, app: MCPServer) -> None:
         error = _call_error(app, "fact_verify", ref="FACT-999999", proof="x", session_id="sess-1")
+        assert error["error"]["code"] == "fact_not_found"
+
+
+class TestFactRevise:
+    def test_revises_a_facts_claim(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="old claim", actor="agent:test")
+
+        result = _call(
+            app,
+            "fact_revise",
+            ref=f"FACT-{fact.id}",
+            new_claim="corrected claim",
+            session_id="sess-1",
+        )
+        assert result["claim"] == "corrected claim"
+
+    def test_identical_claim_is_a_no_op(self, app: MCPServer, project: ProjectConfig) -> None:
+        """A verified fact stays verified when `new_claim` matches the
+        current claim exactly -- only a genuine change resets it, so
+        leaving `status`/`proof` untouched here is what proves the no-op
+        path ran instead of an ordinary write of identical text.
+        """
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="same claim", actor="agent:test")
+            fact = verify_fact(ctx.conn, fact.id, "checked it", "agent:test")
+
+        result = _call(
+            app,
+            "fact_revise",
+            ref=f"FACT-{fact.id}",
+            new_claim="same claim",
+            session_id="sess-1",
+        )
+        assert result["claim"] == "same claim"
+        assert result["status"] == "verified"
+        assert result["proof"] == "checked it"
+
+    def test_a_verified_fact_resets_to_unverified_on_a_genuine_change(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="old claim", actor="agent:test")
+            fact = verify_fact(ctx.conn, fact.id, "checked it", "agent:test")
+
+        result = _call(
+            app,
+            "fact_revise",
+            ref=f"FACT-{fact.id}",
+            new_claim="corrected claim",
+            session_id="sess-1",
+        )
+        assert result["claim"] == "corrected claim"
+        assert result["status"] == "unverified"
+        assert result["proof"] is None
+
+    def test_not_found_gives_a_clean_error(self, app: MCPServer) -> None:
+        error = _call_error(
+            app, "fact_revise", ref="FACT-999999", new_claim="x", session_id="sess-1"
+        )
         assert error["error"]["code"] == "fact_not_found"

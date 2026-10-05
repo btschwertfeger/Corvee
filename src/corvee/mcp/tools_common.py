@@ -20,7 +20,7 @@ from corvee.constants import SCOPE_FILTERS, Scope, ScopeFilter
 from corvee.errors import UsageError
 from corvee.mcp.scope import require_scope_available
 from corvee.mcp.server_config import ServerConfig
-from corvee.models import parse_task_ref, parse_task_refs
+from corvee.models import parse_fact_ref, parse_task_ref, parse_task_refs
 
 
 def _enum_field(description: str, choices: tuple[str, ...]) -> Any:
@@ -140,6 +140,15 @@ def write_context(config: ServerConfig, ref: str | int) -> tuple[Any, Any]:
     (`task_block`) can still do so under one `with` block.
     """
     parsed = parse_task_ref(str(ref))
+    return parsed, _scoped_write_context(config, parsed.scope)
+
+
+def fact_write_context(config: ServerConfig, ref: str | int) -> tuple[Any, Any]:
+    """The fact-side counterpart to `write_context`. Parses a fact `ref`,
+    checks its scope is available on this server, and returns (parsed_ref,
+    an un-entered corvee_context(write=True, ...)) for the caller to `with`.
+    """
+    parsed = parse_fact_ref(str(ref))
     return parsed, _scoped_write_context(config, parsed.scope)
 
 

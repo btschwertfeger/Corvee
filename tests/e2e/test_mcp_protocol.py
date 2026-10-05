@@ -43,6 +43,7 @@ _EXPECTED_TOOLS = {
     "fact_search",
     "fact_add",
     "fact_verify",
+    "fact_revise",
     "fact_show",
 }
 
