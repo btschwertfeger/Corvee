@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v36)
+# corvee — Technical Specification (v37)
 
 ## 1. Purpose
 
@@ -2198,22 +2198,32 @@ bullet below). `result` happens to use the same key name the SDK's own
 auto-wrap would have produced for a bare list return, but it is no
 longer that auto-wrap: both tools now compute the whole dict explicitly.
 A caller should read `structuredContent.result`/`structuredContent.omitted`
-directly rather than reassembling anything from `content`. A ref-taking
-tool (`task_claim`,
-`task_start`, `task_done`, `task_block`, ...) returns that one row's
-`to_dict()`, a single dict, `warnings` key included where `to_dict()`
-sets one. **`task_done`/`task_block` never return `apply_update`'s
-cascade array**, unlike the CLI's own `task update --cascade`: neither
-tool exposes a `cascade` argument, `apply_update` only ever cascades when
-called with `cascade=True` *and* the target state is `cancelled`
-(`db/tasks.py`), and neither condition can occur through either tool —
-`task_done`/`task_block` target `done`/`blocked`, never `cancelled`.
-Every ref-taking tool
-argument is a single ref (a plain string), not a batch: the CLI's own
-multi-id, one-transaction batching (`claim 14 15 16`) has no MCP
-equivalent — a caller wanting that makes one tool call per
-id — which keeps every tool's result shape uniform rather than
-conditional on how many ids came in.
+directly rather than reassembling anything from `content`. A tool that
+takes a single ref (`task_claim`, `task_start`, `task_done`, `task_block`,
+`fact_revise`, `fact_retract`, `fact_unverify`, ...) returns that one
+row's `to_dict()`, a single dict, `warnings` key included where
+`to_dict()` sets one. **`task_done`/`task_block` never return
+`apply_update`'s cascade array**, unlike the CLI's own `task update
+--cascade`: neither tool exposes a `cascade` argument, `apply_update`
+only ever cascades when called with `cascade=True` *and* the target
+state is `cancelled` (`db/tasks.py`), and neither condition can occur
+through either tool — `task_done`/`task_block` target `done`/`blocked`,
+never `cancelled`.
+
+A tool mirroring a CLI command that itself batches several `task_refs`
+into one transaction (`task_update`, `task_label`, `task_unlabel`,
+`task_assign`, `task_unassign`) takes a `refs` argument instead of a
+single `ref`, one or more ids all sharing one scope, parsed by the same
+`parse_task_refs` the CLI command already calls. That tool returns
+`{"result": [<to_dict()>, ...]}` instead of a single dict, the same
+shape `fact_search`/`task_search` already use, so the result shape never
+depends on how many ids a caller happened to pass. `task_update`'s own
+`cascade` array lands in that same list, in the order `apply_update`
+produces it, the MCP equivalent of the CLI's own `results.extend(updated)`.
+`task_link`/`task_unlink` return the same `{"result": [...]}` shape for a
+different reason. Each call names two distinct refs, `source_ref` and
+`target_ref`, not a batch of the same kind, so there are always two
+objects to report.
 
 **A tool function's declared return type is the success shape only,
 never a union including `CallToolResult`** — the SDK explicitly rejects
@@ -2279,14 +2289,14 @@ matching on it (CLI or MCP) sees the same text either way.
 
 ### 10.3 Tool list
 
-Seventeen tools. Every ref-taking tool accepts the same `TASK-<n>`/
+Twenty-seven tools. Every ref-taking tool accepts the same `TASK-<n>`/
 `TASK-GLOBAL-<n>`/`FACT-<n>`/`FACT-GLOBAL-<n>` forms the CLI accepts and
 resolves scope the same way (§4.2, §4.6), since `--project-root` fixes
 which *local* database is in play but never removes the global one.
-Twelve tools write an event and accept an optional `session_id`, falling
-back to the server's own resolved default when omitted (§10.1); the
-remaining five — `brief`, `fact_search`, `task_search`, `task_show`, and
-`fact_show` — write nothing and do not accept it at all.
+Twenty-two tools write an event and accept an optional `session_id`,
+falling back to the server's own resolved default when omitted (§10.1);
+the remaining five — `brief`, `fact_search`, `task_search`, `task_show`,
+and `fact_show` — write nothing and do not accept it at all.
 Every parameter on every tool carries a JSON schema `description`, and
 every closed-choice argument (`scope`, `task_type`, `priority`) also
 carries an `enum` of its valid values, so a host can surface both to the
@@ -2502,32 +2512,104 @@ depending on which parameter was wrong.
   `fact_search` would have no way to confirm it, only to add a duplicate
   claim — the exact re-litigation §4.6's verified-facts mechanism exists to
   prevent.
+- `task_update` — `corvee task update`, mirroring it in full. It takes a
+  `refs` argument (one or more task ids, batched into one transaction
+  like the CLI's own `task update 14 15 16`), plus `title`,
+  `description`, `task_type`, `priority`, `state`, `force` (override a
+  claim held by another actor), and `cascade` (cancel every open
+  descendant along with a cancelled parent), every one of them passed
+  straight through to the same `apply_update` call every state-dedicated
+  tool above already uses. Unlike those narrower tools, `task_update`
+  exposes `force`/`cascade` directly. Full `task update` parity is the
+  whole point of this one tool, not a single guarded transition, and
+  §10.4 covers why that does not reopen the hidden-argument problem the
+  narrow-verb tools above exist to avoid. A caller only wanting a plain
+  state transition should still reach for
+  `task_start`/`task_done`/`task_cancel`/`task_review`/`task_reopen`/
+  `task_block`, each narrower and named for exactly what it does.
+- `task_label` — `corvee task label --add`'s mirror. It attaches one
+  label `name` to one or more tasks (`refs`), normalized and
+  pattern-validated the same way `guards/labels.py::normalize_label`
+  already validates it for the CLI. A no-op success if a task already
+  carries the label, same as `db/labels.py::add_label`.
+- `task_unlabel` — `corvee task label --remove`'s mirror, as its own
+  verb rather than folded into `task_label` behind a direction argument.
+  Every other pair on this surface (`task_claim`/`task_unclaim`,
+  `task_link`/`task_unlink`, `task_assign`/`task_unassign`) is already
+  two narrow verbs rather than one with a flag, and `task_label`/
+  `task_unlabel` follows the same pattern instead of reproducing the CLI
+  command's own combined `--add`/`--remove` shape. A no-op success if the
+  task does not carry the label.
+- `task_link` — `corvee task link`, relating `source_ref` to `target_ref`
+  by `relation` (an enum of `RELATIONS`). Self-links and cross-scope
+  links (`guards/scope.py::assert_same_scope`) are rejected the same way
+  the CLI rejects them. A `parent_of` link attaching a non-terminal child
+  to an already-`done` parent still succeeds, with a `warnings` entry on
+  the parent's returned object, same as `corvee task link`. For
+  `parent_of`, `source_ref` is the parent and `target_ref` is the child,
+  and argument order matters.
+- `task_unlink` — `corvee task unlink`'s mirror, removing a link. A
+  no-op success if the two tasks were not linked by that `relation`.
+- `task_assign` — `corvee task assign`, routing one or more tasks
+  (`refs`) to `target`, a non-empty actor string. Advisory only, per
+  §4.4, not claim-gated, and never claims the task itself. A no-op
+  success if a task is already assigned to `target`.
+- `task_unassign` — `corvee task unassign`'s mirror, clearing the
+  assignment on one or more tasks (`refs`). A no-op success if a task was
+  already unassigned.
+- `fact_revise` — `corvee fact revise`, changing one fact's claim text.
+  A genuine change resets a verified or retracted fact back to
+  `unverified`, the same reset `db/facts.py::revise_fact` already
+  applies for the CLI. The proof that verified the old claim says
+  nothing about the new one. A no-op success if `new_claim` is identical
+  to the current claim.
+- `fact_retract` — `corvee fact retract`, withdrawing one fact with an
+  optional `reason`. A retracted fact is excluded from `fact_search`'s
+  default results (`include_retracted` brings it back), the same way it
+  is excluded from `corvee fact list` by default, but `fact_verify`/
+  `fact_unverify`/`fact_revise` all still work on it and move it back
+  into the normal flow.
+- `fact_unverify` — `corvee fact unverify`, moving a verified fact back
+  to `unverified` with an optional `note`, clearing its `proof` the same
+  way `db/facts.py::unverify_fact` already does for the CLI.
 
 **No `purge`, `delete`, `import`, or `export` on the MCP surface**,
-regardless of how the CLI's own set of commands evolves. These are either
-destructive and irreversible (`purge`, `delete`) or operate on the whole
-database rather than one task/fact (`import`, `export`), and neither fits
-a per-call, narrow-verb surface a permission system can reason about
-(§10.4). Nor is there a `task_update`/`task_label`/`task_link`/
-`task_assign`, or a `fact_revise`/`fact_retract`/`fact_unverify`: once
-filed, a task or fact can only be worked forward through this surface
-(claimed, commented on, transitioned, verified) or left as-is, never
-corrected. That is a deliberate surface-area choice, not an oversight —
-but it means an integrator relying solely on this surface has no way to
-fix a mistake in a task's title/description or a fact's claim once
-filed; the CLI (or a human) is required for that.
+regardless of how the CLI's own set of commands evolves. These are
+either destructive and irreversible (`purge`, `delete`) or operate on
+the whole database rather than one task/fact (`import`, `export`), a
+materially different trust and permission question from correcting a
+single task or fact already on this surface (§10.4), and neither fits a
+per-call surface a permission system can reason about one tool call at a
+time.
 
 ### 10.4 Trust and error handling
 
 MCP's access-control granularity is the tool name, not argument content.
 The CLI's own `--actor`/`--session-id`-as-flags design (§4.4) exists
 specifically so a permission allowlist matching literal command text still
-works; MCP has no analog to matching on argument values. This is the
-reason the tool list above is narrow, single-purpose verbs
-(`task_claim`, `task_start`, `task_block`, …) rather than one wide
-`task_update` a caller could point at any field via an argument a host's
-permission system cannot see into, and the reason destructive commands are
-excluded from the surface entirely rather than gated behind a flag.
+works; MCP has no analog to matching on argument values. This is why
+every tool on the surface is a fixed, individually named verb with its
+own closed set of individually named parameters, never a generic
+mechanism that takes a field name and a value as arguments a host's
+permission system cannot see into. A caller approved to call
+`task_update`, for instance, is approved for exactly the fields its
+schema declares (`title`, `description`, `task_type`, `priority`,
+`state`, `force`, `cascade`), not an arbitrary one chosen at call time.
+
+`force` lives on `task_claim`, `task_unclaim`, and `task_update` because
+each exposes it as a named, schema-visible, `description`-carrying
+argument, not one smuggled behind a tool whose own name gives no hint it
+is possible. It stays off every single-transition tool below
+`task_update` (`task_start`, `task_done`, `task_cancel`, `task_review`,
+`task_reopen`, `task_block`) for a narrower reason. Each of those names
+reads as a harmless state move, so a hidden `force` there would let a
+caller steal a claim through a tool whose name alone suggests nothing of
+the kind (§10.3's `task_claim` bullet). Destructive, whole-database
+commands (`purge`, `delete`, `import`, `export`) stay excluded from the
+surface entirely rather than gated behind a flag, a different and
+stronger case (§10.3). `purge`/`delete` are irreversible, and
+`import`/`export` act on the whole database rather than one task or fact
+already reachable here.
 
 ### 10.5 Packaging and entry point
 
