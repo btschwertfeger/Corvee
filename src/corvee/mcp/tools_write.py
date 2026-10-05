@@ -21,8 +21,17 @@ from corvee.constants import (
     narrow_state,
     narrow_task_type,
 )
-from corvee.db.tasks import add_comment, apply_update, claim_task, insert_task, unclaim_task
+from corvee.db.labels import add_label, remove_label
+from corvee.db.tasks import (
+    add_comment,
+    apply_update,
+    claim_task,
+    insert_task,
+    require_tasks,
+    unclaim_task,
+)
 from corvee.errors import UsageError
+from corvee.guards.labels import normalize_label
 from corvee.mcp.dispatch import UNCLAIM_CONFLICT_HINT, run_tool
 from corvee.mcp.scope import require_scope_available
 from corvee.mcp.server_config import ServerConfig
@@ -43,10 +52,10 @@ from corvee.mcp.worker import DbWorker
 def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the write tools: `task_claim`, `task_unclaim`,
     `task_comment`, `task_start`, `task_done`, `task_cancel`,
-    `task_review`, `task_reopen`, `task_block`, `task_add`, `task_update`
-    (spec §10.3). Every one of these writes an event; `session_id` is
-    optional on each, defaulting to the server's own
-    `ServerConfig.session_id` (§10.1) when a call omits it.
+    `task_review`, `task_reopen`, `task_block`, `task_add`, `task_update`,
+    `task_label`, `task_unlabel` (spec §10.3). Every one of these writes
+    an event; `session_id` is optional on each, defaulting to the
+    server's own `ServerConfig.session_id` (§10.1) when a call omits it.
     """
 
     @app.tool(structured_output=True)
@@ -434,5 +443,59 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                         )
                     )
                 return {"result": [task.to_dict() for task in results]}
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_label(
+        refs: TaskRefsArg,
+        label: Annotated[str, Field(description="Label name to attach.")],
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Attach one label to one or more tasks, mirroring `corvee task
+        label --add`. `label` is normalized and pattern-validated the
+        same way the CLI validates it. A no-op success if a task already
+        carries the label. Returns `{"result": [...]}`, one entry per
+        task. `session_id` defaults to this server's own session id if
+        omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            normalized = normalize_label(label)
+            resolved_session_id = session_id_for(config, session_id)
+            task_ids, scope, ctx_cm = write_context_batch(config, refs)
+            with ctx_cm as ctx:
+                require_tasks(ctx.conn, task_ids, scope=scope)
+                for task_id in task_ids:
+                    add_label(ctx.conn, task_id, normalized, config.actor, resolved_session_id)
+                tasks = require_tasks(ctx.conn, task_ids, scope=scope)
+                return {"result": [task.to_dict() for task in tasks]}
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_unlabel(
+        refs: TaskRefsArg,
+        label: Annotated[str, Field(description="Label name to remove.")],
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Remove one label from one or more tasks, mirroring `corvee task
+        label --remove`, as its own verb rather than folded into
+        `task_label` behind a direction argument. A no-op success if a
+        task does not carry the label. Returns `{"result": [...]}`, one
+        entry per task. `session_id` defaults to this server's own
+        session id if omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            normalized = normalize_label(label)
+            resolved_session_id = session_id_for(config, session_id)
+            task_ids, scope, ctx_cm = write_context_batch(config, refs)
+            with ctx_cm as ctx:
+                require_tasks(ctx.conn, task_ids, scope=scope)
+                for task_id in task_ids:
+                    remove_label(ctx.conn, task_id, normalized, config.actor, resolved_session_id)
+                tasks = require_tasks(ctx.conn, task_ids, scope=scope)
+                return {"result": [task.to_dict() for task in tasks]}
 
         return await run_tool(worker, _fetch)

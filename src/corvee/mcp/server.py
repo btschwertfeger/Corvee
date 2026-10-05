@@ -30,7 +30,8 @@ _BASE_INSTRUCTIONS = (
     "if you cannot finish it. task_reopen undoes a mis-cancel or premature "
     "done. task_block requires a comment explaining why. task_update "
     "corrects a task's title, description, type, priority, or state after "
-    "filing, across one or more tasks in one call. "
+    "filing, across one or more tasks in one call. task_label/task_unlabel "
+    "attach/remove a label, also across one or more tasks. "
     "Check an existing fact with fact_show before re-deriving it; record "
     "new or updated ones with fact_add/fact_verify."
 )

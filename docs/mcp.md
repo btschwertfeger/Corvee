@@ -178,7 +178,7 @@ instead:
 
 ## What it exposes
 
-Eighteen tools, each a fixed, individually named verb with its own
+Twenty tools, each a fixed, individually named verb with its own
 closed set of named parameters, never a generic mechanism that takes a
 field name and a value as arguments (see [Specification
 §10.4](spec.md#104-trust-and-error-handling) for why that still gives a
@@ -210,6 +210,8 @@ keep it stable across your calls in one conversation.
 | `fact_add` | yes | Record a new fact |
 | `fact_verify` | yes | Mark a fact checked-true, with proof |
 | `task_update` | yes | Mutate one or more tasks (title, description, type, priority, state) |
+| `task_label` | yes | Attach a label to one or more tasks |
+| `task_unlabel` | yes | Remove a label from one or more tasks |
 
 `force` lives on `task_claim`, `task_unclaim`, and `task_update`, never
 on `task_start`/`task_done`/`task_cancel`/`task_review`/`task_reopen`/
@@ -218,11 +220,11 @@ someone else's claim. Call `task_claim(force=true)` first if you need
 to take one over before using one of those.
 
 No `purge`, `delete`, `import`, or `export` on this surface — those stay
-CLI-only. There is no `task_label`, `task_link`, or `task_assign` on
-this surface, and no `fact_revise`, `fact_retract`, or `fact_unverify`.
-A fact, once filed, can only be worked forward through this surface
-(added, verified) or left as-is. Reach for the CLI (or a human) to label
-or link a task, change its assignment, or correct a fact's claim. See
+CLI-only. There is no `task_link` or `task_assign` on this surface, and
+no `fact_revise`, `fact_retract`, or `fact_unverify`. A fact, once
+filed, can only be worked forward through this surface (added,
+verified) or left as-is. Reach for the CLI (or a human) to link a task,
+change its assignment, or correct a fact's claim. See
 [Specification §10.3](spec.md#103-tool-list) for full argument shapes
 and the reasoning behind each tool.
 

@@ -33,6 +33,8 @@ _EXPECTED_TOOLS = {
     "task_block",
     "task_add",
     "task_update",
+    "task_label",
+    "task_unlabel",
     "task_search",
     "fact_search",
     "fact_add",

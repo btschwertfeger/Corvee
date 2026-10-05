@@ -311,6 +311,70 @@ class TestTaskUpdate:
         assert error["error"]["code"] == "invalid_priority"
 
 
+class TestTaskLabel:
+    def test_attaches_a_label_visible_via_task_show(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_label", refs=[task_id], label="API", session_id="sess-1")
+        detail = _call(app, "task_show", ref=task_id)
+        assert detail["labels"] == ["api"]
+
+    def test_no_op_if_already_attached(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_label", refs=[task_id], label="urgent", session_id="sess-1")
+        result = _call(app, "task_label", refs=[task_id], label="urgent", session_id="sess-1")
+        assert result["result"][0]["id"] == task_id
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        _call(
+            app,
+            "task_label",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            label="urgent",
+            session_id="sess-1",
+        )
+        first_detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        second_detail = _call(app, "task_show", ref=f"TASK-{second.id}")
+        assert first_detail["labels"] == ["urgent"]
+        assert second_detail["labels"] == ["urgent"]
+
+    def test_batch_is_all_or_nothing(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+
+        error = _call_error(
+            app,
+            "task_label",
+            refs=[f"TASK-{first.id}", "TASK-999999"],
+            label="urgent",
+            session_id="sess-1",
+        )
+        assert error["error"]["exit_code"] == 3
+        detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        assert detail["labels"] == []
+
+    def test_invalid_label_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app, "task_label", refs=[task_id], label="has space", session_id="sess-1"
+        )
+        assert error["error"]["code"] == "invalid_label"
+
+
+class TestTaskUnlabel:
+    def test_removes_an_attached_label(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_label", refs=[task_id], label="urgent", session_id="sess-1")
+        _call(app, "task_unlabel", refs=[task_id], label="urgent", session_id="sess-1")
+        detail = _call(app, "task_show", ref=task_id)
+        assert detail["labels"] == []
+
+    def test_no_op_if_not_attached(self, app: MCPServer, task_id: str) -> None:
+        result = _call(app, "task_unlabel", refs=[task_id], label="urgent", session_id="sess-1")
+        assert result["result"][0]["id"] == task_id
+
+
 class TestForceIsNotAParameterOnStateTransitionTools:
     @pytest.mark.parametrize(
         ("tool_name", "extra_kwargs"),
