@@ -529,6 +529,115 @@ class TestTaskUnlink:
         assert error["error"]["code"] == "invalid_relation"
 
 
+class TestTaskAssign:
+    def test_assigns_the_task(self, app: MCPServer, task_id: str) -> None:
+        result = _call(
+            app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1"
+        )
+        assert result["result"][0]["assigned_to"] == "agent:claude"
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_assign",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            target="agent:claude",
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{first.id}"]["assigned_to"] == "agent:claude"
+        assert by_id[f"TASK-{second.id}"]["assigned_to"] == "agent:claude"
+
+    def test_no_op_if_already_assigned_to_target(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1")
+        result = _call(
+            app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1"
+        )
+        assert result["result"][0]["assigned_to"] == "agent:claude"
+
+    def test_empty_target_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(app, "task_assign", refs=[task_id], target="", session_id="sess-1")
+        assert error["error"]["code"] == "invalid_target"
+
+    def test_whitespace_only_target_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(app, "task_assign", refs=[task_id], target="   ", session_id="sess-1")
+        assert error["error"]["code"] == "invalid_target"
+
+    def test_not_claim_gated(self, app: MCPServer, task_id: str) -> None:
+        """Assignment is advisory only, not gated by an existing claim
+        (§4.4). Assigning a task claimed by a different actor still
+        succeeds.
+        """
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+
+        result = _call(
+            app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1"
+        )
+        updated = result["result"][0]
+        assert updated["assigned_to"] == "agent:claude"
+        assert updated["claimed_by"] == "agent:other"
+
+
+class TestTaskUnassign:
+    def test_unassigns_the_task(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1")
+        result = _call(app, "task_unassign", refs=[task_id], session_id="sess-1")
+        assert result["result"][0]["assigned_to"] is None
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        _call(
+            app,
+            "task_assign",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            target="agent:claude",
+            session_id="sess-1",
+        )
+        result = _call(
+            app,
+            "task_unassign",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{first.id}"]["assigned_to"] is None
+        assert by_id[f"TASK-{second.id}"]["assigned_to"] is None
+
+    def test_no_op_if_already_unassigned(self, app: MCPServer, task_id: str) -> None:
+        result = _call(app, "task_unassign", refs=[task_id], session_id="sess-1")
+        assert result["result"][0]["assigned_to"] is None
+
+    def test_not_claim_gated(self, app: MCPServer, task_id: str) -> None:
+        """Unassignment is advisory only, not gated by an existing claim
+        (§4.4). Clearing the assignment on a task claimed by a different
+        actor still succeeds.
+        """
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import assign_task, claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+            assign_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:claude", "agent:test")
+
+        result = _call(app, "task_unassign", refs=[task_id], session_id="sess-1")
+        updated = result["result"][0]
+        assert updated["assigned_to"] is None
+        assert updated["claimed_by"] == "agent:other"
+
+
 class TestForceIsNotAParameterOnStateTransitionTools:
     @pytest.mark.parametrize(
         ("tool_name", "extra_kwargs"),

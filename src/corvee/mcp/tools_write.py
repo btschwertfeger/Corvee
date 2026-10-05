@@ -28,9 +28,11 @@ from corvee.db.links import link_tasks, unlink_tasks
 from corvee.db.tasks import (
     add_comment,
     apply_update,
+    assign_task,
     claim_task,
     insert_task,
     require_tasks,
+    unassign_task,
     unclaim_task,
 )
 from corvee.errors import UsageError
@@ -58,10 +60,10 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
     """Registers the write tools: `task_claim`, `task_unclaim`,
     `task_comment`, `task_start`, `task_done`, `task_cancel`,
     `task_review`, `task_reopen`, `task_block`, `task_add`, `task_update`,
-    `task_label`, `task_unlabel`, `task_link`, `task_unlink` (spec §10.3).
-    Every one of these writes an event; `session_id` is optional on each,
-    defaulting to the server's own `ServerConfig.session_id` (§10.1) when
-    a call omits it.
+    `task_label`, `task_unlabel`, `task_link`, `task_unlink`,
+    `task_assign`, `task_unassign` (spec §10.3). Every one of these writes
+    an event; `session_id` is optional on each, defaulting to the
+    server's own `ServerConfig.session_id` (§10.1) when a call omits it.
     """
 
     @app.tool(structured_output=True)
@@ -596,5 +598,71 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                 )
                 tasks = require_tasks(ctx.conn, [parsed.id, target.id], scope=parsed.scope)
             return {"result": [task.to_dict() for task in tasks]}
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_assign(
+        refs: TaskRefsArg,
+        target: Annotated[str, Field(description="The actor this task is routed to.")],
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Route one or more tasks to a specific actor, mirroring `corvee
+        task assign`. Advisory only, per §4.4, not claim-gated, and does
+        not itself claim the task. `target` must not be empty or
+        whitespace-only. A no-op success if a task is already assigned
+        to `target`. Returns `{"result": [...]}`, one entry per task.
+        `session_id` defaults to this server's own session id if
+        omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            if not target.strip():
+                raise UsageError("invalid_target", "target must not be empty or whitespace-only")
+            resolved_session_id = session_id_for(config, session_id)
+            task_ids, scope, ctx_cm = write_context_batch(config, refs)
+            with ctx_cm as ctx:
+                tasks = [
+                    assign_task(
+                        ctx.conn,
+                        task_id,
+                        target,
+                        config.actor,
+                        session_id=resolved_session_id,
+                        scope=scope,
+                    )
+                    for task_id in task_ids
+                ]
+                return {"result": [task.to_dict() for task in tasks]}
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_unassign(
+        refs: TaskRefsArg,
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Clear the assignment on one or more tasks, mirroring `corvee
+        task unassign`. A no-op success if a task was already
+        unassigned. Returns `{"result": [...]}`, one entry per task.
+        `session_id` defaults to this server's own session id if
+        omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            resolved_session_id = session_id_for(config, session_id)
+            task_ids, scope, ctx_cm = write_context_batch(config, refs)
+            with ctx_cm as ctx:
+                tasks = [
+                    unassign_task(
+                        ctx.conn,
+                        task_id,
+                        config.actor,
+                        session_id=resolved_session_id,
+                        scope=scope,
+                    )
+                    for task_id in task_ids
+                ]
+                return {"result": [task.to_dict() for task in tasks]}
 
         return await run_tool(worker, _fetch)

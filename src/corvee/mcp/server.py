@@ -33,7 +33,8 @@ _BASE_INSTRUCTIONS = (
     "filing, across one or more tasks in one call. task_label/task_unlabel "
     "attach/remove a label, also across one or more tasks. task_link/"
     "task_unlink relate/unrelate two tasks by relation, including "
-    "parent/child hierarchy. "
+    "parent/child hierarchy. task_assign/task_unassign route a task to "
+    "an actor, or clear that routing, advisory only and not claim-gated. "
     "Check an existing fact with fact_show before re-deriving it; record "
     "new or updated ones with fact_add/fact_verify."
 )
