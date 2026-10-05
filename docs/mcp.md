@@ -178,7 +178,7 @@ instead:
 
 ## What it exposes
 
-Twenty-five tools, each a fixed, individually named verb with its own
+Twenty-six tools, each a fixed, individually named verb with its own
 closed set of named parameters, never a generic mechanism that takes a
 field name and a value as arguments (see [Specification
 §10.4](spec.md#104-trust-and-error-handling) for why that still gives a
@@ -210,6 +210,7 @@ keep it stable across your calls in one conversation.
 | `fact_add` | yes | Record a new fact |
 | `fact_verify` | yes | Mark a fact checked-true, with proof |
 | `fact_revise` | yes | Change a fact's claim text |
+| `fact_retract` | yes | Withdraw a fact, excluded from the default `fact_search` results |
 | `task_update` | yes | Mutate one or more tasks (title, description, type, priority, state) |
 | `task_label` | yes | Attach a label to one or more tasks |
 | `task_unlabel` | yes | Remove a label from one or more tasks |
@@ -225,9 +226,8 @@ someone else's claim. Call `task_claim(force=true)` first if you need
 to take one over before using one of those.
 
 No `purge`, `delete`, `import`, or `export` on this surface — those stay
-CLI-only. There is no `fact_retract` or `fact_unverify` on this surface
-yet. Reach for the CLI (or a human) to retract a fact or unverify one
-without changing its claim. See
+CLI-only. There is no `fact_unverify` on this surface yet. Reach for the
+CLI (or a human) to unverify a fact without changing its claim. See
 [Specification §10.3](spec.md#103-tool-list) for full argument shapes
 and the reasoning behind each tool.
 

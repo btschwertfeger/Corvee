@@ -152,3 +152,71 @@ class TestFactRevise:
             app, "fact_revise", ref="FACT-999999", new_claim="x", session_id="sess-1"
         )
         assert error["error"]["code"] == "fact_not_found"
+
+
+class TestFactRetract:
+    def test_retracts_a_fact_with_a_reason(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="a claim", actor="agent:test")
+
+        result = _call(
+            app,
+            "fact_retract",
+            ref=f"FACT-{fact.id}",
+            reason="added by mistake",
+            session_id="sess-1",
+        )
+        assert result["status"] == "retracted"
+
+        detail = _call(app, "fact_show", ref=f"FACT-{fact.id}")
+        assert detail["events"][-1]["kind"] == "retracted"
+        assert detail["events"][-1]["note"] == "added by mistake"
+
+    def test_retracts_a_fact_without_a_reason(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="a claim", actor="agent:test")
+
+        result = _call(app, "fact_retract", ref=f"FACT-{fact.id}", session_id="sess-1")
+        assert result["status"] == "retracted"
+
+    def test_clears_verification_fields(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="a claim", actor="agent:test")
+            fact = verify_fact(ctx.conn, fact.id, "checked it", "agent:test")
+
+        result = _call(app, "fact_retract", ref=f"FACT-{fact.id}", session_id="sess-1")
+        assert result["status"] == "retracted"
+        assert result["proof"] is None
+        assert result["verified_by"] is None
+
+    def test_excluded_from_fact_search_by_default_but_included_explicitly(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="widget retraction test", actor="agent:test")
+
+        _call(app, "fact_retract", ref=f"FACT-{fact.id}", session_id="sess-1")
+
+        assert _call(app, "fact_search", text="widget retraction test")["result"] == []
+        with_retracted = _call(
+            app, "fact_search", text="widget retraction test", include_retracted=True
+        )
+        assert len(with_retracted["result"]) == 1
+        assert with_retracted["result"][0]["status"] == "retracted"
+
+    def test_fact_verify_still_works_on_a_retracted_fact(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="a claim", actor="agent:test")
+
+        _call(app, "fact_retract", ref=f"FACT-{fact.id}", session_id="sess-1")
+        result = _call(
+            app, "fact_verify", ref=f"FACT-{fact.id}", proof="checked it", session_id="sess-1"
+        )
+        assert result["status"] == "verified"
+        assert result["proof"] == "checked it"
+
+    def test_not_found_gives_a_clean_error(self, app: MCPServer) -> None:
+        error = _call_error(app, "fact_retract", ref="FACT-999999", session_id="sess-1")
+        assert error["error"]["code"] == "fact_not_found"

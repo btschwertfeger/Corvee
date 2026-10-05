@@ -44,6 +44,7 @@ _EXPECTED_TOOLS = {
     "fact_add",
     "fact_verify",
     "fact_revise",
+    "fact_retract",
     "fact_show",
 }
 

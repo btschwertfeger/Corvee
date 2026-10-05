@@ -36,8 +36,8 @@ _BASE_INSTRUCTIONS = (
     "parent/child hierarchy. task_assign/task_unassign route a task to "
     "an actor, or clear that routing, advisory only and not claim-gated. "
     "Check an existing fact with fact_show before re-deriving it; record "
-    "new or updated ones with fact_add/fact_verify, and correct a fact's "
-    "claim text with fact_revise."
+    "new or updated ones with fact_add/fact_verify, correct a fact's "
+    "claim text with fact_revise, and withdraw one with fact_retract."
 )
 
 
