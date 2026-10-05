@@ -32,6 +32,7 @@ _EXPECTED_TOOLS = {
     "task_reopen",
     "task_block",
     "task_add",
+    "task_update",
     "task_search",
     "fact_search",
     "fact_add",

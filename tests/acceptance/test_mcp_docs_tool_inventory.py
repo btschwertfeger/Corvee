@@ -16,6 +16,7 @@ from mcp.server.mcpserver import MCPServer
 
 DOCS_MCP_PATH = Path(__file__).parents[2] / "docs" / "mcp.md"
 _TABLE_ROW_RE = re.compile(r"^\| `(\w+)` \|")
+_COUNT_WORD_RE = re.compile(r"^(\w+(?:-\w+)?) tools,", re.MULTILINE)
 
 
 def _documented_tool_names() -> set[str]:
@@ -57,7 +58,7 @@ class TestDocsToolTableMatchesTheLiveServer:
         table without updating the word "Sixteen" fails loudly here.
         """
         text = DOCS_MCP_PATH.read_text()
-        match = re.search(r"^(\w+) tools,", text, re.MULTILINE)
+        match = _COUNT_WORD_RE.search(text)
         assert match is not None, "docs/mcp.md's tool-count sentence not found"
         word_to_count = {
             "Eleven": 11,
@@ -70,6 +71,13 @@ class TestDocsToolTableMatchesTheLiveServer:
             "Eighteen": 18,
             "Nineteen": 19,
             "Twenty": 20,
+            "Twenty-one": 21,
+            "Twenty-two": 22,
+            "Twenty-three": 23,
+            "Twenty-four": 24,
+            "Twenty-five": 25,
+            "Twenty-six": 26,
+            "Twenty-seven": 27,
         }
         stated_count = word_to_count.get(match.group(1))
         assert stated_count is not None, f"unrecognized count word {match.group(1)!r}"

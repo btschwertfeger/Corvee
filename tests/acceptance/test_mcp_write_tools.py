@@ -14,6 +14,7 @@ from mcp_helpers import call_error as _call_error
 
 from corvee.cli.context import corvee_context
 from corvee.config import ProjectConfig
+from corvee.db.links import link_tasks
 from corvee.db.tasks import insert_task
 from corvee.mcp.server import build_server
 from corvee.mcp.server_config import ServerConfig
@@ -207,6 +208,107 @@ class TestTaskBlock:
 
         detail = _call(app, "task_show", ref=task_id)
         assert not any(e.get("body") == "should not stick" for e in detail["events"])
+
+
+class TestTaskUpdate:
+    def test_updates_title_description_type_and_priority(
+        self, app: MCPServer, task_id: str
+    ) -> None:
+        result = _call(
+            app,
+            "task_update",
+            refs=[task_id],
+            title="new title",
+            description="new description",
+            task_type="bug",
+            priority="high",
+            session_id="sess-1",
+        )
+        updated = result["result"][0]
+        assert updated["title"] == "new title"
+        assert updated["description"] == "new description"
+        assert updated["type"] == "bug"
+        assert updated["priority"] == "high"
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_update",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            priority="high",
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{first.id}"]["priority"] == "high"
+        assert by_id[f"TASK-{second.id}"]["priority"] == "high"
+
+    def test_state_transitions_the_same_way_the_cli_does(
+        self, app: MCPServer, task_id: str
+    ) -> None:
+        result = _call(app, "task_update", refs=[task_id], state="in_progress", session_id="sess-1")
+        updated = result["result"][0]
+        assert updated["state"] == "in_progress"
+        assert updated["claimed_by"] == "agent:test"
+
+    def test_claim_conflict_without_force(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+
+        error = _call_error(app, "task_update", refs=[task_id], title="x", session_id="sess-1")
+        assert error["error"]["code"] == "claim_conflict"
+
+    def test_force_overrides_someone_elses_claim(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+
+        result = _call(
+            app, "task_update", refs=[task_id], state="done", force=True, session_id="sess-1"
+        )
+        assert result["result"][0]["state"] == "done"
+
+    def test_cascade_cancels_open_descendants(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            parent = insert_task(ctx.conn, title="parent")
+            child = insert_task(ctx.conn, title="child")
+            link_tasks(ctx.conn, parent.id, child.id, "parent_of", "agent:test", None)
+
+        result = _call(
+            app,
+            "task_update",
+            refs=[f"TASK-{parent.id}"],
+            state="cancelled",
+            cascade=True,
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t["state"] for t in result["result"]}
+        assert by_id[f"TASK-{parent.id}"] == "cancelled"
+        assert by_id[f"TASK-{child.id}"] == "cancelled"
+
+    def test_invalid_state_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(app, "task_update", refs=[task_id], state="bogus", session_id="sess-1")
+        assert error["error"]["code"] == "invalid_state"
+
+    def test_invalid_task_type_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app, "task_update", refs=[task_id], task_type="bogus", session_id="sess-1"
+        )
+        assert error["error"]["code"] == "invalid_type"
+
+    def test_invalid_priority_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app, "task_update", refs=[task_id], priority="bogus", session_id="sess-1"
+        )
+        assert error["error"]["code"] == "invalid_priority"
 
 
 class TestForceIsNotAParameterOnStateTransitionTools:

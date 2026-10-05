@@ -10,7 +10,17 @@ from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
 from corvee.cli.context import corvee_context
-from corvee.constants import DEFAULT_PRIORITY, DEFAULT_TASK_TYPE, PRIORITIES, TASK_TYPES, Scope
+from corvee.constants import (
+    DEFAULT_PRIORITY,
+    DEFAULT_TASK_TYPE,
+    PRIORITIES,
+    STATES,
+    TASK_TYPES,
+    Scope,
+    narrow_priority,
+    narrow_state,
+    narrow_task_type,
+)
 from corvee.db.tasks import add_comment, apply_update, claim_task, insert_task, unclaim_task
 from corvee.errors import UsageError
 from corvee.mcp.dispatch import UNCLAIM_CONFLICT_HINT, run_tool
@@ -20,10 +30,12 @@ from corvee.mcp.tools_common import (
     IsGlobalArg,
     SessionIdArg,
     TaskRefArg,
+    TaskRefsArg,
     _enum_field,
     project_db_path,
     session_id_for,
     write_context,
+    write_context_batch,
 )
 from corvee.mcp.worker import DbWorker
 
@@ -31,10 +43,10 @@ from corvee.mcp.worker import DbWorker
 def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the write tools: `task_claim`, `task_unclaim`,
     `task_comment`, `task_start`, `task_done`, `task_cancel`,
-    `task_review`, `task_reopen`, `task_block`, `task_add` (spec §10.3).
-    Every one of these writes an event; `session_id` is optional on each,
-    defaulting to the server's own `ServerConfig.session_id` (§10.1) when a
-    call omits it.
+    `task_review`, `task_reopen`, `task_block`, `task_add`, `task_update`
+    (spec §10.3). Every one of these writes an event; `session_id` is
+    optional on each, defaulting to the server's own
+    `ServerConfig.session_id` (§10.1) when a call omits it.
     """
 
     @app.tool(structured_output=True)
@@ -347,5 +359,80 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                     session_id=session_id_for(config, session_id),
                 )
                 return task.to_dict()
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_update(
+        refs: TaskRefsArg,
+        session_id: SessionIdArg = None,
+        title: Annotated[
+            str | None, Field(description="New title. Omit to leave unchanged.")
+        ] = None,
+        description: Annotated[
+            str | None, Field(description="New description. Omit to leave unchanged.")
+        ] = None,
+        task_type: Annotated[
+            str | None, _enum_field("The kind of work this task represents.", TASK_TYPES)
+        ] = None,
+        priority: Annotated[
+            str | None, _enum_field("How urgently this task should be picked up.", PRIORITIES)
+        ] = None,
+        state: Annotated[str | None, _enum_field("New state to transition to.", STATES)] = None,
+        force: Annotated[
+            bool, Field(description="Override a claim held by another actor.")
+        ] = False,
+        cascade: Annotated[
+            bool, Field(description="Cancel every open descendant along with the parent.")
+        ] = False,
+    ) -> dict[str, Any]:
+        """Mutate one or more tasks in a single transaction, mirroring
+        `corvee task update` in full -- the one tool on this surface that
+        exposes `force`/`cascade` directly (spec §10.4 explains why that
+        does not reopen the hidden-argument problem the narrower
+        state-transition tools above exist to avoid). A caller only
+        wanting a plain state transition should still reach for
+        task_start/task_done/task_cancel/task_review/task_reopen/
+        task_block instead. Returns `{"result": [...]}`, one entry per
+        updated task, including any `cascade`-cancelled descendants.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            if task_type is not None and task_type not in TASK_TYPES:
+                raise UsageError(
+                    "invalid_type",
+                    f"invalid task_type {task_type!r}: expected one of {TASK_TYPES}",
+                )
+            if priority is not None and priority not in PRIORITIES:
+                raise UsageError(
+                    "invalid_priority",
+                    f"invalid priority {priority!r}: expected one of {PRIORITIES}",
+                )
+            if state is not None and state not in STATES:
+                raise UsageError(
+                    "invalid_state", f"invalid state {state!r}: expected one of {STATES}"
+                )
+            resolved_session_id = session_id_for(config, session_id)
+            task_ids, scope, ctx_cm = write_context_batch(config, refs)
+            with ctx_cm as ctx:
+                results = []
+                for task_id in task_ids:
+                    results.extend(
+                        apply_update(
+                            ctx.conn,
+                            task_id,
+                            config.actor,
+                            session_id=resolved_session_id,
+                            title=title,
+                            description=description,
+                            type_=narrow_task_type(task_type) if task_type is not None else None,
+                            priority=narrow_priority(priority) if priority is not None else None,
+                            state=narrow_state(state) if state is not None else None,
+                            force=force,
+                            cascade=cascade,
+                            scope=scope,
+                        )
+                    )
+                return {"result": [task.to_dict() for task in results]}
 
         return await run_tool(worker, _fetch)
