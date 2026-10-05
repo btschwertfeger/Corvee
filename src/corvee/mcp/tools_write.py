@@ -14,14 +14,17 @@ from corvee.constants import (
     DEFAULT_PRIORITY,
     DEFAULT_TASK_TYPE,
     PRIORITIES,
+    RELATIONS,
     STATES,
     TASK_TYPES,
     Scope,
     narrow_priority,
+    narrow_relation,
     narrow_state,
     narrow_task_type,
 )
 from corvee.db.labels import add_label, remove_label
+from corvee.db.links import link_tasks, unlink_tasks
 from corvee.db.tasks import (
     add_comment,
     apply_update,
@@ -32,6 +35,7 @@ from corvee.db.tasks import (
 )
 from corvee.errors import UsageError
 from corvee.guards.labels import normalize_label
+from corvee.guards.scope import assert_same_scope
 from corvee.mcp.dispatch import UNCLAIM_CONFLICT_HINT, run_tool
 from corvee.mcp.scope import require_scope_available
 from corvee.mcp.server_config import ServerConfig
@@ -47,15 +51,17 @@ from corvee.mcp.tools_common import (
     write_context_batch,
 )
 from corvee.mcp.worker import DbWorker
+from corvee.models import parse_task_ref
 
 
 def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the write tools: `task_claim`, `task_unclaim`,
     `task_comment`, `task_start`, `task_done`, `task_cancel`,
     `task_review`, `task_reopen`, `task_block`, `task_add`, `task_update`,
-    `task_label`, `task_unlabel` (spec §10.3). Every one of these writes
-    an event; `session_id` is optional on each, defaulting to the
-    server's own `ServerConfig.session_id` (§10.1) when a call omits it.
+    `task_label`, `task_unlabel`, `task_link`, `task_unlink` (spec §10.3).
+    Every one of these writes an event; `session_id` is optional on each,
+    defaulting to the server's own `ServerConfig.session_id` (§10.1) when
+    a call omits it.
     """
 
     @app.tool(structured_output=True)
@@ -497,5 +503,98 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
                     remove_label(ctx.conn, task_id, normalized, config.actor, resolved_session_id)
                 tasks = require_tasks(ctx.conn, task_ids, scope=scope)
                 return {"result": [task.to_dict() for task in tasks]}
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_link(
+        source_ref: TaskRefArg,
+        target_ref: TaskRefArg,
+        relation: Annotated[str, _enum_field("How the two tasks relate.", RELATIONS)],
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Relate two tasks, mirroring `corvee task link`, including the
+        cycle check for `blocks`/`parent_of`. `source_ref` and
+        `target_ref` must share one scope, checked the same way the CLI
+        checks it, and a self-link is rejected too. For `parent_of`,
+        `source_ref` is the parent and `target_ref` is the child --
+        argument order matters. A `parent_of` link attaching a
+        non-terminal child to an already-`done` parent still succeeds,
+        with a `warnings` entry on the parent's returned object. Each
+        call names two distinct refs, not a batch of the same kind, so
+        this returns `{"result": [source, target]}`, always two objects.
+        `session_id` defaults to this server's own session id if
+        omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            if relation not in RELATIONS:
+                raise UsageError(
+                    "invalid_relation",
+                    f"invalid relation {relation!r}: expected one of {RELATIONS}",
+                )
+            target = parse_task_ref(str(target_ref))
+            resolved_session_id = session_id_for(config, session_id)
+            parsed, ctx_cm = write_context(config, source_ref)
+            assert_same_scope(parsed.scope, target.scope)
+            with ctx_cm as ctx:
+                warnings = link_tasks(
+                    ctx.conn,
+                    parsed.id,
+                    target.id,
+                    narrow_relation(relation),
+                    config.actor,
+                    resolved_session_id,
+                    scope=parsed.scope,
+                )
+                tasks = require_tasks(ctx.conn, [parsed.id, target.id], scope=parsed.scope)
+            dicts = []
+            for task in tasks:
+                detail = task.to_dict()
+                if task.id in warnings:
+                    detail["warnings"] = [warnings[task.id]]
+                dicts.append(detail)
+            return {"result": dicts}
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def task_unlink(
+        source_ref: TaskRefArg,
+        target_ref: TaskRefArg,
+        relation: Annotated[
+            str, _enum_field("The relation to remove between the two tasks.", RELATIONS)
+        ],
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Remove a link between two tasks, mirroring `corvee task
+        unlink`. A no-op success if the two tasks were not linked by
+        that `relation`. Returns `{"result": [source, target]}`, the
+        same two-object shape `task_link` uses. `session_id` defaults to
+        this server's own session id if omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            if relation not in RELATIONS:
+                raise UsageError(
+                    "invalid_relation",
+                    f"invalid relation {relation!r}: expected one of {RELATIONS}",
+                )
+            target = parse_task_ref(str(target_ref))
+            resolved_session_id = session_id_for(config, session_id)
+            parsed, ctx_cm = write_context(config, source_ref)
+            assert_same_scope(parsed.scope, target.scope)
+            with ctx_cm as ctx:
+                unlink_tasks(
+                    ctx.conn,
+                    parsed.id,
+                    target.id,
+                    narrow_relation(relation),
+                    config.actor,
+                    resolved_session_id,
+                    scope=parsed.scope,
+                )
+                tasks = require_tasks(ctx.conn, [parsed.id, target.id], scope=parsed.scope)
+            return {"result": [task.to_dict() for task in tasks]}
 
         return await run_tool(worker, _fetch)

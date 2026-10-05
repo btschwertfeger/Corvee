@@ -15,7 +15,7 @@ from mcp_helpers import call_error as _call_error
 from corvee.cli.context import corvee_context
 from corvee.config import ProjectConfig
 from corvee.db.links import link_tasks
-from corvee.db.tasks import insert_task
+from corvee.db.tasks import apply_update, insert_task
 from corvee.mcp.server import build_server
 from corvee.mcp.server_config import ServerConfig
 
@@ -373,6 +373,160 @@ class TestTaskUnlabel:
     def test_no_op_if_not_attached(self, app: MCPServer, task_id: str) -> None:
         result = _call(app, "task_unlabel", refs=[task_id], label="urgent", session_id="sess-1")
         assert result["result"][0]["id"] == task_id
+
+
+class TestTaskLink:
+    def test_links_two_tasks(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_link",
+            source_ref=f"TASK-{first.id}",
+            target_ref=f"TASK-{second.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        assert [t["id"] for t in result["result"]] == [f"TASK-{first.id}", f"TASK-{second.id}"]
+        detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        assert any(
+            link["relation"] == "blocks" and link["task_id"] == f"TASK-{second.id}"
+            for link in detail["links"]
+        )
+
+    def test_self_link_is_a_guard_violation(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app,
+            "task_link",
+            source_ref=task_id,
+            target_ref=task_id,
+            relation="relates_to",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "self_link"
+        assert error["error"]["exit_code"] == 5
+
+    def test_result_order_is_source_then_target_even_when_target_id_is_lower(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        """`blocks` is not id-normalized the way `relates_to` is, so
+        `result` follows argument order even when the source id is
+        higher.
+        """
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_link",
+            source_ref=f"TASK-{second.id}",
+            target_ref=f"TASK-{first.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        assert [t["id"] for t in result["result"]] == [f"TASK-{second.id}", f"TASK-{first.id}"]
+
+    def test_cross_scope_link_is_a_guard_violation(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="global", actor="agent:test", session_id=None) as ctx:
+            global_task = insert_task(ctx.conn, title="global task", scope="global")
+
+        error = _call_error(
+            app,
+            "task_link",
+            source_ref=task_id,
+            target_ref=f"TASK-GLOBAL-{global_task.id}",
+            relation="relates_to",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "cross_scope_link"
+
+    def test_parent_of_warns_when_child_is_open_and_parent_is_done(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            parent = insert_task(ctx.conn, title="parent")
+            child = insert_task(ctx.conn, title="child")
+            apply_update(ctx.conn, parent.id, "agent:test", state="in_progress")
+            apply_update(ctx.conn, parent.id, "agent:test", state="done")
+
+        result = _call(
+            app,
+            "task_link",
+            source_ref=f"TASK-{parent.id}",
+            target_ref=f"TASK-{child.id}",
+            relation="parent_of",
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{parent.id}"]["warnings"] == [
+            f"child TASK-{child.id} is open while this parent is done"
+        ]
+        assert "warnings" not in by_id[f"TASK-{child.id}"]
+
+    def test_invalid_relation_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            other = insert_task(ctx.conn, title="other")
+
+        error = _call_error(
+            app,
+            "task_link",
+            source_ref=task_id,
+            target_ref=f"TASK-{other.id}",
+            relation="bogus",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "invalid_relation"
+
+
+class TestTaskUnlink:
+    def test_unlinks_two_tasks(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+            link_tasks(ctx.conn, first.id, second.id, "blocks", "agent:test", None)
+
+        _call(
+            app,
+            "task_unlink",
+            source_ref=f"TASK-{first.id}",
+            target_ref=f"TASK-{second.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        assert detail["links"] == []
+
+    def test_no_op_if_not_linked(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_unlink",
+            source_ref=f"TASK-{first.id}",
+            target_ref=f"TASK-{second.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        assert [t["id"] for t in result["result"]] == [f"TASK-{first.id}", f"TASK-{second.id}"]
+
+    def test_invalid_relation_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            other = insert_task(ctx.conn, title="other")
+
+        error = _call_error(
+            app,
+            "task_unlink",
+            source_ref=task_id,
+            target_ref=f"TASK-{other.id}",
+            relation="bogus",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "invalid_relation"
 
 
 class TestForceIsNotAParameterOnStateTransitionTools:

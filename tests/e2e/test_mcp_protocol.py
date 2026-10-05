@@ -35,6 +35,8 @@ _EXPECTED_TOOLS = {
     "task_update",
     "task_label",
     "task_unlabel",
+    "task_link",
+    "task_unlink",
     "task_search",
     "fact_search",
     "fact_add",

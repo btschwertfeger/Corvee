@@ -31,7 +31,9 @@ _BASE_INSTRUCTIONS = (
     "done. task_block requires a comment explaining why. task_update "
     "corrects a task's title, description, type, priority, or state after "
     "filing, across one or more tasks in one call. task_label/task_unlabel "
-    "attach/remove a label, also across one or more tasks. "
+    "attach/remove a label, also across one or more tasks. task_link/"
+    "task_unlink relate/unrelate two tasks by relation, including "
+    "parent/child hierarchy. "
     "Check an existing fact with fact_show before re-deriving it; record "
     "new or updated ones with fact_add/fact_verify."
 )
