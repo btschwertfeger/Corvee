@@ -131,14 +131,13 @@ def build_server(config: ServerConfig) -> tuple[MCPServer, DbWorker]:
     into a clean, exit-6-shaped error instead of a raw ImportError -- this
     module is only ever reached once that check has already passed.
     """
-    from mcp.server.mcpserver import MCPServer
-
+    from corvee.mcp.dispatch import CorveeMCPServer
     from corvee.mcp.tools_fact import register_fact_tools
     from corvee.mcp.tools_read import register_read_tools
     from corvee.mcp.tools_write import register_write_tools
 
     print(startup_message(config), file=sys.stderr)
-    app: MCPServer = MCPServer(
+    app: MCPServer = CorveeMCPServer(
         name="corvee",
         version=__version__,
         instructions=build_instructions(config),

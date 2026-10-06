@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v41)
+# corvee — Technical Specification (v42)
 
 ## 1. Purpose
 
@@ -2308,6 +2308,19 @@ tool in §10.3 exposes a `--fields`-style projection argument — every
 result is already a small, fully structured JSON object or array a host
 parses itself, unlike a fixed-width terminal table — so `filter_fields`/
 `guards/fields.py::validate_fields` have no role on this surface.
+
+**An argument a tool does not declare is a usage error.** The `mcp`
+SDK's per-tool argument model ignores unknown keys, which would let a typo
+(`forc=true`) or a hyphenated `session-id` succeed silently with the
+caller's intent dropped. `CorveeMCPServer.call_tool` (`mcp/dispatch.py`)
+compares the keys of every call against the tool's published input schema
+before the SDK validates anything and, on a mismatch, returns an `isError`
+result with code `unknown_argument` and `exit_code: 2`. Its message names
+every offending key and the tool's valid argument names. The tool does not
+run and nothing is written. The one exception is `force` on
+`task_start`/`task_done`/`task_cancel`/`task_review`/`task_reopen`/
+`task_block` (§10.4): it is not declared there, but it is accepted and
+ignored.
 
 Every `errors.CorveeError` subclass raised inside a handler maps to an
 `isError` tool result carrying `err.to_json()` plus one additional key not

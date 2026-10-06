@@ -658,8 +658,8 @@ class TestForceIsNotAParameterOnStateTransitionTools:
         extra_kwargs: dict[str, str],
     ) -> None:
         """`force` was dropped from every state-transition tool (§10.3): a
-        caller passing it anyway is silently ignored by the SDK's
-        extra-argument handling, not honored -- a claim conflict still
+        caller passing it anyway is accepted and ignored, not
+        honored (§10.2) -- a claim conflict still
         surfaces exactly as if `force` had never been sent.
         """
         with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
