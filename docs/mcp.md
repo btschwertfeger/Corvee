@@ -55,7 +55,12 @@ MCP client. Neither touches stdout, which stays pure JSON-RPC framing.
 
 `--actor` works like the CLI's own `--actor` flag or `$CORVEE_ACTOR` (see
 [Quickstart](quickstart.md#identify-yourself)): a stable identity for
-whatever is running this server, read once at startup.
+whatever is running this server, read once at startup. Omit both and
+every write this server makes falls back to `human:$USER`, the same
+default a bare CLI call with neither falls back to. That is
+indistinguishable from work a person at the keyboard did themselves, so
+pass `--actor` explicitly when you register the server with your host,
+below.
 
 ```bash
 corvee mcp serve --actor agent:claude
@@ -104,7 +109,7 @@ needed, and nothing to re-register when you switch projects.
 ### Claude Code
 
 ```bash
-claude mcp add --transport stdio --scope user corvee -- corvee mcp serve
+claude mcp add --transport stdio --scope user corvee -- corvee mcp serve --actor agent:claude
 ```
 
 `--scope user` registers it once for every project rather than just the
@@ -115,7 +120,7 @@ full set of scopes.
 ### Codex CLI
 
 ```bash
-codex mcp add corvee -- corvee mcp serve
+codex mcp add corvee -- corvee mcp serve --actor agent:codex
 ```
 
 Or add the equivalent block directly to `~/.codex/config.toml`:
@@ -123,7 +128,7 @@ Or add the equivalent block directly to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.corvee]
 command = "corvee"
-args = ["mcp", "serve"]
+args = ["mcp", "serve", "--actor", "agent:codex"]
 ```
 
 Confirm it loaded with `codex mcp list` or `/mcp` inside a Codex session.
@@ -155,7 +160,7 @@ but the entry itself is just the command and its arguments:
   "mcpServers": {
     "corvee": {
       "command": "corvee",
-      "args": ["mcp", "serve"],
+      "args": ["mcp", "serve", "--actor", "agent:claude"],
       "cwd": "/path/to/your/project"
     }
   }
@@ -170,11 +175,18 @@ instead:
   "mcpServers": {
     "corvee": {
       "command": "corvee",
-      "args": ["mcp", "serve", "--project-root", "/path/to/your/project"]
+      "args": [
+        "mcp", "serve",
+        "--project-root", "/path/to/your/project",
+        "--actor", "agent:claude"
+      ]
     }
   }
 }
 ```
+
+Set `--actor` to whatever is actually running your host. See
+[Identify yourself](quickstart.md#identify-yourself) for the convention.
 
 ## What it exposes
 
