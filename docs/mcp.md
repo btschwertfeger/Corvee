@@ -202,6 +202,11 @@ back to the server's own default (`--session-id`/`$CORVEE_SESSION_ID`, or
 a generated id) when a call leaves it out. If you do pass your own,
 keep it stable across your calls in one conversation.
 
+Every task result carries `blocked_by`, the ids of the task's open `blocks`
+predecessors. The CLI's `blocked*` table marker has no MCP equivalent, so a
+task with a non-empty `blocked_by` and `state: "open"` is waiting on those
+tasks. See [Specification §4.5](spec.md#45-state-transitions).
+
 | Tool | Writes? | What it does |
 |---|---|---|
 | `task_show` | no | Read one task by id |

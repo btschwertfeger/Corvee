@@ -90,6 +90,13 @@ ID      TITLE                    TYPE  PRIORITY  STATE  CLAIMED_BY  CLAIMED_AT  
 TASK-1  Fix the flaky auth test  task  medium    open                                        2026-09-15T06:28:27.641Z  2026-09-15T06:28:27.641Z  local
 ```
 
+A task that has an unfinished blocker (`corvee task link A B --relation
+blocks`) shows `blocked*` in the `STATE` column while its stored state is
+still `open`, and goes back to `open` when the last blocker is done or
+cancelled. A plain `blocked` was set by hand with `task update --state
+blocked`. `-o json` keeps the stored `state` and adds a `blocked_by` array
+with the open blockers' ids instead.
+
 `task show` prints the full record instead, including every claim, state
 change, and comment against it, in order, under `events:`. This is the
 audit trail a later session (or a different agent entirely) reads instead

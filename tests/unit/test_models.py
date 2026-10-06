@@ -226,6 +226,7 @@ class TestTaskRow:
             "created_at",
             "updated_at",
             "scope",
+            "blocked_by",
         }
 
     def test_to_dict_uses_the_global_task_ref_id_when_scoped_global(self) -> None:

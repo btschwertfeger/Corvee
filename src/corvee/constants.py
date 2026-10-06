@@ -126,6 +126,7 @@ LIST_FIELDS: tuple[str, ...] = (
     "created_at",
     "updated_at",
     "scope",
+    "blocked_by",
 )
 
 # Flat columns accepted by --fields on fact list/search.
@@ -171,6 +172,7 @@ LIST_TABLE_WIDE_FIELDS: tuple[str, ...] = (
     "created_at",
     "updated_at",
     "scope",
+    "blocked_by",
 )
 
 # The fact-group equivalent of LIST_TABLE_DEFAULT_FIELDS.

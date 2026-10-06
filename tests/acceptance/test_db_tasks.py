@@ -362,3 +362,18 @@ class TestPurgeTask:
     def test_missing_task_raises_not_found(self, conn: sqlite3.Connection) -> None:
         with pytest.raises(NotFoundError):
             purge_task(conn, 999)
+
+
+class TestBlockedBy:
+    def test_lists_larger_than_one_query_chunk_keep_every_blocker(
+        self, conn: sqlite3.Connection
+    ) -> None:
+        """Blockers are looked up in bounded batches, so a result set spanning several
+        batches still attaches `blocked_by` to the rows in the last one.
+        """
+        tasks = [insert_task(conn, title=f"t{n}") for n in range(1200)]
+        link_tasks(conn, tasks[0].id, tasks[-1].id, "blocks", "agent:a", None)
+
+        rows = {task.id: task for task in list_tasks(conn, TaskFilter())}
+        assert rows[tasks[-1].id].blocked_by == (tasks[0].id,)
+        assert rows[tasks[0].id].blocked_by == ()

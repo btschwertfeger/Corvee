@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v37)
+# corvee — Technical Specification (v38)
 
 ## 1. Purpose
 
@@ -481,7 +481,8 @@ sorting rules — see §4.6.
   block the parent from reaching `done` with no way to fix it through the
   CLI.
 - `blocks` carries no automatic guard (unlike `parent_of`) — it's advisory
-  input to `corvee task ready` (§5), not enforced on `corvee task update`.
+  input to `corvee task ready` (§5) and to the derived `blocked` display
+  (§4.5), not enforced on `corvee task update`.
   It is still cycle-checked on insert, reusing the same walk as
   `parent_of` over `blocks` edges. `A blocks B` plus `B blocks A` would
   drop both tasks out of `corvee task ready` permanently while every
@@ -732,6 +733,38 @@ resuming mid-stream from a terminal state.
 The parent/child guard (§4.3) and the cancel cascade layer on top of this
 table. A transition has to be permitted here *and* satisfy those rules.
 
+**Derived `blocked` display.** A task whose stored `state` is `open` and
+that has at least one open `blocks` predecessor (a source task whose state is
+neither `done` nor `cancelled`) displays as `blocked*` wherever a plain-text
+view prints its state (the `task list`/`ready`/`search`/`mine`/`brief` tables
+and the `state:` line of `task show`, but not `task tree`, which prints the
+stored state). The `*` marks the state as derived
+from links, as opposed to a plain `blocked` that an actor set by hand for an
+obstacle corvee cannot see (§5). The two are independent: a task can carry
+both, and shows plain `blocked`, the stored value.
+
+Nothing about this is stored. The `state` column, the transition table above,
+`task_events`, and `corvee export` only ever see the stored value, so a
+blocker finishing or being cancelled releases the task with no write and no
+event, and the manual `blocked` state keeps its meaning and its comment
+requirement (§10.3). Only `open` tasks are affected. An `in_progress` or
+`review` task keeps its stored state in every view, since someone is already
+working on it and the claim is the more useful fact to show. A `done` or
+`cancelled` task never displays as blocked. A `cancelled` blocker releases its
+successors the same way a `done` one does, matching what "open" means in §5.1
+and what `task ready` already does. A `parent_of` parent's state never rolls
+up from its children. The tree and the guard in §4.3 already cover that
+relationship, and no caller needs a derived parent state yet.
+
+Every JSON task object carries a `blocked_by` array, the ids of the task's
+open `blocks` predecessors, empty when there are none. It is the machine
+readable form of the marker, because `state` stays the stored value in JSON
+(a consumer that branches on `state` sees exactly what `task update --state`
+can set). `task list --state` matches the state a table row displays:
+`--state blocked` returns stored-`blocked` tasks and derived-blocked ones,
+and `--state open` excludes the derived-blocked ones. `--state in_progress`
+and the other states match the stored value.
+
 Facts have no comparable transition table — §4.6 covers the much smaller
 set of rules that govern `status`.
 
@@ -916,7 +949,8 @@ within a command group**, one element per affected row, whether the command
 read or wrote. Every task and fact object carries a `scope` key
 (`"local"` or `"global"`, §3.3) alongside its already-namespaced `id`, in
 every command, not only listings — one uniform shape rather than a key
-that appears only when a query happens to merge both databases. Under
+that appears only when a query happens to merge both databases. The same
+goes for `blocked_by` (§4.5), the open `blocks` predecessors of the task. Under
 `task`: `corvee task add -o json` returns the created task (this is how an
 agent learns the new ID), `corvee task
 claim`/`update`/`label`/`comment` return the affected task in its
@@ -1000,10 +1034,13 @@ id,title -o json` returns only those keys per object (still a JSON array of
 objects, never bare tuples, so the shape stays uniform). It accepts a fixed
 allow-list of flat columns (`id`, `title`, `description`, `type`,
 `priority`, `state`, `claimed_by`, `claimed_at`, `assigned_to`,
-`created_at`, `updated_at`, `scope`) and rejects an unknown field name with
-a non-zero exit and the valid list; labels, links, events, and `task
-mine`'s `last_comment` stay out
-of projection and require `corvee task show`/`task mine` itself.
+`created_at`, `updated_at`, `scope`, `blocked_by`) and rejects an unknown
+field name with a non-zero exit and the valid list; `blocked_by` is the one
+list-valued entry (§4.5), rendered comma-joined in a table, so a cheap
+`--fields id,title,state,blocked_by -o json` overview still shows which
+tasks wait on others. Labels, links, events, and `task mine`'s
+`last_comment` stay out of projection and require `corvee task
+show`/`task mine` itself.
 `--fields` wins outright whenever given, on top of any `-o` value: `-o
 wide --fields id,title` shows exactly `id`/`title`, the same as `-o table
 --fields id,title` -- an explicit projection is a stronger statement than
@@ -1015,7 +1052,7 @@ task rows) shows only enough to identify and triage a row: `id`, `title`,
 `type`, `priority`, `state`, `scope` for tasks, `id`, `claim`, `status`,
 `scope` for facts. `-o wide` restores the rest of the `--fields`
 allow-list except `description`/`proof`: `claimed_by`, `claimed_at`,
-`assigned_to`, `created_at`, `updated_at` for tasks, `verified_at`,
+`assigned_to`, `created_at`, `updated_at`, `blocked_by` for tasks, `verified_at`,
 `verified_by`, `created_at`, `updated_at` for facts. `description`/`proof`
 are dropped even under `-o wide`, since a long free-text value is what
 blows a fixed-width row past a normal terminal's width regardless of how
@@ -1154,7 +1191,8 @@ The `blocked` state and the `blocks` link are separate signals for the same
 idea — a link records a dependency corvee can evaluate, while the state
 records an obstacle only the actor knows about (a missing credential, an
 unanswered question) — and a task carrying either one is not startable
-right now.
+right now. Table views show both as `blocked`, with a `*` on the one derived
+from links (§4.5).
 
 **`--parent <id>` matches direct children only**, the tasks one
 `parent_of` edge below the given one. Whole-subtree listing is deliberately
@@ -1737,6 +1775,9 @@ Content that genuinely applies to both (`--global`, `--actor`/
   as a `task link ... --relation blocks` rather than only a sentence in
   the description, placed right after the `task add`/`claim`/`update`
   example flow since that's where an agent has just seen the defaults.
+  It ends with two sentences on what a `blocks` link does to a task's
+  state: the `blocked*` marker in tables and `task show`, and `blocked_by`
+  as the JSON/MCP signal (§4.5).
 - One `fact` example (`fact add`/`fact verify`) showing the standalone
   knowledge-store use case, and the note that facts are not linked to
   tasks by the schema — an agent connects them by convention (e.g.
@@ -2177,6 +2218,10 @@ local-scope call's `no_project` error is the first and only signal
 otherwise — after having already spent a call finding out.
 
 ### 10.2 Output shape
+
+Task results carry `blocked_by` (§4.5) like the CLI's JSON, since both come
+from the same row objects. The derived `blocked*` marker is a plain-text
+rendering and has no MCP equivalent.
 
 `output.py`'s `emit_tasks`/`emit_facts` print directly to stdout, which
 would corrupt JSON-RPC framing on a stdio transport, so no MCP handler may

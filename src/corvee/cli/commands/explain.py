@@ -67,6 +67,9 @@ when a more specific one is true: a bug found along the way is
 critical, and a task that can't start until another finishes is a
 relation, not just a sentence in the description:
   corvee task link TASK-15 TASK-14 --relation blocks -o json
+An open task with an unfinished blocker shows as `blocked*` in tables and
+`task show` (a plain `blocked` was set by hand). In -o json and over MCP
+`state` stays `open`; read `blocked_by` (the open blockers, [] if none).
 
 Claims: `corvee task claim <id>` fails if another actor holds the task,
 unless --force. Re-running `corvee task claim <id>` on a task already held

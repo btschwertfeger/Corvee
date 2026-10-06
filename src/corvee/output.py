@@ -6,7 +6,7 @@
 
 import json
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import click
@@ -174,6 +174,23 @@ def render_detail_sections(row: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def task_plain_text_row(task: dict[str, Any]) -> dict[str, Any]:
+    """`task` as plain-text views print it (§4.5): a stored-`open` task with open
+    blockers shows `blocked*`, and `blocked_by` is comma-joined. JSON never goes
+    through this, so it keeps the stored state.
+    """
+    shown = dict(task)
+    if task.get("state") == "open" and task.get("blocked_by"):
+        shown["state"] = "blocked*"
+    if "blocked_by" in task:
+        shown["blocked_by"] = ",".join(task["blocked_by"])
+    return shown
+
+
+def _same_row(row: dict[str, Any]) -> dict[str, Any]:
+    return row
+
+
 def _emit(
     rows: Sequence[dict[str, Any]],
     *,
@@ -181,11 +198,12 @@ def _emit(
     fields: Sequence[str] | None,
     default_fields: Sequence[str],
     wide_fields: Sequence[str],
+    plain_text_row: Callable[[dict[str, Any]], dict[str, Any]] = _same_row,
 ) -> None:
-    projected = [filter_fields(row, fields) for row in rows]
     if output == "json":
-        click.echo(json.dumps(projected))
+        click.echo(json.dumps([filter_fields(row, fields) for row in rows]))
         return
+    projected = [filter_fields(plain_text_row(row), fields) for row in rows]
     columns = wide_fields if output == "wide" else default_fields
     table = render_table(projected, fields, default_fields=columns)
     if table:
@@ -205,6 +223,7 @@ def emit_tasks(
         fields=fields,
         default_fields=LIST_TABLE_DEFAULT_FIELDS,
         wide_fields=LIST_TABLE_WIDE_FIELDS,
+        plain_text_row=task_plain_text_row,
     )
 
 
@@ -231,11 +250,12 @@ def _emit_with_detail(
     fields: Sequence[str] | None,
     default_fields: Sequence[str],
     block_field: str,
+    plain_text_row: Callable[[dict[str, Any]], dict[str, Any]] = _same_row,
 ) -> None:
-    projected = [filter_fields(row, fields) for row in rows]
     if output == "json":
-        click.echo(json.dumps(projected))
+        click.echo(json.dumps([filter_fields(row, fields) for row in rows]))
         return
+    projected = [filter_fields(plain_text_row(row), fields) for row in rows]
     columns = list(fields) if fields is not None else list(default_fields)
     for index, row in enumerate(projected):
         if index:
@@ -257,7 +277,12 @@ def emit_task_detail(
     -- for `task show`, where those keys are always present on each row.
     """
     _emit_with_detail(
-        tasks, output=output, fields=fields, default_fields=LIST_FIELDS, block_field="description"
+        tasks,
+        output=output,
+        fields=fields,
+        default_fields=LIST_FIELDS,
+        block_field="description",
+        plain_text_row=task_plain_text_row,
     )
 
 

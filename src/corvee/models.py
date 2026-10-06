@@ -180,6 +180,9 @@ class TaskRow:
     updated_at: str
     assigned_to: str | None = None
     scope: Scope = "local"
+    # Derived, never persisted: ids of the open `blocks` predecessors (§4.5),
+    # attached by the db layer on every read.
+    blocked_by: tuple[int, ...] = ()
     # Advisory-only, never persisted: attached by the db layer to flag a
     # spec-called-out oddity (e.g. reopening a child of a done parent)
     # without rejecting the write. Omitted from to_dict() when empty so it
@@ -217,6 +220,7 @@ class TaskRow:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
             "scope": self.scope,
+            "blocked_by": [task_ref(blocker, self.scope) for blocker in self.blocked_by],
         }
         if self.warnings:
             result["warnings"] = list(self.warnings)
