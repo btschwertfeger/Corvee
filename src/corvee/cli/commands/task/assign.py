@@ -11,7 +11,7 @@ from corvee.cli.context import corvee_context
 from corvee.cli.params import output_option
 from corvee.constants import narrow_output_format
 from corvee.db.tasks import assign_task
-from corvee.errors import UsageError
+from corvee.errors import require_non_empty
 from corvee.models import parse_task_refs
 from corvee.output import emit_tasks
 
@@ -39,8 +39,7 @@ def assign(task_refs: tuple[str, ...], target: str, output_format: str) -> None:
     Advisory only: not gated by an existing claim, and does not itself claim
     the task. `task mine` surfaces it for the assigned actor once unclaimed.
     """
-    if not target.strip():
-        raise UsageError("invalid_target", "--to must not be empty or whitespace-only")
+    require_non_empty(target, "invalid_target", "--to must not be empty or whitespace-only")
     task_ids, scope = parse_task_refs(task_refs)
     with corvee_context(scope=scope) as ctx:
         tasks = [

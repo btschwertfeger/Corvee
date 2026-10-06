@@ -74,6 +74,22 @@ class TestFactRevise:
         payload = json.loads(result.output)
         assert payload[0]["claim"] == "new claim"
 
+    def test_rejects_whitespace_only_new_claim(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """A replacement claim is as meaningless whitespace-only as empty."""
+        fact_id = add_fact("old claim")
+        result = runner.invoke(cli, ["fact", "revise", fact_id, "   ", "-o", "json"])
+        assert result.exit_code == 2
+
+    def test_rejects_empty_new_claim(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """An empty replacement claim exits 2 the same as a whitespace-only one."""
+        fact_id = add_fact("old claim")
+        result = runner.invoke(cli, ["fact", "revise", fact_id, "", "-o", "json"])
+        assert result.exit_code == 2
+
 
 class TestFactVerify:
     def test_sets_status_verified(
@@ -95,6 +111,22 @@ class TestFactVerify:
         """`fact verify` without --proof exits 2; proof is mandatory for a verification."""
         fact_id = add_fact("claim")
         result = runner.invoke(cli, ["fact", "verify", fact_id, "-o", "json"])
+        assert result.exit_code == 2
+
+    def test_rejects_whitespace_only_proof(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """A whitespace-only --proof is as meaningless as a missing one."""
+        fact_id = add_fact("claim")
+        result = runner.invoke(cli, ["fact", "verify", fact_id, "--proof", "   ", "-o", "json"])
+        assert result.exit_code == 2
+
+    def test_rejects_empty_proof(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """An empty --proof exits 2 the same as a whitespace-only one."""
+        fact_id = add_fact("claim")
+        result = runner.invoke(cli, ["fact", "verify", fact_id, "--proof", "", "-o", "json"])
         assert result.exit_code == 2
 
 

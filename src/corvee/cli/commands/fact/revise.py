@@ -11,6 +11,7 @@ from corvee.cli.context import corvee_context
 from corvee.cli.params import StdinOrValue, output_option
 from corvee.constants import narrow_output_format
 from corvee.db.facts import revise_fact
+from corvee.errors import require_non_empty
 from corvee.models import parse_fact_ref
 from corvee.output import emit_facts
 
@@ -32,6 +33,7 @@ Read a long or multi-line replacement claim from stdin:
 @output_option()
 def revise(fact_ref: str, new_claim: str, output_format: str) -> None:
     """Change a fact's claim text."""
+    require_non_empty(new_claim, "invalid_claim", "new_claim must not be empty or whitespace-only")
     ref = parse_fact_ref(fact_ref)
     with corvee_context(scope=ref.scope) as ctx:
         fact = revise_fact(

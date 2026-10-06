@@ -190,8 +190,11 @@ Set `--actor` to whatever is actually running your host. See
 
 ## What it exposes
 
-Seventeen tools, narrow and single-purpose rather than one wide `task_update`
-(see [Specification §10.4](spec.md#104-trust-and-error-handling) for why).
+Twenty-seven tools, each a fixed, individually named verb with its own
+closed set of named parameters, never a generic mechanism that takes a
+field name and a value as arguments (see [Specification
+§10.4](spec.md#104-trust-and-error-handling) for why that still gives a
+host's permission system something to reason about).
 Every tool that writes something accepts an optional `session_id`
 argument — a per-conversation token, distinct from the actor set at
 startup (see [Specification §10.1](spec.md#101-process-model)) — falling
@@ -218,21 +221,26 @@ keep it stable across your calls in one conversation.
 | `fact_search` | no | Search facts (default 20 results) |
 | `fact_add` | yes | Record a new fact |
 | `fact_verify` | yes | Mark a fact checked-true, with proof |
+| `fact_revise` | yes | Change a fact's claim text |
+| `fact_retract` | yes | Withdraw a fact, excluded from the default `fact_search` results |
+| `fact_unverify` | yes | Move a verified fact back to unverified, clearing its proof |
+| `task_update` | yes | Mutate one or more tasks (title, description, type, priority, state) |
+| `task_label` | yes | Attach a label to one or more tasks |
+| `task_unlabel` | yes | Remove a label from one or more tasks |
+| `task_link` | yes | Relate two tasks, including parent/child hierarchy |
+| `task_unlink` | yes | Remove a link between two tasks |
+| `task_assign` | yes | Route one or more tasks to a specific actor |
+| `task_unassign` | yes | Clear the assignment on one or more tasks |
 
-`force` lives only on `task_claim`/`task_unclaim` — not on `task_start`/
-`task_done`/`task_cancel`/`task_review`/`task_reopen`/`task_block`, whose
-names should never quietly let a caller steal someone else's claim. Call
-`task_claim(force=true)` first if you need to take one over.
+`force` lives on `task_claim`, `task_unclaim`, and `task_update`, never
+on `task_start`/`task_done`/`task_cancel`/`task_review`/`task_reopen`/
+`task_block`, whose names should never quietly let a caller steal
+someone else's claim. Call `task_claim(force=true)` first if you need
+to take one over before using one of those.
 
 No `purge`, `delete`, `import`, or `export` on this surface — those stay
-CLI-only. Nor is there a `task_update`/`task_label`/`task_link`/
-`task_assign`, or a `fact_revise`/`fact_retract`/`fact_unverify`: once a
-task or fact is filed, this surface can only work it forward (claim,
-comment, transition it, verify a fact) or leave it as-is, never correct
-a mistake in its title, description, claim, or labels/links. Reach for
-the CLI (or a human) for that. See
-[Specification §10.3](spec.md#103-tool-list) for full argument shapes
-and the reasoning behind each tool.
+CLI-only. See [Specification §10.3](spec.md#103-tool-list) for full
+argument shapes and the reasoning behind each tool.
 
 ## Responses
 
@@ -267,6 +275,18 @@ matches `limit` cut off (`0` when nothing was cut off):
     {"id": "TASK-14", "title": "Fix the flaky auth test", "...": "..."}
   ],
   "omitted": 0
+}
+```
+
+`task_update` returns the same `{"result": [...]}` shape, minus
+`omitted`. Every entry is a task the call actually mutated, including
+any `cascade`-cancelled descendants, not a capped search result.
+
+```json
+{
+  "result": [
+    {"id": "TASK-14", "title": "Fix the flaky auth test", "...": "..."}
+  ]
 }
 ```
 

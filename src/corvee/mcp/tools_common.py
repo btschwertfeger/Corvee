@@ -16,11 +16,11 @@ from typing import Annotated, Any
 from pydantic import Field
 
 from corvee.cli.context import corvee_context
-from corvee.constants import SCOPE_FILTERS, ScopeFilter
+from corvee.constants import SCOPE_FILTERS, Scope, ScopeFilter
 from corvee.errors import UsageError
 from corvee.mcp.scope import require_scope_available
 from corvee.mcp.server_config import ServerConfig
-from corvee.models import parse_task_ref
+from corvee.models import parse_fact_ref, parse_task_ref, parse_task_refs
 
 
 def _enum_field(description: str, choices: tuple[str, ...]) -> Any:
@@ -40,6 +40,13 @@ def _enum_field(description: str, choices: tuple[str, ...]) -> Any:
 # using them stays in sync (DRY) rather than re-typing the same description.
 TaskRefArg = Annotated[
     str | int, Field(description="Task id: TASK-<n>, TASK-GLOBAL-<n>, or a bare integer.")
+]
+TaskRefsArg = Annotated[
+    list[str | int],
+    Field(
+        description="One or more task ids (TASK-<n>, TASK-GLOBAL-<n>, or a "
+        "bare integer), all sharing one scope, applied in one transaction."
+    ),
 ]
 FactRefArg = Annotated[
     str | int, Field(description="Fact id: FACT-<n>, FACT-GLOBAL-<n>, or a bare integer.")
@@ -114,6 +121,17 @@ def validate_scope_filter(scope: str) -> ScopeFilter:
     return scope
 
 
+def _scoped_write_context(config: ServerConfig, scope: Scope) -> Any:
+    """Check `scope` is available on this server and return an un-entered
+    `corvee_context(write=True, ...)` for it -- the part `write_context`,
+    `write_context_batch`, and `fact_write_context` all do identically,
+    the only difference between them being how they arrive at `scope`.
+    """
+    require_scope_available(config, scope)
+    db_path = project_db_path(config) if scope == "local" else None
+    return corvee_context(write=True, scope=scope, actor=config.actor, project_db_path=db_path)
+
+
 def write_context(config: ServerConfig, ref: str | int) -> tuple[Any, Any]:
     """Parse `ref`, check its scope is available on this server, and return
     (parsed_ref, an un-entered corvee_context(write=True, ...)) for the
@@ -122,8 +140,28 @@ def write_context(config: ServerConfig, ref: str | int) -> tuple[Any, Any]:
     (`task_block`) can still do so under one `with` block.
     """
     parsed = parse_task_ref(str(ref))
-    require_scope_available(config, parsed.scope)
-    db_path = project_db_path(config) if parsed.scope == "local" else None
-    return parsed, corvee_context(
-        write=True, scope=parsed.scope, actor=config.actor, project_db_path=db_path
-    )
+    return parsed, _scoped_write_context(config, parsed.scope)
+
+
+def fact_write_context(config: ServerConfig, ref: str | int) -> tuple[Any, Any]:
+    """The fact-side counterpart to `write_context`. Parses a fact `ref`,
+    checks its scope is available on this server, and returns (parsed_ref,
+    an un-entered corvee_context(write=True, ...)) for the caller to `with`.
+    """
+    parsed = parse_fact_ref(str(ref))
+    return parsed, _scoped_write_context(config, parsed.scope)
+
+
+def write_context_batch(
+    config: ServerConfig, refs: list[str | int]
+) -> tuple[list[int], Scope, Any]:
+    """The batch counterpart to `write_context`, for a tool mirroring a CLI
+    command that itself takes several `task_refs` in one transaction
+    (`task_update`, `task_label`, `task_unlabel`, `task_assign`,
+    `task_unassign`). Parses every ref with the same `parse_task_refs` the
+    CLI command already calls, requiring they all share one scope, then
+    returns (task_ids, scope, an un-entered corvee_context(write=True,
+    ...)) for the caller to `with`.
+    """
+    task_ids, scope = parse_task_refs([str(ref) for ref in refs])
+    return task_ids, scope, _scoped_write_context(config, scope)

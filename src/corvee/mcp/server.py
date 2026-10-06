@@ -28,9 +28,17 @@ _BASE_INSTRUCTIONS = (
     "then task_claim/task_start/task_comment/task_done/task_review/"
     "task_cancel/task_block to work a task, releasing it with task_unclaim "
     "if you cannot finish it. task_reopen undoes a mis-cancel or premature "
-    "done. task_block requires a comment explaining why. "
+    "done. task_block requires a comment explaining why. task_update "
+    "corrects a task's title, description, type, priority, or state after "
+    "filing, across one or more tasks in one call. task_label/task_unlabel "
+    "attach/remove a label, also across one or more tasks. task_link/"
+    "task_unlink relate/unrelate two tasks by relation, including "
+    "parent/child hierarchy. task_assign/task_unassign route a task to "
+    "an actor, or clear that routing, advisory only and not claim-gated. "
     "Check an existing fact with fact_show before re-deriving it; record "
-    "new or updated ones with fact_add/fact_verify."
+    "new or updated ones with fact_add/fact_verify, correct a fact's "
+    "claim text with fact_revise, withdraw one with fact_retract, and "
+    "move a verified fact back to unverified with fact_unverify."
 )
 
 

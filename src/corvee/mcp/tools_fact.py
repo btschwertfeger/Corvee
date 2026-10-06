@@ -12,8 +12,15 @@ from pydantic import Field
 from corvee.cli.context import corvee_context
 from corvee.constants import Scope
 from corvee.db.events import get_fact_events
-from corvee.db.facts import insert_fact, require_fact, verify_fact
-from corvee.errors import UsageError
+from corvee.db.facts import (
+    insert_fact,
+    require_fact,
+    retract_fact,
+    revise_fact,
+    unverify_fact,
+    verify_fact,
+)
+from corvee.errors import require_non_empty
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import require_scope_available
 from corvee.mcp.server_config import ServerConfig
@@ -21,6 +28,7 @@ from corvee.mcp.tools_common import (
     FactRefArg,
     IsGlobalArg,
     SessionIdArg,
+    fact_write_context,
     project_db_path,
     session_id_for,
 )
@@ -29,10 +37,12 @@ from corvee.models import parse_fact_ref
 
 
 def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
-    """Registers the fact tools: `fact_add`, `fact_verify`, `fact_show`
-    (spec §10.3). `fact_add`/`fact_verify` write an event; `session_id` is
-    optional on each, same default as the write tools above. `fact_show`
-    is read-only and does not accept `session_id` at all.
+    """Registers the fact tools: `fact_add`, `fact_verify`, `fact_revise`,
+    `fact_retract`, `fact_unverify`, `fact_show` (spec §10.3). `fact_add`/
+    `fact_verify`/`fact_revise`/`fact_retract`/`fact_unverify` write an
+    event; `session_id` is optional on each, same default as the write
+    tools above. `fact_show` is read-only and does not accept `session_id`
+    at all.
     """
 
     @app.tool(structured_output=True)
@@ -58,8 +68,7 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
         """
 
         def _fetch() -> dict[str, Any]:
-            if not claim.strip():
-                raise UsageError("invalid_claim", "claim must not be empty or whitespace-only")
+            require_non_empty(claim, "invalid_claim", "claim must not be empty or whitespace-only")
             scope: Scope = "global" if is_global else "local"
             require_scope_available(config, scope)
             db_path = project_db_path(config) if scope == "local" else None
@@ -81,7 +90,9 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
     @app.tool(structured_output=True)
     async def fact_verify(
         ref: FactRefArg,
-        proof: Annotated[str, Field(description="Evidence supporting the claim.")],
+        proof: Annotated[
+            str, Field(description="Evidence supporting the claim. Must not be empty.")
+        ],
         session_id: SessionIdArg = None,
     ) -> dict[str, Any]:
         """Mark a fact verified, with proof. Re-verifying an already-verified
@@ -90,20 +101,99 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
         """
 
         def _fetch() -> dict[str, Any]:
-            parsed = parse_fact_ref(str(ref))
-            require_scope_available(config, parsed.scope)
-            db_path = project_db_path(config) if parsed.scope == "local" else None
-            with corvee_context(
-                write=True,
-                scope=parsed.scope,
-                actor=config.actor,
-                project_db_path=db_path,
-            ) as ctx:
+            require_non_empty(proof, "invalid_proof", "proof must not be empty or whitespace-only")
+            parsed, ctx_cm = fact_write_context(config, ref)
+            with ctx_cm as ctx:
                 fact = verify_fact(
                     ctx.conn,
                     parsed.id,
                     proof,
                     config.actor,
+                    session_id=session_id_for(config, session_id),
+                    scope=parsed.scope,
+                )
+                return fact.to_dict()
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def fact_revise(
+        ref: FactRefArg,
+        new_claim: Annotated[
+            str, Field(description="The fact's replacement claim text. Must not be empty.")
+        ],
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Change a fact's claim text. A no-op success if `new_claim` is
+        identical to the current claim. A genuine change resets a verified
+        or retracted fact back to `unverified`, since the proof that
+        verified the old claim says nothing about the new one.
+        `session_id` defaults to this server's own session id if omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            require_non_empty(
+                new_claim, "invalid_claim", "new_claim must not be empty or whitespace-only"
+            )
+            parsed, ctx_cm = fact_write_context(config, ref)
+            with ctx_cm as ctx:
+                fact = revise_fact(
+                    ctx.conn,
+                    parsed.id,
+                    new_claim,
+                    config.actor,
+                    session_id=session_id_for(config, session_id),
+                    scope=parsed.scope,
+                )
+                return fact.to_dict()
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def fact_retract(
+        ref: FactRefArg,
+        reason: Annotated[str | None, Field(description="Why the fact is being withdrawn.")] = None,
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Withdraw a fact, excluded from `fact_search`'s default results.
+        Clears its verification fields. `fact_verify`/`fact_revise` still
+        work on a retracted fact and move it back into the normal flow.
+        `session_id` defaults to this server's own session id if omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            parsed, ctx_cm = fact_write_context(config, ref)
+            with ctx_cm as ctx:
+                fact = retract_fact(
+                    ctx.conn,
+                    parsed.id,
+                    config.actor,
+                    reason=reason,
+                    session_id=session_id_for(config, session_id),
+                    scope=parsed.scope,
+                )
+                return fact.to_dict()
+
+        return await run_tool(worker, _fetch)
+
+    @app.tool(structured_output=True)
+    async def fact_unverify(
+        ref: FactRefArg,
+        note: Annotated[str | None, Field(description="Why the fact is being unverified.")] = None,
+        session_id: SessionIdArg = None,
+    ) -> dict[str, Any]:
+        """Move a verified fact back to `unverified`, clearing its `proof`.
+        `session_id` defaults to this server's own session id if omitted.
+        """
+
+        def _fetch() -> dict[str, Any]:
+            parsed, ctx_cm = fact_write_context(config, ref)
+            with ctx_cm as ctx:
+                fact = unverify_fact(
+                    ctx.conn,
+                    parsed.id,
+                    config.actor,
+                    note=note,
                     session_id=session_id_for(config, session_id),
                     scope=parsed.scope,
                 )

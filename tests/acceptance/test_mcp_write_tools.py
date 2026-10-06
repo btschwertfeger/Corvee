@@ -14,7 +14,8 @@ from mcp_helpers import call_error as _call_error
 
 from corvee.cli.context import corvee_context
 from corvee.config import ProjectConfig
-from corvee.db.tasks import insert_task
+from corvee.db.links import link_tasks
+from corvee.db.tasks import apply_update, insert_task
 from corvee.mcp.server import build_server
 from corvee.mcp.server_config import ServerConfig
 
@@ -207,6 +208,434 @@ class TestTaskBlock:
 
         detail = _call(app, "task_show", ref=task_id)
         assert not any(e.get("body") == "should not stick" for e in detail["events"])
+
+
+class TestTaskUpdate:
+    def test_updates_title_description_type_and_priority(
+        self, app: MCPServer, task_id: str
+    ) -> None:
+        result = _call(
+            app,
+            "task_update",
+            refs=[task_id],
+            title="new title",
+            description="new description",
+            task_type="bug",
+            priority="high",
+            session_id="sess-1",
+        )
+        updated = result["result"][0]
+        assert updated["title"] == "new title"
+        assert updated["description"] == "new description"
+        assert updated["type"] == "bug"
+        assert updated["priority"] == "high"
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_update",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            priority="high",
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{first.id}"]["priority"] == "high"
+        assert by_id[f"TASK-{second.id}"]["priority"] == "high"
+
+    def test_state_transitions_the_same_way_the_cli_does(
+        self, app: MCPServer, task_id: str
+    ) -> None:
+        result = _call(app, "task_update", refs=[task_id], state="in_progress", session_id="sess-1")
+        updated = result["result"][0]
+        assert updated["state"] == "in_progress"
+        assert updated["claimed_by"] == "agent:test"
+
+    def test_claim_conflict_without_force(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+
+        error = _call_error(app, "task_update", refs=[task_id], title="x", session_id="sess-1")
+        assert error["error"]["code"] == "claim_conflict"
+
+    def test_force_overrides_someone_elses_claim(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+
+        result = _call(
+            app, "task_update", refs=[task_id], state="done", force=True, session_id="sess-1"
+        )
+        assert result["result"][0]["state"] == "done"
+
+    def test_cascade_cancels_open_descendants(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            parent = insert_task(ctx.conn, title="parent")
+            child = insert_task(ctx.conn, title="child")
+            link_tasks(ctx.conn, parent.id, child.id, "parent_of", "agent:test", None)
+
+        result = _call(
+            app,
+            "task_update",
+            refs=[f"TASK-{parent.id}"],
+            state="cancelled",
+            cascade=True,
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t["state"] for t in result["result"]}
+        assert by_id[f"TASK-{parent.id}"] == "cancelled"
+        assert by_id[f"TASK-{child.id}"] == "cancelled"
+
+    def test_invalid_state_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(app, "task_update", refs=[task_id], state="bogus", session_id="sess-1")
+        assert error["error"]["code"] == "invalid_state"
+
+    def test_invalid_task_type_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app, "task_update", refs=[task_id], task_type="bogus", session_id="sess-1"
+        )
+        assert error["error"]["code"] == "invalid_type"
+
+    def test_invalid_priority_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app, "task_update", refs=[task_id], priority="bogus", session_id="sess-1"
+        )
+        assert error["error"]["code"] == "invalid_priority"
+
+
+class TestTaskLabel:
+    def test_attaches_a_label_visible_via_task_show(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_label", refs=[task_id], label="API", session_id="sess-1")
+        detail = _call(app, "task_show", ref=task_id)
+        assert detail["labels"] == ["api"]
+
+    def test_no_op_if_already_attached(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_label", refs=[task_id], label="urgent", session_id="sess-1")
+        result = _call(app, "task_label", refs=[task_id], label="urgent", session_id="sess-1")
+        assert result["result"][0]["id"] == task_id
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        _call(
+            app,
+            "task_label",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            label="urgent",
+            session_id="sess-1",
+        )
+        first_detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        second_detail = _call(app, "task_show", ref=f"TASK-{second.id}")
+        assert first_detail["labels"] == ["urgent"]
+        assert second_detail["labels"] == ["urgent"]
+
+    def test_batch_is_all_or_nothing(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+
+        error = _call_error(
+            app,
+            "task_label",
+            refs=[f"TASK-{first.id}", "TASK-999999"],
+            label="urgent",
+            session_id="sess-1",
+        )
+        assert error["error"]["exit_code"] == 3
+        detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        assert detail["labels"] == []
+
+    def test_invalid_label_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app, "task_label", refs=[task_id], label="has space", session_id="sess-1"
+        )
+        assert error["error"]["code"] == "invalid_label"
+
+
+class TestTaskUnlabel:
+    def test_removes_an_attached_label(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_label", refs=[task_id], label="urgent", session_id="sess-1")
+        _call(app, "task_unlabel", refs=[task_id], label="urgent", session_id="sess-1")
+        detail = _call(app, "task_show", ref=task_id)
+        assert detail["labels"] == []
+
+    def test_no_op_if_not_attached(self, app: MCPServer, task_id: str) -> None:
+        result = _call(app, "task_unlabel", refs=[task_id], label="urgent", session_id="sess-1")
+        assert result["result"][0]["id"] == task_id
+
+
+class TestTaskLink:
+    def test_links_two_tasks(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_link",
+            source_ref=f"TASK-{first.id}",
+            target_ref=f"TASK-{second.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        assert [t["id"] for t in result["result"]] == [f"TASK-{first.id}", f"TASK-{second.id}"]
+        detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        assert any(
+            link["relation"] == "blocks" and link["task_id"] == f"TASK-{second.id}"
+            for link in detail["links"]
+        )
+
+    def test_self_link_is_a_guard_violation(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(
+            app,
+            "task_link",
+            source_ref=task_id,
+            target_ref=task_id,
+            relation="relates_to",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "self_link"
+        assert error["error"]["exit_code"] == 5
+
+    def test_result_order_is_source_then_target_even_when_target_id_is_lower(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        """`blocks` is not id-normalized the way `relates_to` is, so
+        `result` follows argument order even when the source id is
+        higher.
+        """
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_link",
+            source_ref=f"TASK-{second.id}",
+            target_ref=f"TASK-{first.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        assert [t["id"] for t in result["result"]] == [f"TASK-{second.id}", f"TASK-{first.id}"]
+
+    def test_cross_scope_link_is_a_guard_violation(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="global", actor="agent:test", session_id=None) as ctx:
+            global_task = insert_task(ctx.conn, title="global task", scope="global")
+
+        error = _call_error(
+            app,
+            "task_link",
+            source_ref=task_id,
+            target_ref=f"TASK-GLOBAL-{global_task.id}",
+            relation="relates_to",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "cross_scope_link"
+
+    def test_parent_of_warns_when_child_is_open_and_parent_is_done(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            parent = insert_task(ctx.conn, title="parent")
+            child = insert_task(ctx.conn, title="child")
+            apply_update(ctx.conn, parent.id, "agent:test", state="in_progress")
+            apply_update(ctx.conn, parent.id, "agent:test", state="done")
+
+        result = _call(
+            app,
+            "task_link",
+            source_ref=f"TASK-{parent.id}",
+            target_ref=f"TASK-{child.id}",
+            relation="parent_of",
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{parent.id}"]["warnings"] == [
+            f"child TASK-{child.id} is open while this parent is done"
+        ]
+        assert "warnings" not in by_id[f"TASK-{child.id}"]
+
+    def test_invalid_relation_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            other = insert_task(ctx.conn, title="other")
+
+        error = _call_error(
+            app,
+            "task_link",
+            source_ref=task_id,
+            target_ref=f"TASK-{other.id}",
+            relation="bogus",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "invalid_relation"
+
+
+class TestTaskUnlink:
+    def test_unlinks_two_tasks(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+            link_tasks(ctx.conn, first.id, second.id, "blocks", "agent:test", None)
+
+        _call(
+            app,
+            "task_unlink",
+            source_ref=f"TASK-{first.id}",
+            target_ref=f"TASK-{second.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        detail = _call(app, "task_show", ref=f"TASK-{first.id}")
+        assert detail["links"] == []
+
+    def test_no_op_if_not_linked(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_unlink",
+            source_ref=f"TASK-{first.id}",
+            target_ref=f"TASK-{second.id}",
+            relation="blocks",
+            session_id="sess-1",
+        )
+        assert [t["id"] for t in result["result"]] == [f"TASK-{first.id}", f"TASK-{second.id}"]
+
+    def test_invalid_relation_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            other = insert_task(ctx.conn, title="other")
+
+        error = _call_error(
+            app,
+            "task_unlink",
+            source_ref=task_id,
+            target_ref=f"TASK-{other.id}",
+            relation="bogus",
+            session_id="sess-1",
+        )
+        assert error["error"]["code"] == "invalid_relation"
+
+
+class TestTaskAssign:
+    def test_assigns_the_task(self, app: MCPServer, task_id: str) -> None:
+        result = _call(
+            app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1"
+        )
+        assert result["result"][0]["assigned_to"] == "agent:claude"
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        result = _call(
+            app,
+            "task_assign",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            target="agent:claude",
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{first.id}"]["assigned_to"] == "agent:claude"
+        assert by_id[f"TASK-{second.id}"]["assigned_to"] == "agent:claude"
+
+    def test_no_op_if_already_assigned_to_target(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1")
+        result = _call(
+            app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1"
+        )
+        assert result["result"][0]["assigned_to"] == "agent:claude"
+
+    def test_empty_target_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(app, "task_assign", refs=[task_id], target="", session_id="sess-1")
+        assert error["error"]["code"] == "invalid_target"
+
+    def test_whitespace_only_target_is_a_usage_error(self, app: MCPServer, task_id: str) -> None:
+        error = _call_error(app, "task_assign", refs=[task_id], target="   ", session_id="sess-1")
+        assert error["error"]["code"] == "invalid_target"
+
+    def test_not_claim_gated(self, app: MCPServer, task_id: str) -> None:
+        """Assignment is advisory only, not gated by an existing claim
+        (§4.4). Assigning a task claimed by a different actor still
+        succeeds.
+        """
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+
+        result = _call(
+            app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1"
+        )
+        updated = result["result"][0]
+        assert updated["assigned_to"] == "agent:claude"
+        assert updated["claimed_by"] == "agent:other"
+
+
+class TestTaskUnassign:
+    def test_unassigns_the_task(self, app: MCPServer, task_id: str) -> None:
+        _call(app, "task_assign", refs=[task_id], target="agent:claude", session_id="sess-1")
+        result = _call(app, "task_unassign", refs=[task_id], session_id="sess-1")
+        assert result["result"][0]["assigned_to"] is None
+
+    def test_batches_several_refs_into_one_transaction(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            first = insert_task(ctx.conn, title="a")
+            second = insert_task(ctx.conn, title="b")
+
+        _call(
+            app,
+            "task_assign",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            target="agent:claude",
+            session_id="sess-1",
+        )
+        result = _call(
+            app,
+            "task_unassign",
+            refs=[f"TASK-{first.id}", f"TASK-{second.id}"],
+            session_id="sess-1",
+        )
+        by_id = {t["id"]: t for t in result["result"]}
+        assert by_id[f"TASK-{first.id}"]["assigned_to"] is None
+        assert by_id[f"TASK-{second.id}"]["assigned_to"] is None
+
+    def test_no_op_if_already_unassigned(self, app: MCPServer, task_id: str) -> None:
+        result = _call(app, "task_unassign", refs=[task_id], session_id="sess-1")
+        assert result["result"][0]["assigned_to"] is None
+
+    def test_not_claim_gated(self, app: MCPServer, task_id: str) -> None:
+        """Unassignment is advisory only, not gated by an existing claim
+        (§4.4). Clearing the assignment on a task claimed by a different
+        actor still succeeds.
+        """
+        with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
+            from corvee.db.tasks import assign_task, claim_task
+
+            claim_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:other")
+            assign_task(ctx.conn, int(task_id.removeprefix("TASK-")), "agent:claude", "agent:test")
+
+        result = _call(app, "task_unassign", refs=[task_id], session_id="sess-1")
+        updated = result["result"][0]
+        assert updated["assigned_to"] is None
+        assert updated["claimed_by"] == "agent:other"
 
 
 class TestForceIsNotAParameterOnStateTransitionTools:
