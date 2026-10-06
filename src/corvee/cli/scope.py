@@ -37,8 +37,8 @@ def scopes_for(
 
     `local_available`, given, is used verbatim under `--scope all` instead
     of the ambient, cwd-based `project_exists()` check — the MCP surface's
-    own entry point (`mcp/scope.py::scopes_for_config`) passes its already
-    -resolved `ServerConfig.project is not None` here, since a worker
+    own entry point (`mcp/scope.py::fetch_merged_for_config`) passes its
+    already-resolved `ServerConfig.project is not None` here, since a worker
     thread has no meaningful cwd of its own to re-derive from (spec
     §10.1). Omitted (`None`, the CLI's own call), this checks ambiently,
     unchanged from before this parameter existed.

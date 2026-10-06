@@ -5,7 +5,6 @@
 #
 
 import sqlite3
-from pathlib import Path
 
 import pytest
 
@@ -13,39 +12,8 @@ from corvee.cli.context import corvee_context
 from corvee.config import ProjectConfig
 from corvee.constants import Scope
 from corvee.db.tasks import TaskFilter, insert_task, list_tasks
-from corvee.errors import ConfigError
-from corvee.mcp.scope import fetch_merged_for_config, scopes_for_config
+from corvee.mcp.scope import fetch_merged_for_config
 from corvee.mcp.server_config import ServerConfig
-
-
-class TestScopesForConfig:
-    def test_local_scope_with_a_project_returns_local(self, project: ProjectConfig) -> None:
-        config = ServerConfig(actor="agent:test", project=project, session_id="sess-server")
-        assert scopes_for_config(config, "local") == ("local",)
-
-    def test_local_scope_with_no_project_raises(self) -> None:
-        """Explicitly requesting local scope with no project is a real usage
-        error, mirroring `cli/scope.py::scopes_for`'s own "requested
-        explicitly, keeps failing loudly" rule for --scope local.
-        """
-        config = ServerConfig(actor="agent:test", project=None, session_id="sess-server")
-        with pytest.raises(ConfigError):
-            scopes_for_config(config, "local")
-
-    def test_all_scope_with_no_project_and_no_global_db_returns_empty(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
-        """A global-only server with nothing filed anywhere merges to nothing,
-        not an error -- the same graceful "empty scope" `scopes_for` gives
-        the CLI for a merged read with no local project.
-        """
-        monkeypatch.setenv("CORVEE_GLOBAL_DB", str(tmp_path / "nonexistent" / "corvee.db"))
-        config = ServerConfig(actor="agent:test", project=None, session_id="sess-server")
-        assert scopes_for_config(config, "all") == ()
-
-    def test_all_scope_with_a_project_includes_local(self, project: ProjectConfig) -> None:
-        config = ServerConfig(actor="agent:test", project=project, session_id="sess-server")
-        assert "local" in scopes_for_config(config, "all")
 
 
 def _titles(conn: sqlite3.Connection, scope: Scope) -> list[str]:
