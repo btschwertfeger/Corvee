@@ -44,7 +44,7 @@ it from.
 | 2 | Usage or validation error |
 | 3 | Task or fact not found |
 | 4 | Claim conflict: the task is held by another actor |
-| 5 | Guard violation: open children, a `parent_of` cycle, a rejected state transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, linking across the local/global scope split |
+| 5 | Guard violation: open children, a `parent_of` or `blocks` cycle, a self-link, a second parent on a task that has one, a rejected state transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, linking across the local/global scope split |
 | 6 | Project/config problem: no or unreadable `.corvee/config.toml`, a database file that cannot be opened or written, a `.corvee/` or database directory that cannot be created, a schema newer than this binary, or a `corvee import` of a dump whose schema_version doesn't match this binary's |
 
 For the exact JSON shapes, filter semantics, and every edge case, see the

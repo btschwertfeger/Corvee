@@ -89,7 +89,7 @@ the server per conversation already, you get this for free.
 **Global-only mode** is reached either way: no project found at cwd with
 `--project-root` omitted, or explicitly by pointing the host at a
 directory with no `.corvee/config.toml` anywhere above it. It's the MCP
-equivalent of `corvee --global task add ...` from such a directory:
+equivalent of `corvee task add --global ...` from such a directory:
 
 ```bash
 corvee mcp serve
@@ -229,7 +229,7 @@ tasks. See [Specification §4.5](spec.md#45-state-transitions).
 | `fact_revise` | yes | Change a fact's claim text |
 | `fact_retract` | yes | Withdraw a fact, excluded from the default `fact_search` results |
 | `fact_unverify` | yes | Move a verified fact back to unverified, clearing its proof |
-| `task_update` | yes | Mutate one or more tasks (title, description, type, priority, state) |
+| `task_update` | yes | Mutate one or more tasks (title, description, type, priority, state, `force`, `cascade`) |
 | `task_label` | yes | Attach a label to one or more tasks |
 | `task_unlabel` | yes | Remove a label from one or more tasks |
 | `task_link` | yes | Relate two tasks, including parent/child hierarchy |
@@ -266,7 +266,8 @@ instance:
   "assigned_to": null,
   "created_at": "2026-01-01T00:00:00.000Z",
   "updated_at": "2026-01-01T00:00:00.000Z",
-  "scope": "local"
+  "scope": "local",
+  "blocked_by": []
 }
 ```
 

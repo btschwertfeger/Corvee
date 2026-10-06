@@ -14,8 +14,8 @@ Run once per project, from the project root:
 corvee init
 ```
 
-This creates `.corvee/config.toml` (analogous to `.git`) and adds `.corvee/`
-to `.gitignore`. It also prints two short pointer blocks: one to paste into
+This creates `.corvee/config.toml` (analogous to `.git`) and, if the project
+already has a `.gitignore`, adds `.corvee/` to it. It also prints two short pointer blocks: one to paste into
 this project's own `AGENTS.md`, and one worded for a global agents config
 such as `~/.claude/CLAUDE.md`, to apply across every project instead. The
 task database itself (`.corvee/corvee.db`) is never committed. It is local,
@@ -86,7 +86,7 @@ commands (`task list`/`ready`/`search`/`mine`, `fact list`/`search`,
 
 ```
 $ corvee task list -o wide
-ID      TITLE                    TYPE  PRIORITY  STATE  CLAIMED_BY  CLAIMED_AT  ASSIGNED_TO  CREATED_AT                UPDATED_AT                SCOPE
+ID      TITLE                    TYPE  PRIORITY  STATE  CLAIMED_BY  CLAIMED_AT  ASSIGNED_TO  CREATED_AT                UPDATED_AT                SCOPE  BLOCKED_BY
 TASK-1  Fix the flaky auth test  task  medium    open                                        2026-09-15T06:28:27.641Z  2026-09-15T06:28:27.641Z  local
 ```
 
@@ -115,6 +115,7 @@ assigned_to: (none)
 created_at: 2026-09-15T06:28:27.641Z
 updated_at: 2026-09-15T06:28:27.810Z
 scope: local
+blocked_by:
 
 description:
 Retry logic in test_auth.py::test_login_retry is racy under load
@@ -124,6 +125,7 @@ links: (none)
 subtasks: (none)
 referenced: (none)
 events:
+  2026-09-15T06:28:27.641Z  agent:claude  created  Fix the flaky auth test
   2026-09-15T06:28:27.683Z  agent:claude  field_change  claimed_by: None -> agent:claude
   2026-09-15T06:28:27.725Z  agent:claude  field_change  claimed_at: 2026-09-15T06:28:27.683Z -> 2026-09-15T06:28:27.725Z
   2026-09-15T06:28:27.725Z  agent:claude  field_change  state: open -> in_progress

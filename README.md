@@ -119,8 +119,8 @@ corvee fact add "requests is Apache-2.0 licensed" --proof "pip show requests"
 corvee fact search "license" -o json
 ```
 
-`corvee explain` prints a compact, agent-oriented cheat sheet from inside
-any initialized project. See [Quickstart](docs/quickstart.md) for facts,
+`corvee explain` prints a compact, agent-oriented cheat sheet from any
+directory. See [Quickstart](docs/quickstart.md) for facts,
 global scope, and the full core loop.
 
 ## License
