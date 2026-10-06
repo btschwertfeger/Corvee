@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v40)
+# corvee — Technical Specification (v41)
 
 ## 1. Purpose
 
@@ -113,8 +113,9 @@ frequency from a handful of agents/humans, not a swarm):
 - Beyond the version check below, each invocation wraps its own work in one
   transaction: `BEGIN IMMEDIATE` for any command that writes, a plain
   `BEGIN` for commands that only read (`task list`, `task show`, `task
-  ready`, `task search`, `task mine`, `task labels`, `fact list`, `fact
-  search`, `fact show`, `export`, `doctor`). `BEGIN IMMEDIATE` takes the write lock
+  ready`, `task search`, `task mine`, `task claims`, `task tree`, `task
+  labels`, `fact list`, `fact search`, `fact show`, `export`, `doctor`,
+  `brief`). `BEGIN IMMEDIATE` takes the write lock
   up front, before the command's own first read pins a WAL snapshot.
   Without that, a write later in the same transaction can fail with
   `SQLITE_BUSY_SNAPSHOT` if another writer commits in between — a variant
@@ -202,7 +203,8 @@ slice from the end of the result.
 silently, the same way a missing global database already does — it never
 requires `corvee init` to have been run somewhere.** Every command whose
 `--scope` defaults to `all` (`task list`/`ready`/`search`/`mine`/`claims`,
-`fact list`/`search`, `brief`, `doctor`) resolves which scopes to query by
+`fact list`/`search`, `brief`) and `doctor`, which has no `--scope` and
+covers whichever exist, resolve which scopes to query by
 checking existence first (a `.corvee/config.toml` upward from cwd for
 local, `~/.corvee/corvee.db` for global) rather than attempting local
 unconditionally and letting a missing project raise. This is what makes
@@ -249,12 +251,10 @@ CREATE TABLE tasks (
     claimed_by  TEXT,                            -- actor string, NULL = unclaimed
     claimed_at  TEXT,                            -- last asserted, see §4.4
     created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL,
-    assigned_to TEXT                              -- advisory routing, NULL = unassigned, see §4.4
+    updated_at  TEXT NOT NULL
 );
 CREATE INDEX idx_tasks_state ON tasks(state);
 CREATE INDEX idx_tasks_claimed_by ON tasks(claimed_by);
-CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
 
 CREATE TABLE labels (
     id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -917,8 +917,9 @@ corvee
 ├── init / brief / explain / export / import / doctor / completion
 ├── task
 │   ├── add / list / ready / search / mine / show / update
-│   ├── claim / unclaim / start / label / labels / comment
-│   └── link / unlink / tree
+│   ├── claim / unclaim / start / assign / unassign / claims
+│   ├── label / labels / comment / link / unlink / tree
+│   └── purge
 ├── fact
 │   ├── add / revise / verify / unverify / retract / delete
 │   └── list / search / show
@@ -955,14 +956,15 @@ goes for `blocked_by` (§4.5), the open `blocks` predecessors of the task. Under
 agent learns the new ID), `corvee task
 claim`/`update`/`label`/`comment` return the affected task in its
 post-mutation state, and `corvee task link`/`unlink` return both endpoints.
-`corvee task show -o json` returns the same task objects with four extra
-keys per element (`labels`, `links`, `subtasks`, `events`), and `corvee
+`corvee task show -o json` returns the same task objects with six extra
+keys per element (`labels`, `links`, `subtasks`, `events`, `events_omitted`,
+`referenced`), and `corvee
 task mine` adds one (`last_comment`, null when the task has none), so both
 are supersets of the common shape rather than second shapes. Under `fact`:
 `corvee fact add -o json` returns the created fact, and `corvee fact
 verify`/`unverify`/`revise`/`retract` return the affected fact in its
-post-mutation state; `corvee fact show -o json` adds one extra key,
-`events`. `corvee fact delete` is the one exception: it returns the
+post-mutation state; `corvee fact show -o json` adds two extra
+keys, `events` and `referenced`. `corvee fact delete` is the one exception: it returns the
 deleted fact's *last* state, since there is no post-mutation state for a
 row that no longer exists (§4.6). An agent parsing either array never
 needs a per-command branch beyond that one documented case. Commands that
@@ -1001,7 +1003,7 @@ Exit codes are distinct enough to branch on without parsing at all.
 | 2 | Usage or validation error (bad flag, unknown `--fields` name, invalid state, cross-namespace id, an id outside the §4.2 grammar, malformed `--stale`/`--since` duration, `corvee import` of malformed JSON, a dump missing `schema_version` or carrying a non-integer one, or a dump row with an unknown column) |
 | 3 | Task or fact not found |
 | 4 | Claim conflict (task held by another actor) |
-| 5 | Guard violation (open children, `parent_of` cycle, rejected transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, cross-scope link) |
+| 5 | Guard violation (open children, `parent_of` or `blocks` cycle, a self-link, a second parent on a task that has one, rejected transition, claiming an already-terminal task, `fact delete` on a non-retracted fact, `task purge` on a non-cancelled or still-linked task, cross-scope link) |
 | 6 | Project/config problem (no or unreadable `.corvee/config.toml`, a database file that cannot be opened or written, a `.corvee/` or database directory that cannot be created, schema newer than this binary, `corvee import` of a dump whose schema_version doesn't match this binary's) |
 
 ### 5.1 `task` commands
@@ -1598,17 +1600,18 @@ for free.
 complete against real ids**, merged across local and global the same way
 `--scope all` does (§3.3), via a `shell_complete` callback on every
 command that takes an id (`show`, `claim`, `unclaim`, `start`, `update`,
-`comment`, `label`, `link`/`unlink`,
+`comment`, `label`, `link`/`unlink`, `assign`/`unassign`, `purge`, `tree`,
 `verify`/`unverify`/`revise`/`retract`/`delete`), and on
-every option whose value is a task id (`--parent`, `--blocks`,
-`--blocked-by`, `--relates-to` on `task add`/`task list`).
+every option whose value is a task id (`--parent` on `task add`/`task list`,
+`--blocks`/`--blocked-by`/`--relates-to` on `task list`, and the `--after`
+cursor on `task list`/`ready`/`search`).
 Completion is read-only and silent on any failure — outside a project
 directory, or against a database on a newer schema than this binary, it
 offers no completions rather than erroring into the middle of the
 shell's prompt.
 
 **Label-valued options complete against the local project's real label
-names** (`--label` on `task list`/`task ready`, `--add`/`--remove` on
+names** (`--label` on `task add`/`task list`/`task ready`, `--add`/`--remove` on
 `task label`), the same read-only, silent-on-failure way. Labels are not
 merged across scope (§3.3, `task labels`), so this only ever looks at the
 local project regardless of the command's own `--scope`. A mistyped label
@@ -1621,7 +1624,7 @@ rather than just saving keystrokes.
 **Every subcommand's `--help` ends with an `Examples:` section carrying at
 least three runnable invocations.** Not fragments and not placeholders, but
 lines that work as typed against a real project, so the reader's next action
-is a paste rather than a guess. `corvee explain` (§6) is the ~85-line
+is a paste rather than a guess. `corvee explain` (§6) is the short
 orientation an agent reads once; per-command help is where it goes when it
 needs the actual flags, and a flag list without examples sends it back to
 trial and error.
@@ -1650,14 +1653,15 @@ existing long-form examples remain valid documentation on their own.
 The same option name carries the same letter in every command it appears
 in, with one exception: a handful of letters are deliberately reused across
 two option names that never appear on the same command (`-f` is `--fields`
-on every listing command and `--force` on `claim`/`unclaim`/`update`, which
-never have `--fields`; `-p` is `--priority` on `task` commands and
-`--proof` on `fact` commands, which never share a command; and similarly
-for `-a`/`--all`+`--add`, `-i`/`--stale`+`--include-comments`+
+on every listing command, `--force` on `claim`/`start`/`unclaim`/`update`,
+and `--from-file` on `task add`, none of which have `--fields`; `-p` is
+`--priority` on `task` commands, `--proof` on `fact` commands, and
+`--project-root` on `mcp serve`, which never share a command; and
+similarly for `-a`/`--all`+`--add`+`--actor`, `-i`/`--stale`+`--include-comments`+
 `--include-proof`, `-n`/`--limit`+`--no-events`, `-r`/`--relates-to`+
 `--relation`+`--remove`+`--reason`, `-d`/`--description`+`--since`+
 `--db-path`, `-c`/`--claimed-by`+`--cascade`,
-`-s`/`--scope`, `-t`/`--type`, `-l`/`--label`, `-v`/
+`-s`/`--scope`+`--session-id`, `-t`/`--type`+`--to`, `-l`/`--label`, `-v`/
 `--verified-by`, `-g`/`--global`, `-m`/`--note`). Reuse only ever happens
 between options that cannot collide in practice; within any single
 command every alias is unique, exactly as click itself requires.
@@ -1682,9 +1686,8 @@ command), and `--title`/`-T` next to `--type`/`-t` (`task update`).
 ### 5.8 `corvee brief`
 
 `corvee brief [--scope local|global|all] [-o table\|wide\|json]` combines
-the three session-start queries `corvee explain`'s own guidance tells every
-agent to run separately — `task mine`, `task ready`, `task list --stale`
-— into one read-only call, pure composition over the existing
+the three session-start queries an agent would otherwise run separately —
+`task mine`, `task ready`, `task list --stale` — into one read-only call, pure composition over the existing
 `mine_tasks`/`ready_tasks`/`TaskFilter(stale_before=...)` functions with no
 new query logic. Its plain-text table renders the `mine`/`ready`/`stale`
 sections with the same narrow/wide task columns `task list` uses (§5.1),
@@ -1704,7 +1707,7 @@ since `brief` is rendering the same task rows, not a shape of its own.
 point of this command is "the one thing to run with no arguments to
 reorient," and an agent that wants the full ready list already has
 `task ready --limit <n>`. `stale` uses the same default duration as
-`task list --stale`/`task claim --stale` (`DEFAULT_STALE_DURATION`), also
+`task list --stale` (`DEFAULT_STALE_DURATION`), also
 not overridable here for the same reason. `--scope` behaves exactly like
 `task list`'s (default `all`, merged via §3.3's per-scope connection
 model, including the missing-local-project handling that lets a purely
@@ -1735,7 +1738,7 @@ headers and nothing underneath them.
 
 An agent shouldn't need full `--help` output for every subcommand, or a
 README, just to learn the tool exists and how to use it minimally. `corvee
-explain` prints a fixed, short (~85 line) plain-text block covering:
+explain` prints a fixed, short plain-text block covering:
 
 The block is grouped under three plain headers, `TASKS`, `FACTS`, then a
 closing `GENERAL` section, so task-only and fact-only content never
@@ -1747,10 +1750,11 @@ Content that genuinely applies to both (`--global`, `--actor`/
 - The one-line purpose of corvee, including that it supports multiple
   concurrent agents via claims, and that it separately holds a standalone
   store of checked-true facts.
-- The `task`/`fact` commands needed 95% of the time (`task mine`, `task
-  ready`, `task search`, `task list`, `task add`, `task claim`, `task
-  update`, `task comment`, `task show`), with one example each. `task mine`
-  comes first because resuming beats starting something new, and `task
+- The `task`/`fact` commands needed 95% of the time (`brief`, `task mine`,
+  `task ready`, `task search`, `task list`, `task add`, `task claim`, `task
+  update`, `task comment`, `task show`, `task link`, `task claims`, `task
+  assign`), with one example each. `brief` and `task mine` come first
+  because resuming beats starting something new, and `task
   search` sits before `task add` because checking for an existing task is
   what stops an agent filing the same work twice. Includes the `--fields
   id,title` session-start pattern, and passing `--actor` a stable identity
@@ -1902,8 +1906,8 @@ unsolicited one from `corvee init`.
   the state/priority/type/relation/status value sets).
 - stdlib `sqlite3` for the SQLite backend — no ORM. Schema is small and
   stable enough that raw SQL stays readable.
-- CLI framework: plain **click**, using `click.Group` for the `task` and
-  `fact` subcommand groups. Seven top-level entries plus two groups don't
+- CLI framework: plain **click**, using `click.Group` for the `task`,
+  `fact`, and `mcp` subcommand groups. Seven top-level entries plus three groups don't
   justify cloup's option-group layer on top of click; add it later only if
   `--help` output actually gets unreadable.
 - Distributed as a single console-script entry point named `corvee`,
@@ -2077,17 +2081,12 @@ reading click's *current* context (`actor._flag_value` →
 thread-local: called from the dedicated worker thread above, with no click
 context of its own, that lookup silently returns `None` and falls all the
 way back to `$CORVEE_ACTOR`/`human:$USER`, discarding whatever `--actor`
-the host actually launched with. So the plumbing here is not "the same
-override `corvee_context` already accepts" — it does not accept one today.
-`corvee_context` (and `resolve_actor`/`resolve_session_id` themselves, plus
-the handful of call sites like `brief`'s `_mine`/`task mine` that call
-`resolve_actor()` directly) need `actor: str | None = None` and
-`session_id: str | None = None` parameters threaded through to the
-existing `override` parameter each resolver function already takes — per
-issue #33, "a signature change, not new architecture" — and every MCP
-handler must pass both explicitly on every call it makes, never relying on
-ambient click state or re-resolving from the environment inside the worker
-thread.
+the host actually launched with. So `corvee_context` accepts `actor: str | None = None` and
+`session_id: str | None = None`, which it passes to the `override`
+parameter each resolver function already takes, and `brief`'s
+`mine_section` takes `actor` the same way. Every MCP handler passes both
+explicitly on every call it makes, never relying on ambient click state or
+re-resolving from the environment inside the worker thread.
 
 **`--project-root <path>` is optional and only ever an explicit override —
 the default is to auto-detect a project the same way the CLI already
@@ -2133,8 +2132,8 @@ still be perfectly servable.
 
 **Global-only mode** — reached either by an explicit `--project-root`
 omission with nothing found at cwd, or implicitly whenever no project
-resolves — is the MCP-surface equivalent of running `corvee --global task
-add ...` or `corvee brief --scope global` from a directory with no
+resolves — is the MCP-surface equivalent of running `corvee task add
+--global ...` or `corvee brief --scope global` from a directory with no
 `.corvee/config.toml` anywhere above it, which already works unmodified
 at the CLI layer today (§3.3, §5.8's "purely global `brief`" case). A
 host with no project in scope, or one used only for machine-wide
@@ -2353,8 +2352,8 @@ falling back to the server's own resolved default when omitted (§10.1);
 the remaining five — `brief`, `fact_search`, `task_search`, `task_show`,
 and `fact_show` — write nothing and do not accept it at all.
 Every parameter on every tool carries a JSON schema `description`, and
-every closed-choice argument (`scope`, `task_type`, `priority`) also
-carries an `enum` of its valid values, so a host can surface both to the
+every closed-choice argument (`scope`, `task_type`, `priority`, `state`,
+`relation`) also carries an `enum` of its valid values, so a host can surface both to the
 caller — or validate against them — before a round trip. The `enum` is
 advisory only, not enforced at the SDK's own argument-parsing boundary: a
 bad value still reaches the tool's handler and its existing `UsageError`,
@@ -2583,7 +2582,7 @@ depending on which parameter was wrong.
   `task_start`/`task_done`/`task_cancel`/`task_review`/`task_reopen`/
   `task_block`, each narrower and named for exactly what it does.
 - `task_label` — `corvee task label --add`'s mirror. It attaches one
-  label `name` to one or more tasks (`refs`), normalized and
+  `label` to one or more tasks (`refs`), normalized and
   pattern-validated the same way `guards/labels.py::normalize_label`
   already validates it for the CLI. A no-op success if a task already
   carries the label, same as `db/labels.py::add_label`.

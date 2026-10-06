@@ -25,7 +25,7 @@ for you and your agents!
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14702/badge)](https://www.bestpractices.dev/projects/14702)
 [![OpenSSF ScoreCard](https://img.shields.io/ossf-scorecard/github.com/btschwertfeger/Corvee?label=openssf%20scorecard&style=flat)](https://securityscorecards.dev/viewer/?uri=github.com/btschwertfeger/Corvee)
 
-[![Documentation](https://img.shields.io/badge/docs-btschwertfeger.github.io%2FCorvee-blue.svg)](https://corvee.readthedocs.io/en/stable/)
+[![Documentation](https://img.shields.io/badge/docs-corvee.readthedocs.io-blue.svg)](https://corvee.readthedocs.io/en/stable/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22877769.svg)](https://doi.org/10.5281/zenodo.22877769)
 
 </div>
@@ -119,8 +119,8 @@ corvee fact add "requests is Apache-2.0 licensed" --proof "pip show requests"
 corvee fact search "license" -o json
 ```
 
-`corvee explain` prints a compact, agent-oriented cheat sheet from inside
-any initialized project. See [Quickstart](docs/quickstart.md) for facts,
+`corvee explain` prints a compact, agent-oriented cheat sheet from any
+directory. See [Quickstart](docs/quickstart.md) for facts,
 global scope, and the full core loop.
 
 ## License

@@ -17,8 +17,9 @@ stated scope: one machine, a handful of agents and/or humans, not a swarm.
   does not retry, unlike ordinary lock contention. Taking the lock
   immediately serializes concurrent writers on that transaction instead.
   Read-only commands (`task list`, `task show`, `task ready`, `task
-  search`, `task mine`, `task labels`, `fact list`, `fact search`, `fact
-  show`, `export`, `doctor`) use a plain `BEGIN`, so they never block a writer.
+  search`, `task mine`, `task claims`, `task tree`, `task labels`, `fact
+  list`, `fact search`, `fact show`, `export`, `doctor`, `brief`) use a
+  plain `BEGIN`, so they never block a writer.
 - **Claims are a single conditional `UPDATE`** (`claimed_by = ? WHERE
   claimed_by IS NULL`), checked by rows-affected. SQLite executes this
   atomically. That conditional update is the entire concurrency-safety
