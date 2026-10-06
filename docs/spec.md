@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v39)
+# corvee — Technical Specification (v40)
 
 ## 1. Purpose
 
@@ -1091,13 +1091,13 @@ subtasks/events block, since `id:` already opens the header.
 is rarely enough for a different session — or a different agent entirely —
 to safely resume the work without re-deriving context that the filer
 already had. An empty or whitespace-only value is rejected the same as a
-missing one (exit 2, `usage_error`), so `--description " "` cannot be used
+missing one (exit 2, error code `invalid_description`), so `--description " "` cannot be used
 to route around the requirement. `task update --description` stays
 optional, since that is editing an existing task's already-required field,
 not filing a new one without any description at all.
 
 **`task add`'s `title` and `fact add`'s `claim` reject the same
-empty/whitespace-only value**, for the same reason as `--description`
+empty/whitespace-only value** (exit 2; `invalid_title` for a task title), for the same reason as `--description`
 above: a blank title is unidentifiable in `task list`/`task ready` output,
 and a blank claim has nothing else to fall back on, since a fact carries no
 separate description field. `fact revise`'s replacement claim and `fact
