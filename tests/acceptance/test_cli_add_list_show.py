@@ -20,6 +20,7 @@ class TestAdd:
         """`task add` without --description exits 2; a title alone is not enough."""
         result = runner.invoke(cli, ["task", "add", "Fix the bug", "-o", "json"])
         assert result.exit_code == 2
+        assert json.loads(result.stderr)["error"]["code"] == "invalid_description"
 
     def test_rejects_whitespace_only_description(
         self, runner: CliRunner, project: ProjectConfig
@@ -29,11 +30,13 @@ class TestAdd:
             cli, ["task", "add", "Fix the bug", "--description", "   ", "-o", "json"]
         )
         assert result.exit_code == 2
+        assert json.loads(result.stderr)["error"]["code"] == "invalid_description"
 
     def test_rejects_whitespace_only_title(self, runner: CliRunner, project: ProjectConfig) -> None:
         """A title of only whitespace is as unidentifiable as an empty one."""
         result = runner.invoke(cli, ["task", "add", "   ", "--description", "d", "-o", "json"])
         assert result.exit_code == 2
+        assert json.loads(result.stderr)["error"]["code"] == "invalid_title"
 
     def test_rejects_empty_title(self, runner: CliRunner, project: ProjectConfig) -> None:
         """An empty title exits 2 the same as a whitespace-only one."""
