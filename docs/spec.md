@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v42)
+# corvee — Technical Specification (v41)
 
 ## 1. Purpose
 
