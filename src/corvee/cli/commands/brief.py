@@ -30,7 +30,7 @@ from corvee.constants import (
 from corvee.db.events import get_last_comment
 from corvee.db.labels import list_labels_with_counts
 from corvee.db.tasks import TaskFilter, TaskRow, list_tasks, mine_tasks, ready_tasks
-from corvee.output import render_table
+from corvee.output import render_table, task_plain_text_row
 from corvee.timeutil import parse_duration, timestamp
 
 READY_LIMIT = 5
@@ -185,9 +185,9 @@ def brief(scope_filter: str, output_format: str) -> None:
         return
     task_columns = LIST_TABLE_WIDE_FIELDS if output == "wide" else LIST_TABLE_DEFAULT_FIELDS
     blocks = [
-        f"{name}:\n{render_table(rows, default_fields=task_columns)}"
+        f"{name}:\n{render_table(plain_rows, default_fields=task_columns)}"
         for name, rows in sections.items()
-        if name != "labels" and rows
+        if name != "labels" and (plain_rows := [task_plain_text_row(row) for row in rows])
     ]
     if sections["labels"]:
         blocks.append(f"labels:\n{render_table(sections['labels'], fields=('name', 'task_count'))}")

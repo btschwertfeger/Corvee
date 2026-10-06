@@ -41,6 +41,30 @@ END, created_at DESC, id DESC
 """
 
 
+# Ids bound per query, well under SQLite's 999-variable limit on older builds.
+_MAX_BOUND_IDS = 500
+
+# A task with an open `blocks` predecessor (§4.5); used against the `tasks` table.
+_HAS_OPEN_BLOCKER = (
+    "EXISTS ("
+    "SELECT 1 FROM task_links l JOIN tasks blocker ON blocker.id = l.source_id"
+    " WHERE l.target_id = tasks.id AND l.relation = 'blocks'"
+    " AND blocker.state NOT IN ('done', 'cancelled')"
+    ")"
+)
+
+
+def _displayed_state_condition(state: State) -> tuple[str, list[str]]:
+    """SQL and params matching tasks whose displayed state is `state` (§4.5): a
+    stored `open` task with an open blocker displays as `blocked`.
+    """
+    if state == "open":
+        return f"(state = 'open' AND NOT {_HAS_OPEN_BLOCKER})", []
+    if state == "blocked":
+        return f"(state = 'blocked' OR (state = 'open' AND {_HAS_OPEN_BLOCKER}))", []
+    return "state = ?", [state]
+
+
 def insert_task(
     conn: sqlite3.Connection,
     *,
@@ -73,9 +97,34 @@ def insert_task(
     return TaskRow.from_row(row, scope=scope)
 
 
+def _task_rows(
+    conn: sqlite3.Connection, rows: Sequence[sqlite3.Row], scope: Scope
+) -> list[TaskRow]:
+    """`TaskRow`s for `rows`, each carrying its open `blocks` predecessors (§4.5)."""
+    blockers: dict[int, list[int]] = {}
+    ids = [row["id"] for row in rows]
+    for start in range(0, len(ids), _MAX_BOUND_IDS):
+        chunk = ids[start : start + _MAX_BOUND_IDS]
+        for link in conn.execute(
+            "SELECT l.target_id, l.source_id FROM task_links l"
+            " JOIN tasks blocker ON blocker.id = l.source_id"
+            " WHERE l.relation = 'blocks' AND blocker.state NOT IN ('done', 'cancelled')"
+            f" AND l.target_id IN ({','.join('?' for _ in chunk)}) ORDER BY l.source_id",
+            chunk,
+        ):
+            blockers.setdefault(link["target_id"], []).append(link["source_id"])
+    return [
+        replace(
+            TaskRow.from_row(row, scope=scope),
+            blocked_by=tuple(blockers.get(row["id"], ())),
+        )
+        for row in rows
+    ]
+
+
 def get_task(conn: sqlite3.Connection, task_id: int, *, scope: Scope = "local") -> TaskRow | None:
     row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
-    return TaskRow.from_row(row, scope=scope) if row else None
+    return _task_rows(conn, [row], scope)[0] if row else None
 
 
 def require_task(conn: sqlite3.Connection, task_id: int, *, scope: Scope = "local") -> TaskRow:
@@ -122,8 +171,10 @@ def list_tasks(
     params: list[Any] = []
 
     if filt.states is not None:
-        conditions.append(f"state IN ({','.join('?' for _ in filt.states)})")
-        params.extend(filt.states)
+        state_conditions = [_displayed_state_condition(s) for s in filt.states]
+        conditions.append("(" + " OR ".join(sql for sql, _ in state_conditions) + ")")
+        for _, state_params in state_conditions:
+            params.extend(state_params)
     elif not filt.include_all:
         # "Open" is any state other than done/cancelled — the default filter.
         conditions.append(f"state IN ({','.join('?' for _ in OPEN_STATES)})")
@@ -197,7 +248,7 @@ def list_tasks(
         params.append(filt.limit)
 
     rows = conn.execute(sql, params).fetchall()
-    return [TaskRow.from_row(row, scope=scope) for row in rows]
+    return _task_rows(conn, rows, scope)
 
 
 def _claim_conflict(task_id: int, claimed_by: str, scope: Scope) -> ClaimConflictError:
@@ -663,11 +714,7 @@ def ready_tasks(
     conditions = [
         "claimed_by IS NULL",
         "state NOT IN ('done', 'cancelled', 'blocked')",
-        "NOT EXISTS ("
-        "SELECT 1 FROM task_links l JOIN tasks blocker ON blocker.id = l.source_id"
-        " WHERE l.target_id = tasks.id AND l.relation = 'blocks'"
-        " AND blocker.state NOT IN ('done', 'cancelled')"
-        ")",
+        f"NOT {_HAS_OPEN_BLOCKER}",
     ]
     params: list[Any] = []
     for label in labels:
@@ -679,7 +726,7 @@ def ready_tasks(
 
     sql = "SELECT * FROM tasks WHERE " + " AND ".join(conditions) + _ORDER_BY
     rows = conn.execute(sql, params).fetchall()
-    return [TaskRow.from_row(row, scope=scope) for row in rows]
+    return _task_rows(conn, rows, scope)
 
 
 def search_tasks(
@@ -712,7 +759,7 @@ def search_tasks(
 
     sql = "SELECT * FROM tasks WHERE " + " AND ".join(conditions) + _ORDER_BY
     rows = conn.execute(sql, params).fetchall()
-    return [TaskRow.from_row(row, scope=scope) for row in rows]
+    return _task_rows(conn, rows, scope)
 
 
 def mine_tasks(conn: sqlite3.Connection, actor: str, *, scope: Scope = "local") -> list[TaskRow]:
@@ -729,7 +776,7 @@ def mine_tasks(conn: sqlite3.Connection, actor: str, *, scope: Scope = "local") 
     )
     params: list[Any] = [actor, actor, *OPEN_STATES]
     rows = conn.execute(sql, params).fetchall()
-    return [TaskRow.from_row(row, scope=scope) for row in rows]
+    return _task_rows(conn, rows, scope)
 
 
 def add_comment(

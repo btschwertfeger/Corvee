@@ -83,6 +83,7 @@ class TestValueSets:
             "created_at",
             "updated_at",
             "scope",
+            "blocked_by",
         )
 
     def test_fact_list_fields_is_the_documented_flat_column_allowlist(self) -> None:
