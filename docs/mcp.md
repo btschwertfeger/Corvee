@@ -320,6 +320,13 @@ outright (a list or object where a task ref or duration is expected)
 never reaches the handler at all; that argument-validation failure
 surfaces as the MCP SDK's own error shape instead.
 
+An argument a tool does not declare, such as a typo (`forc`) or a
+hyphenated `session-id`, never runs the tool. It returns a usage error
+(`unknown_argument`, `exit_code: 2`) naming the unknown keys and the
+tool's valid argument names. `force` on `task_start`, `task_done`,
+`task_cancel`, `task_review`, `task_reopen`, and `task_block` is the one
+exception: it is accepted and ignored.
+
 A `claim_conflict` carries one more field, `hint`, phrased for this
 surface rather than the CLI's own `--force` flag. Every tool but
 `task_unclaim` points at `task_claim(force=true)`, which takes over the

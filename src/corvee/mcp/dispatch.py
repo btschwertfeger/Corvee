@@ -9,11 +9,12 @@ import json
 import os
 import sys
 from collections.abc import Callable
-from typing import TypeVar
+from typing import Any, TypeVar
 
-from mcp.types import CallToolResult, TextContent
+from mcp.server.mcpserver import Context, MCPServer
+from mcp.types import CallToolResult, InputRequiredResult, TextContent
 
-from corvee.errors import ConfigError, CorveeError
+from corvee.errors import ConfigError, CorveeError, UsageError
 from corvee.mcp.worker import DbWorker
 
 T = TypeVar("T")
@@ -22,6 +23,13 @@ _SCHEMA_TOO_NEW = "schema_too_new"
 _CLAIM_CONFLICT = "claim_conflict"
 _CLAIM_CONFLICT_HINT = "call task_claim(force=true) on this ref to steal the claim, then retry"
 UNCLAIM_CONFLICT_HINT = "call task_unclaim(force=true) on this ref to release the claim, then retry"
+
+# State-transition tools that deliberately do not declare `force` (spec
+# §10.4) but still accept and ignore it, so a caller passing it gets the
+# same claim conflict as one who never sent it.
+_FORCE_IGNORED_BY = frozenset(
+    {"task_start", "task_done", "task_cancel", "task_review", "task_reopen", "task_block"}
+)
 
 
 def _schedule_exit(err: ConfigError) -> None:
@@ -130,3 +138,34 @@ async def run_tool(
         return _error_result(  # ty: ignore[invalid-return-type]
             CorveeError("internal_error", str(exc)), claim_conflict_hint=claim_conflict_hint
         )
+
+
+class CorveeMCPServer(MCPServer):
+    """An `MCPServer` that rejects arguments a tool does not declare.
+
+    The SDK's per-tool argument model ignores unknown keys, so a typo such
+    as `forc=true` or a hyphenated `session-id` would succeed silently and
+    drop the caller's intent. Overriding `call_tool`, the one entry point
+    both the protocol handler and direct calls go through, checks the keys
+    against the tool's published input schema before the SDK validates
+    anything, and answers a mismatch with corvee's own `isError` shape
+    (`unknown_argument`, exit code 2) instead of the SDK's error. Nothing
+    runs and nothing is written for a rejected call (spec §10.2).
+    """
+
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any], context: Context[Any, Any] | None = None
+    ) -> CallToolResult | InputRequiredResult:
+        tool = self._tool_manager.get_tool(name)
+        if tool is not None:
+            valid = set(tool.parameters.get("properties", {}))
+            ignored = {"force"} if name in _FORCE_IGNORED_BY else set()
+            unknown = sorted(set(arguments) - valid - ignored)
+            if unknown:
+                err = UsageError(
+                    "unknown_argument",
+                    f"{name} got unknown argument(s) {', '.join(unknown)}; "
+                    f"valid arguments: {', '.join(sorted(valid))}",
+                )
+                return _error_result(err, claim_conflict_hint="")
+        return await super().call_tool(name, arguments, context)
