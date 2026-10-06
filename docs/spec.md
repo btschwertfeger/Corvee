@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v38)
+# corvee — Technical Specification (v39)
 
 ## 1. Purpose
 
@@ -1060,6 +1060,14 @@ many other columns are showing; `--fields description`/`--fields proof`
 still shows it on request, at any `-o` value. `-o json` is unaffected by
 any of this -- it always returns the full row shape regardless of table
 defaults.
+
+The fact `claim` column is the one default-table column of unbounded
+length, so `-o table` without `--fields` cuts a claim wider than 60
+terminal cells (measured by display width, so East Asian wide characters
+count two) to 60 cells, the last three being `...`. `-o wide` shows the
+claim in full, and `--fields claim` does too at any `-o` value, by the
+same rule that `--fields` wins outright. `-o json` and `fact show` always
+carry the full claim.
 
 `corvee task show`/`corvee fact show` always return full detail, and
 render it differently from the other commands' fixed-width table: since

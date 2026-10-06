@@ -423,3 +423,34 @@ class TestCrossNamespaceIds:
         assert result.exit_code == 2
         payload = json.loads(result.stderr)
         assert payload["error"]["code"] == "wrong_id_namespace"
+
+
+class TestFactListClaimTruncation:
+    LONG_CLAIM = "x" * 100
+
+    def _list(self, runner: CliRunner, *args: str) -> str:
+        result = runner.invoke(cli, ["fact", "list", *args])
+        assert result.exit_code == 0
+        return result.output
+
+    def test_default_table_truncates_long_claim(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """`-o table` cuts a long claim to 60 cells ending in an ellipsis."""
+        runner.invoke(cli, ["fact", "add", self.LONG_CLAIM])
+        output = self._list(runner)
+        assert "x" * 57 + "..." in output
+        assert "x" * 58 not in output
+
+    def test_wide_and_fields_show_full_claim(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """`-o wide` and an explicit `--fields claim` show the claim in full."""
+        runner.invoke(cli, ["fact", "add", self.LONG_CLAIM])
+        assert self.LONG_CLAIM in self._list(runner, "-o", "wide")
+        assert self.LONG_CLAIM in self._list(runner, "--fields", "id,claim")
+
+    def test_json_keeps_full_claim(self, runner: CliRunner, project: ProjectConfig) -> None:
+        """`-o json` is unaffected by the table truncation."""
+        runner.invoke(cli, ["fact", "add", self.LONG_CLAIM])
+        assert json.loads(self._list(runner, "-o", "json"))[0]["claim"] == self.LONG_CLAIM

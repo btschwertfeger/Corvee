@@ -12,6 +12,7 @@ from typing import Any
 import click
 
 from corvee.constants import (
+    FACT_CLAIM_TABLE_WIDTH,
     FACT_LIST_FIELDS,
     FACT_LIST_TABLE_DEFAULT_FIELDS,
     FACT_LIST_TABLE_WIDE_FIELDS,
@@ -48,6 +49,18 @@ def _display_width(text: str) -> int:
         )
         for char in text
     )
+
+
+def _truncate_display(text: str, width: int) -> str:
+    """`text` cut to at most `width` terminal cells, ending in `...` when cut."""
+    if _display_width(text) <= width:
+        return text
+    kept = ""
+    for char in text:
+        if _display_width(kept + char) > width - 3:
+            break
+        kept += char
+    return kept + "..."
 
 
 def _pad(text: str, width: int) -> str:
@@ -233,7 +246,15 @@ def emit_facts(
     output: OutputFormat,
     fields: Sequence[str] | None = None,
 ) -> None:
-    """Print `facts` as a JSON array or a table — the fact-group equivalent of emit_tasks."""
+    """Print `facts` as a JSON array or a table — the fact-group equivalent of emit_tasks.
+
+    The default table cuts a long claim; `-o wide` and an explicit `fields` keep it whole.
+    """
+    if output == "table" and fields is None:
+        facts = [
+            {**fact, "claim": _truncate_display(fact["claim"], FACT_CLAIM_TABLE_WIDTH)}
+            for fact in facts
+        ]
     _emit(
         facts,
         output=output,

@@ -11,6 +11,7 @@ import pytest
 from corvee.errors import NotFoundError
 from corvee.output import (
     _display_width,
+    _truncate_display,
     emit_error,
     emit_fact_detail,
     emit_facts,
@@ -116,6 +117,26 @@ class TestDisplayWidth:
     def test_counts_terminal_cells_not_code_points(self, text: str, expected: int) -> None:
         """Wide and fullwidth characters take two cells, a combining mark none."""
         assert _display_width(text) == expected
+
+
+class TestTruncateDisplay:
+    @pytest.mark.parametrize(
+        ("text", "width", "expected"),
+        [
+            ("short", 10, "short"),
+            ("exactly10!", 10, "exactly10!"),
+            ("0123456789a", 10, "0123456..."),
+            ("四字熟語四字熟語", 10, "四字熟..."),
+            ("四字熟語四字熟語", 11, "四字熟語..."),
+        ],
+    )
+    def test_cuts_to_display_width_with_ellipsis(
+        self, text: str, width: int, expected: str
+    ) -> None:
+        """Text over `width` cells is cut so the result, ellipsis included, fits."""
+        result = _truncate_display(text, width)
+        assert result == expected
+        assert _display_width(result) <= width
 
 
 class TestRenderDetailHeader:

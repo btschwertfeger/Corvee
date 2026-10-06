@@ -183,6 +183,10 @@ FACT_LIST_TABLE_DEFAULT_FIELDS: tuple[str, ...] = (
     "scope",
 )
 
+# Terminal cells the default `-o table` fact output gives the claim column,
+# ellipsis included; `-o wide` and an explicit --fields show it in full.
+FACT_CLAIM_TABLE_WIDTH = 60
+
 # The fact-group equivalent of LIST_TABLE_WIDE_FIELDS: FACT_LIST_FIELDS minus
 # "proof".
 FACT_LIST_TABLE_WIDE_FIELDS: tuple[str, ...] = (
