@@ -8,7 +8,7 @@ import sqlite3
 from collections.abc import Callable, Sequence
 from typing import TypeVar
 
-from corvee.cli.scope import fetch_merged, scopes_for
+from corvee.cli.scope import fetch_merged
 from corvee.constants import Scope, ScopeFilter
 from corvee.errors import ConfigError
 from corvee.mcp.server_config import ServerConfig
@@ -20,8 +20,8 @@ def require_scope_available(config: ServerConfig, scope: str) -> None:
     """Raise `no_project` (exit 6) if `scope == "local"` and this server has
     no resolved project (global-only mode, §10.1). The one check every
     ref-taking tool, plus every scope-filter-driven one (`brief`,
-    `fact_search`, `task_search` via `scopes_for_config`/
-    `fetch_merged_for_config` below), needs before doing anything else.
+    `fact_search`, `task_search` via `fetch_merged_for_config` below),
+    needs before doing anything else.
     """
     if scope == "local" and config.project is None:
         raise ConfigError(
@@ -29,21 +29,6 @@ def require_scope_available(config: ServerConfig, scope: str) -> None:
             "no project in scope; start the server with --project-root, "
             "from inside a project, or use a *-GLOBAL-<n> id instead",
         )
-
-
-def scopes_for_config(config: ServerConfig, scope_filter: ScopeFilter) -> tuple[Scope, ...]:
-    """The MCP-layer entry point for `cli/scope.py::scopes_for`: raises via
-    `require_scope_available` for `scope_filter="local"` with no project —
-    a real usage error, same as the CLI's own "--scope local requested
-    explicitly keeps failing loudly" rule — then delegates to the shared
-    function with the server's already-resolved project standing in for
-    the CLI's own cwd-based `project_exists()` check, since a tool handler
-    running on the worker thread has no meaningful cwd of its own to
-    re-derive from (spec §10.1).
-    """
-    if scope_filter == "local":
-        require_scope_available(config, "local")
-    return scopes_for(scope_filter, local_available=config.project is not None)
 
 
 def fetch_merged_for_config(
@@ -55,8 +40,8 @@ def fetch_merged_for_config(
     `config.actor`/the already-resolved project's db path explicitly into
     every `corvee_context` call instead of relying on click's
     (thread-local) context or cwd -- the same requirement §10.1 places on
-    every other piece of per-call DB work here. Raises the same way
-    `scopes_for_config` does for `scope_filter="local"` with no project,
+    every other piece of per-call DB work here. Raises via
+    `require_scope_available` for `scope_filter="local"` with no project,
     before `fetch_merged` itself ever reaches a `corvee_context` call
     whose ambient cwd fallback would be meaningless from the worker
     thread.
