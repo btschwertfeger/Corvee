@@ -199,7 +199,7 @@ only ever needed on `add`.
 ## Learn the rest
 
 ```bash
-corvee explain          # an ~85-line cheat sheet, no DB access needed
+corvee explain          # a short cheat sheet, no DB access needed
 corvee <command> --help # full flag reference with runnable examples
 ```
 

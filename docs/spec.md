@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v40)
+# corvee — Technical Specification (v41)
 
 ## 1. Purpose
 
@@ -917,8 +917,9 @@ corvee
 ├── init / brief / explain / export / import / doctor / completion
 ├── task
 │   ├── add / list / ready / search / mine / show / update
-│   ├── claim / unclaim / start / label / labels / comment
-│   └── link / unlink / tree
+│   ├── claim / unclaim / start / assign / unassign / claims
+│   ├── label / labels / comment / link / unlink / tree
+│   └── purge
 ├── fact
 │   ├── add / revise / verify / unverify / retract / delete
 │   └── list / search / show
@@ -1598,17 +1599,18 @@ for free.
 complete against real ids**, merged across local and global the same way
 `--scope all` does (§3.3), via a `shell_complete` callback on every
 command that takes an id (`show`, `claim`, `unclaim`, `start`, `update`,
-`comment`, `label`, `link`/`unlink`,
+`comment`, `label`, `link`/`unlink`, `assign`/`unassign`, `purge`, `tree`,
 `verify`/`unverify`/`revise`/`retract`/`delete`), and on
-every option whose value is a task id (`--parent`, `--blocks`,
-`--blocked-by`, `--relates-to` on `task add`/`task list`).
+every option whose value is a task id (`--parent` on `task add`/`task list`,
+`--blocks`/`--blocked-by`/`--relates-to` on `task list`, and the `--after`
+cursor on `task list`/`ready`/`search`).
 Completion is read-only and silent on any failure — outside a project
 directory, or against a database on a newer schema than this binary, it
 offers no completions rather than erroring into the middle of the
 shell's prompt.
 
 **Label-valued options complete against the local project's real label
-names** (`--label` on `task list`/`task ready`, `--add`/`--remove` on
+names** (`--label` on `task add`/`task list`/`task ready`, `--add`/`--remove` on
 `task label`), the same read-only, silent-on-failure way. Labels are not
 merged across scope (§3.3, `task labels`), so this only ever looks at the
 local project regardless of the command's own `--scope`. A mistyped label
@@ -1621,7 +1623,7 @@ rather than just saving keystrokes.
 **Every subcommand's `--help` ends with an `Examples:` section carrying at
 least three runnable invocations.** Not fragments and not placeholders, but
 lines that work as typed against a real project, so the reader's next action
-is a paste rather than a guess. `corvee explain` (§6) is the ~85-line
+is a paste rather than a guess. `corvee explain` (§6) is the short
 orientation an agent reads once; per-command help is where it goes when it
 needs the actual flags, and a flag list without examples sends it back to
 trial and error.
@@ -1735,7 +1737,7 @@ headers and nothing underneath them.
 
 An agent shouldn't need full `--help` output for every subcommand, or a
 README, just to learn the tool exists and how to use it minimally. `corvee
-explain` prints a fixed, short (~85 line) plain-text block covering:
+explain` prints a fixed, short plain-text block covering:
 
 The block is grouped under three plain headers, `TASKS`, `FACTS`, then a
 closing `GENERAL` section, so task-only and fact-only content never
@@ -1902,8 +1904,8 @@ unsolicited one from `corvee init`.
   the state/priority/type/relation/status value sets).
 - stdlib `sqlite3` for the SQLite backend — no ORM. Schema is small and
   stable enough that raw SQL stays readable.
-- CLI framework: plain **click**, using `click.Group` for the `task` and
-  `fact` subcommand groups. Seven top-level entries plus two groups don't
+- CLI framework: plain **click**, using `click.Group` for the `task`,
+  `fact`, and `mcp` subcommand groups. Seven top-level entries plus three groups don't
   justify cloup's option-group layer on top of click; add it later only if
   `--help` output actually gets unreadable.
 - Distributed as a single console-script entry point named `corvee`,
