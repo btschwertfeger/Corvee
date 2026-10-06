@@ -20,7 +20,7 @@ from corvee.db.facts import (
     unverify_fact,
     verify_fact,
 )
-from corvee.errors import UsageError
+from corvee.errors import require_non_empty
 from corvee.mcp.dispatch import run_tool
 from corvee.mcp.scope import require_scope_available
 from corvee.mcp.server_config import ServerConfig
@@ -68,8 +68,7 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
         """
 
         def _fetch() -> dict[str, Any]:
-            if not claim.strip():
-                raise UsageError("invalid_claim", "claim must not be empty or whitespace-only")
+            require_non_empty(claim, "invalid_claim", "claim must not be empty or whitespace-only")
             scope: Scope = "global" if is_global else "local"
             require_scope_available(config, scope)
             db_path = project_db_path(config) if scope == "local" else None
@@ -91,7 +90,9 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
     @app.tool(structured_output=True)
     async def fact_verify(
         ref: FactRefArg,
-        proof: Annotated[str, Field(description="Evidence supporting the claim.")],
+        proof: Annotated[
+            str, Field(description="Evidence supporting the claim. Must not be empty.")
+        ],
         session_id: SessionIdArg = None,
     ) -> dict[str, Any]:
         """Mark a fact verified, with proof. Re-verifying an already-verified
@@ -100,6 +101,7 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
         """
 
         def _fetch() -> dict[str, Any]:
+            require_non_empty(proof, "invalid_proof", "proof must not be empty or whitespace-only")
             parsed, ctx_cm = fact_write_context(config, ref)
             with ctx_cm as ctx:
                 fact = verify_fact(
@@ -117,7 +119,9 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
     @app.tool(structured_output=True)
     async def fact_revise(
         ref: FactRefArg,
-        new_claim: Annotated[str, Field(description="The fact's replacement claim text.")],
+        new_claim: Annotated[
+            str, Field(description="The fact's replacement claim text. Must not be empty.")
+        ],
         session_id: SessionIdArg = None,
     ) -> dict[str, Any]:
         """Change a fact's claim text. A no-op success if `new_claim` is
@@ -128,6 +132,9 @@ def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
         """
 
         def _fetch() -> dict[str, Any]:
+            require_non_empty(
+                new_claim, "invalid_claim", "new_claim must not be empty or whitespace-only"
+            )
             parsed, ctx_cm = fact_write_context(config, ref)
             with ctx_cm as ctx:
                 fact = revise_fact(

@@ -27,7 +27,7 @@ from corvee.constants import (
 from corvee.db.labels import add_label
 from corvee.db.links import link_tasks
 from corvee.db.tasks import TaskRow, insert_task, require_task
-from corvee.errors import UsageError
+from corvee.errors import UsageError, require_non_empty
 from corvee.guards.labels import normalize_label
 from corvee.guards.scope import assert_same_scope
 from corvee.models import parse_task_ref
@@ -124,12 +124,12 @@ def _insert_one(
     session_id: str | None,
     item: dict[str, Any],
 ) -> TaskRow:
-    if not item["title"].strip():
-        raise UsageError("invalid_title", "title must not be empty or whitespace-only")
-    if not item["description"].strip():
-        raise UsageError(
-            "invalid_description", "--description must not be empty or whitespace-only"
-        )
+    require_non_empty(item["title"], "invalid_title", "title must not be empty or whitespace-only")
+    require_non_empty(
+        item["description"],
+        "invalid_description",
+        "--description must not be empty or whitespace-only",
+    )
     task = insert_task(
         conn,
         title=item["title"],

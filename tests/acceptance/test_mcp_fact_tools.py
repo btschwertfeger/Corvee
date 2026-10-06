@@ -93,6 +93,13 @@ class TestFactVerify:
         error = _call_error(app, "fact_verify", ref="FACT-999999", proof="x", session_id="sess-1")
         assert error["error"]["code"] == "fact_not_found"
 
+    def test_empty_proof_is_rejected(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="a claim", actor="agent:test")
+
+        error = _call_error(app, "fact_verify", ref=f"FACT-{fact.id}", proof="  ")
+        assert error["error"]["code"] == "invalid_proof"
+
 
 class TestFactRevise:
     def test_revises_a_facts_claim(self, app: MCPServer, project: ProjectConfig) -> None:
@@ -152,6 +159,13 @@ class TestFactRevise:
             app, "fact_revise", ref="FACT-999999", new_claim="x", session_id="sess-1"
         )
         assert error["error"]["code"] == "fact_not_found"
+
+    def test_empty_new_claim_is_rejected(self, app: MCPServer, project: ProjectConfig) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            fact = insert_fact(ctx.conn, claim="old claim", actor="agent:test")
+
+        error = _call_error(app, "fact_revise", ref=f"FACT-{fact.id}", new_claim="  ")
+        assert error["error"]["code"] == "invalid_claim"
 
 
 class TestFactRetract:

@@ -35,7 +35,7 @@ from corvee.db.tasks import (
     unassign_task,
     unclaim_task,
 )
-from corvee.errors import UsageError
+from corvee.errors import UsageError, require_non_empty
 from corvee.guards.labels import normalize_label
 from corvee.guards.scope import assert_same_scope
 from corvee.mcp.dispatch import UNCLAIM_CONFLICT_HINT, run_tool
@@ -344,12 +344,12 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
         """
 
         def _fetch() -> dict[str, Any]:
-            if not title.strip():
-                raise UsageError("invalid_title", "title must not be empty or whitespace-only")
-            if not description.strip():
-                raise UsageError(
-                    "invalid_description", "description must not be empty or whitespace-only"
-                )
+            require_non_empty(title, "invalid_title", "title must not be empty or whitespace-only")
+            require_non_empty(
+                description,
+                "invalid_description",
+                "description must not be empty or whitespace-only",
+            )
             if task_type not in TASK_TYPES:
                 raise UsageError(
                     "invalid_type", f"invalid task_type {task_type!r}: expected one of {TASK_TYPES}"
@@ -617,8 +617,9 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
         """
 
         def _fetch() -> dict[str, Any]:
-            if not target.strip():
-                raise UsageError("invalid_target", "target must not be empty or whitespace-only")
+            require_non_empty(
+                target, "invalid_target", "target must not be empty or whitespace-only"
+            )
             resolved_session_id = session_id_for(config, session_id)
             task_ids, scope, ctx_cm = write_context_batch(config, refs)
             with ctx_cm as ctx:

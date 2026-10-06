@@ -58,3 +58,13 @@ class ConfigError(CorveeError):
     """
 
     exit_code = 6
+
+
+def require_non_empty(value: str, code: str, message: str) -> str:
+    """Raise UsageError(code, message) if `value` is empty or whitespace-only,
+    else return it unchanged. Centralizes the check repeated at every CLI/MCP
+    entry point that takes free-text the caller must actually have supplied.
+    """
+    if not value.strip():
+        raise UsageError(code, message)
+    return value

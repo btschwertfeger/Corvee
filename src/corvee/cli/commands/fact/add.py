@@ -10,7 +10,7 @@ from corvee.cli.context import corvee_context
 from corvee.cli.params import StdinOrValue, output_option
 from corvee.constants import narrow_output_format
 from corvee.db.facts import insert_fact
-from corvee.errors import UsageError
+from corvee.errors import require_non_empty
 from corvee.output import emit_facts
 
 EPILOG = """\
@@ -42,11 +42,7 @@ File a fact that isn't specific to this project:
 @output_option()
 def add(claim: str, proof: str | None, is_global: bool, output_format: str) -> None:
     """Create a fact. Providing --proof verifies it immediately."""
-    if not claim.strip():
-        raise UsageError(
-            "invalid_claim",
-            "claim must not be empty or whitespace-only",
-        )
+    require_non_empty(claim, "invalid_claim", "claim must not be empty or whitespace-only")
     scope = "global" if is_global else "local"
     with corvee_context(scope=scope) as ctx:
         fact = insert_fact(

@@ -1055,7 +1055,9 @@ not filing a new one without any description at all.
 empty/whitespace-only value**, for the same reason as `--description`
 above: a blank title is unidentifiable in `task list`/`task ready` output,
 and a blank claim has nothing else to fall back on, since a fact carries no
-separate description field.
+separate description field. `fact revise`'s replacement claim and `fact
+verify --proof` reject it too, since a blank replacement claim or proof
+means no more than a blank claim at creation.
 
 **`task add --from-file <path>` creates a whole batch of tasks in one
 transaction, all-or-nothing**, closing the one gap in `add`/`update`/
@@ -2511,7 +2513,7 @@ depending on which parameter was wrong.
   this tool, a subagent that finds an existing *unverified* fact via
   `fact_search` would have no way to confirm it, only to add a duplicate
   claim — the exact re-litigation §4.6's verified-facts mechanism exists to
-  prevent.
+  prevent. `proof` must not be empty or whitespace-only.
 - `task_update` — `corvee task update`, mirroring it in full. It takes a
   `refs` argument (one or more task ids, batched into one transaction
   like the CLI's own `task update 14 15 16`), plus `title`,
@@ -2562,7 +2564,7 @@ depending on which parameter was wrong.
   `unverified`, the same reset `db/facts.py::revise_fact` already
   applies for the CLI. The proof that verified the old claim says
   nothing about the new one. A no-op success if `new_claim` is identical
-  to the current claim.
+  to the current claim. `new_claim` must not be empty or whitespace-only.
 - `fact_retract` — `corvee fact retract`, withdrawing one fact with an
   optional `reason`. A retracted fact is excluded from `fact_search`'s
   default results (`include_retracted` brings it back), the same way it
