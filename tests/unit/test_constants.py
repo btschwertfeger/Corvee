@@ -101,8 +101,10 @@ class TestValueSets:
         )
 
     def test_list_table_default_fields_is_the_minimal_triage_set(self) -> None:
-        """`-o table` (the default) shows only enough to identify and triage a row."""
-        assert LIST_TABLE_DEFAULT_FIELDS == ("id", "title", "type", "priority", "state", "scope")
+        """`-o table` (the default) shows only enough to identify and triage a row,
+        excluding "scope" -- already encoded in the id itself.
+        """
+        assert LIST_TABLE_DEFAULT_FIELDS == ("id", "title", "type", "priority", "state")
 
     def test_list_table_wide_fields_is_list_fields_minus_description(self) -> None:
         """`-o wide` is LIST_FIELDS with the long free-text description column
@@ -111,8 +113,10 @@ class TestValueSets:
         assert tuple(f for f in LIST_FIELDS if f != "description") == LIST_TABLE_WIDE_FIELDS
 
     def test_fact_list_table_default_fields_is_the_minimal_triage_set(self) -> None:
-        """`-o table` (the default) shows only enough to identify and triage a fact."""
-        assert FACT_LIST_TABLE_DEFAULT_FIELDS == ("id", "claim", "status", "scope")
+        """`-o table` (the default) shows only enough to identify and triage a fact,
+        excluding "scope" -- already encoded in the id itself.
+        """
+        assert FACT_LIST_TABLE_DEFAULT_FIELDS == ("id", "claim", "status")
 
     def test_fact_list_table_wide_fields_is_fact_list_fields_minus_proof(self) -> None:
         """`-o wide` is FACT_LIST_FIELDS with the long free-text proof column

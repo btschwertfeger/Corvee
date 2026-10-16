@@ -1,4 +1,4 @@
-# corvee — Technical Specification (v42)
+# corvee — Technical Specification (v43)
 
 ## 1. Purpose
 
@@ -1051,11 +1051,14 @@ a preset and is never overridden by one.
 Without `--fields`, `-o table` (the default) on `list`/`ready`/`search`/
 `mine` and their fact equivalents (also `brief`, which renders the same
 task rows) shows only enough to identify and triage a row: `id`, `title`,
-`type`, `priority`, `state`, `scope` for tasks, `id`, `claim`, `status`,
-`scope` for facts. `-o wide` restores the rest of the `--fields`
-allow-list except `description`/`proof`: `claimed_by`, `claimed_at`,
-`assigned_to`, `created_at`, `updated_at`, `blocked_by` for tasks, `verified_at`,
-`verified_by`, `created_at`, `updated_at` for facts. `description`/`proof`
+`type`, `priority`, `state` for tasks, `id`, `claim`, `status` for facts.
+`scope` is left out of this default: it's already encoded in the id itself
+(`TASK-GLOBAL-<n>`/`FACT-GLOBAL-<n>` vs. the plain local form, §3.3), so a
+dedicated column would repeat it. `-o wide` restores the rest of the
+`--fields` allow-list except `description`/`proof`: `claimed_by`,
+`claimed_at`, `assigned_to`, `created_at`, `updated_at`, `scope`,
+`blocked_by` for tasks, `verified_at`, `verified_by`, `created_at`,
+`updated_at`, `scope` for facts. `description`/`proof`
 are dropped even under `-o wide`, since a long free-text value is what
 blows a fixed-width row past a normal terminal's width regardless of how
 many other columns are showing; `--fields description`/`--fields proof`

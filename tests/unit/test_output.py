@@ -290,7 +290,7 @@ class TestEmitTasks:
     def test_table_default_shows_only_the_triage_columns(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """With no --fields, `-o table` shows only id/title/type/priority/state/scope --
+        """With no --fields, `-o table` shows only id/title/type/priority/state --
         everything else needs `-o wide` or an explicit --fields.
         """
         emit_tasks([TASK], output="table")
@@ -300,6 +300,7 @@ class TestEmitTasks:
         assert "DESCRIPTION" not in out
         assert "CLAIMED_BY" not in out
         assert "CREATED_AT" not in out
+        assert "SCOPE" not in out
 
     def test_wide_adds_the_dropped_columns(self, capsys: pytest.CaptureFixture[str]) -> None:
         """`-o wide` restores the columns `-o table` drops, still without description."""
@@ -307,6 +308,7 @@ class TestEmitTasks:
         out = capsys.readouterr().out
         assert "CLAIMED_BY" in out
         assert "CREATED_AT" in out
+        assert "SCOPE" in out
         assert "DESCRIPTION" not in out
 
     def test_fields_wins_over_wide(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -345,13 +347,14 @@ class TestEmitFacts:
     def test_table_defaults_to_the_minimal_fact_columns(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """With no --fields, `-o table` shows only id/claim/status/scope."""
+        """With no --fields, `-o table` shows only id/claim/status."""
         emit_facts([FACT], output="table")
         out = capsys.readouterr().out
         assert "CLAIM" in out
         assert "STATUS" in out
         assert "VERIFIED_BY" not in out
         assert "CREATED_AT" not in out
+        assert "SCOPE" not in out
 
     def test_wide_adds_the_dropped_columns(self, capsys: pytest.CaptureFixture[str]) -> None:
         """`-o wide` restores the columns `-o table` drops, still without proof."""
@@ -359,6 +362,7 @@ class TestEmitFacts:
         out = capsys.readouterr().out
         assert "VERIFIED_BY" in out
         assert "CREATED_AT" in out
+        assert "SCOPE" in out
         assert "PROOF" not in out
 
     def test_table_respects_fields(self, capsys: pytest.CaptureFixture[str]) -> None:
