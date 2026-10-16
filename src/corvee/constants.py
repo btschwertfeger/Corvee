@@ -145,17 +145,18 @@ FACT_LIST_FIELDS: tuple[str, ...] = (
 
 # Table columns shown when list/ready/search/mine (and every other table-
 # rendering command) is run with `-o table` (the default) and no --fields:
-# just enough to identify and triage a row. `-o wide` shows
-# LIST_TABLE_WIDE_FIELDS instead; --fields can request any LIST_FIELDS
-# column, including "description", regardless of `-o`. Does not affect
-# `-o json`, which always returns the full row shape.
+# just enough to identify and triage a row. "scope" is left out: it's
+# already encoded in the id itself (TASK-GLOBAL-<n> vs. the plain local
+# form). `-o wide` shows LIST_TABLE_WIDE_FIELDS instead; --fields can
+# request any LIST_FIELDS column, including "description" or "scope",
+# regardless of `-o`. Does not affect `-o json`, which always returns the
+# full row shape.
 LIST_TABLE_DEFAULT_FIELDS: tuple[str, ...] = (
     "id",
     "title",
     "type",
     "priority",
     "state",
-    "scope",
 )
 
 # `-o wide` on the same commands: LIST_FIELDS minus "description", the long
@@ -176,12 +177,12 @@ LIST_TABLE_WIDE_FIELDS: tuple[str, ...] = (
     "blocked_by",
 )
 
-# The fact-group equivalent of LIST_TABLE_DEFAULT_FIELDS.
+# The fact-group equivalent of LIST_TABLE_DEFAULT_FIELDS, "scope" left out
+# for the same reason.
 FACT_LIST_TABLE_DEFAULT_FIELDS: tuple[str, ...] = (
     "id",
     "claim",
     "status",
-    "scope",
 )
 
 # Terminal cells the default `-o table` fact output gives the claim column,
