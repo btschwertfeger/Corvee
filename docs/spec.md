@@ -1754,9 +1754,9 @@ Content that genuinely applies to both (`--global`, `--actor`/
   concurrent agents via claims, and that it separately holds a standalone
   store of checked-true facts.
 - The `task`/`fact` commands needed 95% of the time (`brief`, `task mine`,
-  `task ready`, `task search`, `task list`, `task add`, `task start`, `task
-  comment`, `task update`, `task show`, `task link`, `task claims`, `task
-  assign`), with one example each. `brief` and `task mine` come first
+  `task ready`, `task search`, `task list`, `task add`, `task claim`, `task
+  start`, `task update`, `task comment`, `task show`, `task link`, `task
+  claims`, `task assign`), with one example each. `brief` and `task mine` come first
   because resuming beats starting something new, and `task
   search` sits before `task add` because checking for an existing task is
   what stops an agent filing the same work twice. Includes the `--fields
@@ -1772,13 +1772,13 @@ Content that genuinely applies to both (`--global`, `--actor`/
   The same applies to facts: record a claim the moment it is established
   (from research, a source, a computed result — not only code), not
   batched in at the end of a session. This is stated up front, separately
-  from the example lifecycle below it (start → comment → `done`), because
-  ordering — file and start *before* working, not after — is the part most
-  easily missed by an agent that already knows the individual commands.
-  The block also states that `task start` claims and moves the task to
-  `in_progress` in one call, and that `task claim` alone leaves it `open`,
-  because an agent that stops after the claim leaves no sign that the work
-  has begun.
+  from the example lifecycle below it (claim → start → comment → `done`),
+  because ordering — file and claim *before* working, not after — is the
+  part most easily missed by an agent that already knows the individual
+  commands. The block also states that `task claim` alone leaves the task
+  `open` and that `task start` moves it to `in_progress` (claiming it first
+  if needed), because an agent that stops after the claim leaves no sign
+  that the work has begun.
 - **A second operating rule, immediately after the first**: when a
   request breaks down into several distinct, independently-resolvable
   items (a batch of FIXMEs, a list of bugs), file one task per item
@@ -1791,7 +1791,7 @@ Content that genuinely applies to both (`--global`, `--actor`/
   found along the way is `--type bug`, something genuinely blocking is
   `--priority high`/`critical` — and toward recording a real dependency
   as a `task link ... --relation blocks` rather than only a sentence in
-  the description, placed right after the `task add`/`start`/`comment`
+  the description, placed right after the `task add`/`claim`/`start`
   example flow since that's where an agent has just seen the defaults.
   It ends with two sentences on what a `blocks` link does to a task's
   state: the `blocked*` marker in tables and `task show`, and `blocked_by`

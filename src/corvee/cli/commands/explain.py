@@ -50,13 +50,14 @@ Check before you file, and see what's startable right now:
   corvee task search "auth token" -o json       # does a task for this exist already?
   corvee task list --fields id,title -o json    # cheap session-start overview
 
-File it, start it, then work it — in that order, every time. `task start`
-claims the task and moves it to in_progress in one call.
-`task claim` alone leaves the task `open`, so nothing shows that anyone is
-working on it. Stay in_progress while working and comment before marking
-done, since a task with no start and no comment leaves nothing for a
-resuming session (yours or another agent's) to pick up from.
+File it, claim it, start it, then work it — in that order, every time.
+Claiming reserves the task, and `task claim` alone leaves the task `open`,
+so nothing shows that anyone is working on it. `task start` moves it to
+in_progress once work begins, and claims it first if you haven't. Comment
+before marking done, since a task with no start and no comment leaves
+nothing for a resuming session (yours or another agent's) to pick up from.
   corvee task add "Fix the flaky auth test" --description "..." -o json
+  corvee task claim TASK-14 -o json
   corvee task start TASK-14 -o json
   corvee task comment TASK-14 "found the root cause, writing a fix" -o json
   corvee task update TASK-14 --state done -o json
