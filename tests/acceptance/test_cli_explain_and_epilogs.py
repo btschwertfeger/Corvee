@@ -45,6 +45,17 @@ class TestExplain:
         assert "One task per" in result.output
         assert "umbrella task" in result.output
 
+    def test_teaches_task_start_and_that_claim_alone_does_not_start(
+        self, runner: CliRunner
+    ) -> None:
+        """The cheat sheet's task lifecycle uses `task start` to begin work and
+        says a bare `task claim` leaves the task `open`, so an agent that
+        claims a task doesn't stop short of moving it to `in_progress`.
+        """
+        result = runner.invoke(cli, ["explain"])
+        assert "corvee task start TASK-14" in result.output
+        assert "claim` alone leaves the task `open`" in result.output
+
     def test_nudges_non_default_type_priority_and_relations(self, runner: CliRunner) -> None:
         """The cheat sheet nudges away from always leaving --type/--priority at
         their defaults, and toward `task link --relation` for real dependencies.
