@@ -1766,7 +1766,7 @@ Content that genuinely applies to both (`--global`, `--actor`/
   flow**: track work as it happens, never after the fact, for any
   nontrivial piece of work — not only code, equally research, a writeup, a
   document review, anything worth resuming. Before starting, file the task
-  (`--description` required) and `task start` it — filing a task once the work is
+  (`--description` required) and claim it — filing a task once the work is
   already done gives a resuming session nothing to resume from, which
   defeats the entire point of tracking it here instead of in chat history.
   The same applies to facts: record a claim the moment it is established

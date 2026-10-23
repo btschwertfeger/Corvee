@@ -26,7 +26,7 @@ two actors from editing the same task at once.
 Operating rule, not an example to adapt: track work as you go, never after
 the fact. This applies to any nontrivial piece of work, not just code — a
 research task, a writeup, a document review, anything worth resuming.
-Before starting, `task add` it (with --description) and `task start` it —
+Before starting, `task add` it (with --description) and `task claim` it —
 filing a task once the work is already done gives a resuming session
 nothing to resume from, which is the one thing this tool exists to
 prevent. The same applies to facts: `fact add`/`fact verify` a claim the
