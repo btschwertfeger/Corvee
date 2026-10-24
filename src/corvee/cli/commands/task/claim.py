@@ -17,7 +17,7 @@ from corvee.output import emit_tasks
 EPILOG = """\
 \b
 Examples:
-Start working on a task:
+Reserve a task without starting it (use `task start` to begin work):
   corvee task claim TASK-14
 See who now holds it and since when, which the default table drops:
   corvee task claim 14 -o wide

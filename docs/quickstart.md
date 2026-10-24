@@ -57,8 +57,8 @@ corvee task mine -o json                             # what am I already working
 corvee task ready -o json                            # what could I start right now?
 corvee task search "auth token" -o json              # does a task for this exist already?
 corvee task add "Fix the flaky auth test" --description "..." -o json  # file one if not
-corvee task claim TASK-14 -o json                    # start it
-corvee task update TASK-14 --state in_progress -o json
+corvee task claim TASK-14 -o json                    # reserve it, state stays open
+corvee task start TASK-14 -o json                    # begin work, moves it to in_progress
 corvee task comment TASK-14 "found the root cause" -o json
 corvee task update TASK-14 --state done -o json      # finish it, claim clears automatically
 ```
