@@ -65,6 +65,45 @@ class TestExplain:
         assert "--priority high" in result.output
         assert "--relation blocks" in result.output
 
+    @staticmethod
+    def _facts_block(runner: CliRunner) -> str:
+        output = runner.invoke(cli, ["explain"]).output
+        return output[output.index("\nFACTS\n") : output.index("\nGENERAL\n")]
+
+    def test_facts_section_shows_a_fact_verify_example(self, runner: CliRunner) -> None:
+        """The FACTS section carries a runnable `fact verify` example, not only
+        a prose mention, since the spec requires one.
+        """
+        assert "corvee fact verify FACT-" in self._facts_block(runner)
+
+    def test_facts_section_says_to_search_before_asserting(self, runner: CliRunner) -> None:
+        """An agent is told to look for an existing fact before asserting or
+        re-deriving something, to trust only a verified one, and that `brief`
+        lists the newest facts.
+        """
+        block = self._facts_block(runner)
+        assert "before asserting" in block
+        assert "corvee fact search" in block
+        assert "`verified`" in block
+        assert "`unverified`" in block
+        assert "corvee brief" in block
+
+    def test_facts_section_points_at_stale_facts_with_a_long_window(
+        self, runner: CliRunner
+    ) -> None:
+        """The stale-fact example uses a duration of days, since the 4h default
+        would flag nearly every verified fact.
+        """
+        assert "corvee fact list --stale 30d" in self._facts_block(runner)
+
+    def test_brief_example_names_facts(self, runner: CliRunner) -> None:
+        """The `brief` example's comment no longer describes the snapshot as only
+        tasks.
+        """
+        output = runner.invoke(cli, ["explain"]).output
+        brief_line = next(line for line in output.splitlines() if "corvee brief" in line)
+        assert "facts" in brief_line
+
 
 def _iter_leaf_commands(group: click.Group, prefix: str = "") -> "list[tuple[str, click.Command]]":
     """Every leaf (non-group) command, recursing into subcommand groups
