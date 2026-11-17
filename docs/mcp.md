@@ -215,7 +215,7 @@ spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/task-l
 |---|---|---|
 | `task_show` | no | Read one task by id |
 | `task_search` | no | Search tasks (default 20 results) |
-| `brief` | no | Session-start snapshot: mine, ready, stale, labels |
+| `brief` | no | Session-start snapshot: mine, ready, stale, facts, labels |
 | `task_add` | yes | File a new task (never claims it) |
 | `task_claim` | yes | Claim a task (`force` to steal someone else's) |
 | `task_unclaim` | yes | Release a claim (`force` to release someone else's stale one) |

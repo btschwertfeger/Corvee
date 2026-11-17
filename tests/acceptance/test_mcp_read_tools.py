@@ -163,6 +163,20 @@ class TestBrief:
         assert result["stale"] == []
         assert {label["name"] for label in result["labels"]} == {"urgent"}
 
+    def test_facts_are_the_newest_five_non_retracted(
+        self, app: MCPServer, project: ProjectConfig
+    ) -> None:
+        with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
+            from corvee.db.facts import insert_fact, retract_fact
+
+            for i in range(7):
+                insert_fact(ctx.conn, claim=f"claim {i}", actor="agent:test")
+            retracted = insert_fact(ctx.conn, claim="withdrawn", actor="agent:test")
+            retract_fact(ctx.conn, retracted.id, actor="agent:test")
+
+        result = _call(app, "brief")
+        assert [f["claim"] for f in result["facts"]] == [f"claim {i}" for i in (6, 5, 4, 3, 2)]
+
     def test_invalid_scope_gives_a_usage_error(self, app: MCPServer) -> None:
         error = _call_error(app, "brief", scope="bogus")
         assert error["error"]["code"] == "invalid_scope"

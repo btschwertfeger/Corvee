@@ -10,7 +10,13 @@ from typing import Annotated, Any
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
-from corvee.cli.commands.brief import labels_section, mine_section, ready_section, stale_section
+from corvee.cli.commands.brief import (
+    facts_section,
+    labels_section,
+    mine_section,
+    ready_section,
+    stale_section,
+)
 from corvee.cli.context import corvee_context
 from corvee.cli.scope import sort_facts, sort_tasks
 from corvee.db.events import get_task_events
@@ -91,8 +97,8 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
     ) -> dict[str, Any]:
         """Session-start snapshot in one call: tasks claimed by (or assigned
         and unclaimed to) this actor, up to 5 ready-to-start tasks, tasks
-        whose claim has gone stale, and the project's label vocabulary.
-        Read-only.
+        whose claim has gone stale, the 5 newest facts, and the project's
+        label vocabulary. Read-only.
         """
 
         def _fetch() -> dict[str, Any]:
@@ -115,6 +121,12 @@ def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) 
                     local_available=local_available,
                 ),
                 "stale": stale_section(
+                    scope_filter,
+                    actor=config.actor,
+                    project_db_path=db_path,
+                    local_available=local_available,
+                ),
+                "facts": facts_section(
                     scope_filter,
                     actor=config.actor,
                     project_db_path=db_path,

@@ -22,7 +22,7 @@ class TestBrief:
         result = runner.invoke(cli, ["brief", "-o", "json"])
         assert result.exit_code == 0
         payload = json.loads(result.output)
-        assert payload == {"mine": [], "ready": [], "stale": [], "labels": []}
+        assert payload == {"mine": [], "ready": [], "stale": [], "facts": [], "labels": []}
 
     def test_combines_mine_ready_and_stale(
         self,
@@ -146,3 +146,119 @@ class TestBrief:
         result = runner.invoke(cli, ["brief"])
         assert "labels:" in result.output
         assert "api" in result.output
+
+
+class TestBriefFacts:
+    def test_facts_are_the_newest_five_newest_first(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """The facts section is capped at five and ordered like `fact list`."""
+        ids = [add_fact(f"fact {i}") for i in range(8)]
+
+        result = runner.invoke(cli, ["brief", "-o", "json"])
+        payload = json.loads(result.output)
+        assert [f["id"] for f in payload["facts"]] == list(reversed(ids))[:5]
+
+    def test_retracted_facts_are_excluded(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """A retracted fact drops out, the same default `fact list` has."""
+        kept_id = add_fact("kept")
+        retracted_id = add_fact("withdrawn")
+        runner.invoke(cli, ["fact", "retract", retracted_id])
+
+        result = runner.invoke(cli, ["brief", "-o", "json"])
+        payload = json.loads(result.output)
+        assert [f["id"] for f in payload["facts"]] == [kept_id]
+
+    def test_unverified_and_verified_facts_both_appear(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """The `status` field tells unchecked facts from verified ones."""
+        unverified_id = add_fact("unchecked")
+        runner.invoke(cli, ["fact", "add", "checked", "--proof", "ran it", "-o", "json"])
+
+        result = runner.invoke(cli, ["brief", "-o", "json"])
+        payload = json.loads(result.output)
+        statuses = {f["id"]: f["status"] for f in payload["facts"]}
+        assert statuses[unverified_id] == "unverified"
+        assert set(statuses.values()) == {"unverified", "verified"}
+
+    def test_facts_merge_local_and_global_newest_first(
+        self,
+        runner: CliRunner,
+        project: ProjectConfig,
+        conn: sqlite3.Connection,
+        add_fact: Callable[[str], str],
+    ) -> None:
+        """--scope all (the default) merges both databases by created_at descending."""
+        local_id = add_fact("local fact")
+        conn.execute("UPDATE facts SET created_at = '2000-01-01T00:00:00.000Z'")
+        conn.commit()
+        runner.invoke(cli, ["fact", "add", "global fact", "--global", "-o", "json"])
+
+        result = runner.invoke(cli, ["brief", "-o", "json"])
+        payload = json.loads(result.output)
+        assert [f["id"] for f in payload["facts"]] == ["FACT-GLOBAL-1", local_id]
+
+    def test_scope_global_excludes_local_facts(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """--scope global shows only the shared database's facts."""
+        add_fact("local fact")
+        runner.invoke(cli, ["fact", "add", "global fact", "--global", "-o", "json"])
+
+        result = runner.invoke(cli, ["brief", "--scope", "global", "-o", "json"])
+        payload = json.loads(result.output)
+        assert [f["id"] for f in payload["facts"]] == ["FACT-GLOBAL-1"]
+
+    def test_plain_text_has_no_headers_on_a_clean_backlog(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """With nothing to show, no section header prints, `facts:` included."""
+        result = runner.invoke(cli, ["brief"])
+        assert result.exit_code == 0
+        for header in ("mine:", "ready:", "stale:", "facts:", "labels:"):
+            assert header not in result.output
+
+    def test_plain_text_facts_section_sits_between_stale_and_labels(
+        self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
+    ) -> None:
+        """The facts: section renders after the task sections and before labels:."""
+        task_id = add_task("tagged")
+        runner.invoke(cli, ["task", "label", task_id, "--add", "api"])
+        runner.invoke(cli, ["fact", "add", "a claim", "-o", "json"])
+
+        output = runner.invoke(cli, ["brief"]).output
+        assert output.index("ready:") < output.index("facts:") < output.index("labels:")
+
+    def test_plain_text_facts_table_uses_the_narrow_fact_columns(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """The default facts table shows ID, CLAIM and STATUS, not the task columns."""
+        add_fact("a claim")
+
+        facts_block = runner.invoke(cli, ["brief"]).output.split("facts:\n", 1)[1]
+        header = facts_block.splitlines()[0].split()
+        assert header == ["ID", "CLAIM", "STATUS"]
+
+    def test_plain_text_cuts_a_long_claim_at_sixty_cells(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """A 100-character claim is cut to 60 cells ending in `...`, like `fact list`."""
+        add_fact("x" * 100)
+
+        output = runner.invoke(cli, ["brief"]).output
+        assert "x" * 57 + "..." in output
+        assert "x" * 58 not in output
+
+    def test_wide_shows_the_fact_wide_columns_and_the_full_claim(
+        self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
+    ) -> None:
+        """-o wide matches `fact list -o wide`: more columns, whole claim."""
+        add_fact("x" * 100)
+
+        output = runner.invoke(cli, ["brief", "-o", "wide"]).output
+        wide_header = runner.invoke(cli, ["fact", "list", "-o", "wide"]).output.splitlines()[0]
+        assert wide_header in output
+        assert "x" * 100 in output

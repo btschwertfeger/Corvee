@@ -216,11 +216,30 @@ def _emit(
     if output == "json":
         click.echo(json.dumps([filter_fields(row, fields) for row in rows]))
         return
-    projected = [filter_fields(plain_text_row(row), fields) for row in rows]
-    columns = wide_fields if output == "wide" else default_fields
-    table = render_table(projected, fields, default_fields=columns)
+    table = _table(
+        rows,
+        output=output,
+        fields=fields,
+        default_fields=default_fields,
+        wide_fields=wide_fields,
+        plain_text_row=plain_text_row,
+    )
     if table:
         click.echo(table)
+
+
+def _table(
+    rows: Sequence[dict[str, Any]],
+    *,
+    output: OutputFormat,
+    fields: Sequence[str] | None,
+    default_fields: Sequence[str],
+    wide_fields: Sequence[str],
+    plain_text_row: Callable[[dict[str, Any]], dict[str, Any]] = _same_row,
+) -> str:
+    projected = [filter_fields(plain_text_row(row), fields) for row in rows]
+    columns = wide_fields if output == "wide" else default_fields
+    return render_table(projected, fields, default_fields=columns)
 
 
 def emit_tasks(
@@ -250,18 +269,37 @@ def emit_facts(
 
     The default table cuts a long claim; `-o wide` and an explicit `fields` keep it whole.
     """
-    if output == "table" and fields is None:
-        facts = [
-            {**fact, "claim": _truncate_display(fact["claim"], FACT_CLAIM_TABLE_WIDTH)}
-            for fact in facts
-        ]
     _emit(
-        facts,
+        _cut_long_claims(facts, output=output, fields=fields),
         output=output,
         fields=fields,
         default_fields=FACT_LIST_TABLE_DEFAULT_FIELDS,
         wide_fields=FACT_LIST_TABLE_WIDE_FIELDS,
     )
+
+
+def fact_table(facts: Sequence[dict[str, Any]], *, output: OutputFormat) -> str:
+    """`facts` as the same table `fact list` prints (`table` or `wide`), as a
+    string for a caller that embeds it, such as `brief`.
+    """
+    return _table(
+        _cut_long_claims(facts, output=output, fields=None),
+        output=output,
+        fields=None,
+        default_fields=FACT_LIST_TABLE_DEFAULT_FIELDS,
+        wide_fields=FACT_LIST_TABLE_WIDE_FIELDS,
+    )
+
+
+def _cut_long_claims(
+    facts: Sequence[dict[str, Any]], *, output: OutputFormat, fields: Sequence[str] | None
+) -> Sequence[dict[str, Any]]:
+    if output != "table" or fields is not None:
+        return facts
+    return [
+        {**fact, "claim": _truncate_display(fact["claim"], FACT_CLAIM_TABLE_WIDTH)}
+        for fact in facts
+    ]
 
 
 def _emit_with_detail(

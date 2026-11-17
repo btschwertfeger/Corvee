@@ -73,4 +73,4 @@ class TestMcpServeRealProtocolRoundTrip:
         tool_names, brief_result = asyncio.run(asyncio.wait_for(_run(), timeout=20))
 
         assert set(tool_names) == _EXPECTED_TOOLS
-        assert brief_result == {"mine": [], "ready": [], "stale": [], "labels": []}
+        assert brief_result == {"mine": [], "ready": [], "stale": [], "facts": [], "labels": []}
