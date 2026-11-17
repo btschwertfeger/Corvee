@@ -80,7 +80,7 @@ class TestRenderTable:
 
     def test_embedded_newlines_do_not_break_row_alignment(self) -> None:
         """A multi-line field value (an expected shape for agent-written free
-        text, §5.2) collapses onto one physical line instead of splitting the
+        text, `cli-conventions` spec) collapses onto one physical line instead of splitting the
         row and pushing later columns out from under their header.
         """
         multiline_task = {**TASK, "title": "Line one\nLine two\nLine three"}

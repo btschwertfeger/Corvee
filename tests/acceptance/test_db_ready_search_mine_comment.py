@@ -141,7 +141,7 @@ class TestMineTasks:
 
     def test_includes_unclaimed_tasks_assigned_to_the_actor(self, conn: sqlite3.Connection) -> None:
         """`mine` also surfaces open, unclaimed tasks routed to the actor via
-        `assign` (advisory, §4.4), not only ones it has claimed.
+        `assign` (advisory, `claims-and-assignment` spec), not only ones it has claimed.
         """
         task = insert_task(conn, title="routed")
         assign_task(conn, task.id, "agent:a", "human:supervisor")

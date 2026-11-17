@@ -61,9 +61,9 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
     `task_comment`, `task_start`, `task_done`, `task_cancel`,
     `task_review`, `task_reopen`, `task_block`, `task_add`, `task_update`,
     `task_label`, `task_unlabel`, `task_link`, `task_unlink`,
-    `task_assign`, `task_unassign` (spec §10.3). Every one of these writes
+    `task_assign`, `task_unassign` (`mcp-tools` spec). Every one of these writes
     an event; `session_id` is optional on each, defaulting to the
-    server's own `ServerConfig.session_id` (§10.1) when a call omits it.
+    server's own `ServerConfig.session_id` (`mcp-process-model` spec) when a call omits it.
     """
 
     @app.tool(structured_output=True)
@@ -133,7 +133,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
         text: Annotated[str, Field(description="The comment body.")],
         session_id: SessionIdArg = None,
     ) -> dict[str, Any]:
-        """Leave a note on a task. Not claim-gated (§4.4): any actor can
+        """Leave a note on a task. Not claim-gated (`claims-and-assignment` spec): any actor can
         comment at any time. `session_id` defaults to this server's own
         session id if omitted.
         """
@@ -225,7 +225,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
     @app.tool(structured_output=True)
     async def task_review(ref: TaskRefArg, session_id: SessionIdArg = None) -> dict[str, Any]:
         """Move a task to review: the work is done but needs someone else to
-        check it before it counts as `done`. Keeps the current claim (§4.4:
+        check it before it counts as `done`. Keeps the current claim (`claims-and-assignment` spec:
         `review` is not a terminal state). `session_id` defaults to this
         server's own session id if omitted.
         """
@@ -254,7 +254,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
         `task_claim` refuses one with `task_terminal`, so before this tool
         there was no way back from either state on this surface. Fails
         with `invalid_transition` itself when called from `review`, the
-        one state `open` is not reachable from directly (§4.5).
+        one state `open` is not reachable from directly (`task-lifecycle` spec).
         `session_id` defaults to this server's own session id if omitted.
         """
 
@@ -336,7 +336,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
         is_global: IsGlobalArg = False,
     ) -> dict[str, Any]:
         """File a new task. Never claims it -- filing work and starting it
-        are separate acts (§4.4); claim it with task_claim or task_start
+        are separate acts (`claims-and-assignment` spec); claim it with task_claim or task_start
         once you're ready to work it. `title` and `description` must both
         be non-empty. `is_global` files it into the shared global database
         instead of the local project (default `false`, same as `fact_add`).
@@ -405,7 +405,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
     ) -> dict[str, Any]:
         """Mutate one or more tasks in a single transaction, mirroring
         `corvee task update` in full -- the one tool on this surface that
-        exposes `force`/`cascade` directly (spec §10.4 explains why that
+        exposes `force`/`cascade` directly (`mcp-tools` spec explains why that
         does not reopen the hidden-argument problem the narrower
         state-transition tools above exist to avoid). A caller only
         wanting a plain state transition should still reach for
@@ -608,7 +608,7 @@ def register_write_tools(app: MCPServer, config: ServerConfig, worker: DbWorker)
         session_id: SessionIdArg = None,
     ) -> dict[str, Any]:
         """Route one or more tasks to a specific actor, mirroring `corvee
-        task assign`. Advisory only, per §4.4, not claim-gated, and does
+        task assign`. Advisory only, per the `claims-and-assignment` spec, not claim-gated, and does
         not itself claim the task. `target` must not be empty or
         whitespace-only. A no-op success if a task is already assigned
         to `target`. Returns `{"result": [...]}`, one entry per task.

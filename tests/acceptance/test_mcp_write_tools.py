@@ -96,7 +96,9 @@ class TestTaskComment:
         )
 
     def test_not_claim_gated(self, app: MCPServer, task_id: str) -> None:
-        """Any actor can comment on a task regardless of who claims it (§4.4)."""
+        """Any actor can comment on a task regardless of who claims it
+        (`claims-and-assignment` spec).
+        """
         with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
             from corvee.db.tasks import claim_task
 
@@ -110,7 +112,7 @@ class TestTaskComment:
     ) -> None:
         """A caller that omits session_id entirely still stamps something
         useful on the event, rather than an unset value -- the server's
-        own default (§10.1), not left None the way the CLI's optional
+        own default (`mcp-process-model` spec), not left None the way the CLI's optional
         --session-id would.
         """
         _call(app, "task_comment", ref=task_id, text="no session id given")
@@ -195,7 +197,7 @@ class TestTaskBlock:
     def test_rejected_transition_rolls_back_the_comment_too(
         self, app: MCPServer, task_id: str
     ) -> None:
-        """done -> blocked isn't a permitted transition (§4.5). The whole
+        """done -> blocked isn't a permitted transition (`task-lifecycle` spec). The whole
         call fails and the comment is not left behind.
         """
         _call(app, "task_claim", ref=task_id, session_id="sess-1")
@@ -571,7 +573,7 @@ class TestTaskAssign:
 
     def test_not_claim_gated(self, app: MCPServer, task_id: str) -> None:
         """Assignment is advisory only, not gated by an existing claim
-        (§4.4). Assigning a task claimed by a different actor still
+        (`claims-and-assignment` spec). Assigning a task claimed by a different actor still
         succeeds.
         """
         with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
@@ -623,7 +625,7 @@ class TestTaskUnassign:
 
     def test_not_claim_gated(self, app: MCPServer, task_id: str) -> None:
         """Unassignment is advisory only, not gated by an existing claim
-        (§4.4). Clearing the assignment on a task claimed by a different
+        (`claims-and-assignment` spec). Clearing the assignment on a task claimed by a different
         actor still succeeds.
         """
         with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:
@@ -657,9 +659,9 @@ class TestForceIsNotAParameterOnStateTransitionTools:
         tool_name: str,
         extra_kwargs: dict[str, str],
     ) -> None:
-        """`force` was dropped from every state-transition tool (§10.3): a
+        """`force` was dropped from every state-transition tool (`mcp-tools` spec): a
         caller passing it anyway is accepted and ignored, not
-        honored (§10.2) -- a claim conflict still
+        honored (`mcp-results-and-errors` spec) -- a claim conflict still
         surfaces exactly as if `force` had never been sent.
         """
         with corvee_context(scope="local", actor="agent:other", session_id=None) as ctx:

@@ -50,13 +50,13 @@ def resolve_server_session_id(session_id: str | None) -> str:
     `resolve_session_id()` -- the same `--session-id`/`$CORVEE_SESSION_ID`
     resolution the CLI's own global flag already uses. If that resolves to
     nothing either, mints one `uuid4` for the process's whole lifetime,
-    since spec §10.1 already expects one server process per conversation:
+    since the `mcp-process-model` spec already expects one server process per conversation:
     a per-process id is a truthful "which run touched this" answer even
     when nothing configured one explicitly, and it is what makes
     `session_id` safe to leave optional on every write tool (rather than
     every omitted call defaulting to `None` and defeating `doctor`'s
     multi-session-claim detector the same way an unconfigured `$CORVEE_ACTOR`
-    does for actor, per §4.4).
+    does for actor, per the `claims-and-assignment` spec).
     """
     return session_id or resolve_session_id() or str(uuid.uuid4())
 
@@ -74,7 +74,7 @@ def build_instructions(config: ServerConfig) -> str:
     server instance rather than a static constant: a caller landing in
     global-only mode (no project resolved at startup) needs to know that
     up front, the same way `brief`'s otherwise-indistinguishable empty
-    result does not tell it on its own (spec §10.1).
+    result does not tell it on its own (`mcp-process-model` spec).
     """
     if config.project is not None:
         project_root = config.project.root
@@ -84,7 +84,7 @@ def build_instructions(config: ServerConfig) -> str:
 
 def startup_message(config: ServerConfig) -> str:
     """One line describing the resolved mode, printed to stderr at startup
-    (never stdout -- §10.2's stdio-framing constraint) so a host's own
+    (never stdout -- the `mcp-results-and-errors` spec's stdio-framing constraint) so a host's own
     logs name the project or global-only mode without needing a first
     `brief` call to find out.
     """
@@ -120,7 +120,7 @@ def resolve_server_project(project_root: Path | None) -> ProjectConfig | None:
 def build_server(config: ServerConfig) -> tuple[MCPServer, DbWorker]:
     """Construct the MCPServer instance for this process, plus the one
     dedicated `DbWorker` thread every tool handler this server registers
-    runs its DB work on for the process's whole lifetime (§10.1).
+    runs its DB work on for the process's whole lifetime (`mcp-process-model` spec).
 
     Returns both so the caller (`corvee mcp serve`) can shut the worker
     thread down once `app.run()` returns, whether that's a clean exit or an

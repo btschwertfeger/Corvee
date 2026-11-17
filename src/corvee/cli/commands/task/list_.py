@@ -172,7 +172,7 @@ def list_command(
         # scope other than the ref's own can only ever mean zero rows. Skipping
         # it here is what keeps the bare int id from spuriously matching an
         # unrelated task that happens to share the same id in the other scope's
-        # independent id sequence (§3.3/§4.2).
+        # independent id sequence (`local-global-scope` spec, `identifiers` spec).
         if any(ref_scope != s for ref_scope in ref_scopes):
             return []
         return list_tasks(conn, filt, scope=s)

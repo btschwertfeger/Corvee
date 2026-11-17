@@ -62,7 +62,7 @@ def mine_section(
     with its last comment. `actor`, omitted, resolves ambiently
     (`resolve_actor()`, the CLI's own `$CORVEE_ACTOR`/`--actor`); the MCP
     surface passes its already-resolved `ServerConfig.actor` instead
-    (spec §10.1). `project_db_path`/`local_available`, given, thread
+    (`mcp-process-model` spec). `project_db_path`/`local_available`, given, thread
     through to `fetch_merged` the same way -- `project_db_path` is the MCP
     surface's own already-resolved project db path, used verbatim instead
     of a fresh `resolve_project` per call (TASK-37).
@@ -144,11 +144,11 @@ def labels_section(
     has_project: bool | None = None,
 ) -> list[dict[str, Any]]:
     """The local project's label vocabulary — never merged across scope,
-    the same restriction `task labels` already has (§3.3).
+    the same restriction `task labels` already has (`local-global-scope` spec).
 
     Empty, not an error, when no local project resolves — `brief`'s other
     three sections already degrade the same way for a purely-global call
-    (§3.3), and `labels` is an auxiliary section of that same call, not a
+    (`local-global-scope` spec), and `labels` is an auxiliary section of that same call, not a
     separate ask for local data the way standalone `task labels` is.
     `has_project`, given, is used verbatim instead of the ambient
     `project_exists()` check, the same override `mine_section` and its

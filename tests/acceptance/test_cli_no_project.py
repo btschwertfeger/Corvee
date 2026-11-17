@@ -45,8 +45,9 @@ class TestDefaultScopeAllOutsideAProject:
     def test_task_add_global_then_task_mine_finds_it(
         self, runner: CliRunner, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A global task filed and worked entirely from outside any project (§3.3's
-        "not project-specific" case) round-trips through the default --scope all.
+        """A global task filed and worked entirely from outside any project (the
+        `local-global-scope` spec's "not project-specific" case) round-trips
+        through the default --scope all.
         """
         monkeypatch.setenv("CORVEE_ACTOR", "agent:test")
         add_result = runner.invoke(

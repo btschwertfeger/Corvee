@@ -51,11 +51,11 @@ class TestDocsToolTableMatchesTheLiveServer:
         assert documented == registered
 
     def test_the_stated_tool_count_matches_the_table(self) -> None:
-        """ "Sixteen tools" (docs/mcp.md) and "Sixteen tools" (docs/spec.md
-        §10.3) are prose, not something a test can parse out of context
-        reliably across both files -- this at least ties docs/mcp.md's own
-        count claim to its own table, so a future 17th tool added to the
-        table without updating the word "Sixteen" fails loudly here.
+        """The tool count in docs/mcp.md and the one in the `mcp-tools` spec
+        are prose, not something a test can parse out of context reliably
+        across both files -- this at least ties docs/mcp.md's own count
+        claim to its own table, so a future tool added to the table without
+        updating the count word fails loudly here.
         """
         text = DOCS_MCP_PATH.read_text()
         match = _COUNT_WORD_RE.search(text)

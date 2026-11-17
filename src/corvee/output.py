@@ -188,7 +188,7 @@ def render_detail_sections(row: dict[str, Any]) -> str:
 
 
 def task_plain_text_row(task: dict[str, Any]) -> dict[str, Any]:
-    """`task` as plain-text views print it (§4.5): a stored-`open` task with open
+    """`task` as plain-text views print it (`task-lifecycle` spec): a stored-`open` task with open
     blockers shows `blocked*`, and `blocked_by` is comma-joined. JSON never goes
     through this, so it keeps the stored state.
     """

@@ -18,7 +18,7 @@ T = TypeVar("T")
 
 def require_scope_available(config: ServerConfig, scope: str) -> None:
     """Raise `no_project` (exit 6) if `scope == "local"` and this server has
-    no resolved project (global-only mode, §10.1). The one check every
+    no resolved project (global-only mode, `mcp-process-model` spec). The one check every
     ref-taking tool, plus every scope-filter-driven one (`brief`,
     `fact_search`, `task_search` via `fetch_merged_for_config` below),
     needs before doing anything else.
@@ -39,7 +39,7 @@ def fetch_merged_for_config(
     """The MCP-layer entry point for `cli/scope.py::fetch_merged`: threads
     `config.actor`/the already-resolved project's db path explicitly into
     every `corvee_context` call instead of relying on click's
-    (thread-local) context or cwd -- the same requirement §10.1 places on
+    (thread-local) context or cwd -- the same requirement the `mcp-process-model` spec places on
     every other piece of per-call DB work here. Raises via
     `require_scope_available` for `scope_filter="local"` with no project,
     before `fetch_merged` itself ever reaches a `corvee_context` call
@@ -50,7 +50,7 @@ def fetch_merged_for_config(
     already a fully-resolved `ProjectConfig`, so there is nothing left to
     re-derive from a directory (TASK-37) -- every call here would
     otherwise re-walk the filesystem to `.corvee/config.toml` and
-    re-parse it from scratch, the exact cache spec §10.1 claims exists
+    re-parse it from scratch, the exact cache the `mcp-process-model` spec claims exists
     made only accidentally true by that re-derivation always landing back
     on the same path.
     """

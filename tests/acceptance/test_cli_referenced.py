@@ -114,7 +114,7 @@ class TestTaskShowReferenced:
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
         """Checking a TASK-GLOBAL-<n> mention against a never-used global database
-        must not materialize it (§3.3), the same guarantee a direct
+        must not materialize it (`local-global-scope` spec), the same guarantee a direct
         `task show TASK-GLOBAL-<n>` already has.
         """
         assert not global_db_path().is_file()
@@ -248,7 +248,7 @@ class TestFactShowReferenced:
         self, runner: CliRunner, project: ProjectConfig, add_fact: Callable[[str], str]
     ) -> None:
         """Checking a FACT-GLOBAL-<n> mention against a never-used global database
-        must not materialize it (§3.3), the same guarantee a direct
+        must not materialize it (`local-global-scope` spec), the same guarantee a direct
         `fact show FACT-GLOBAL-<n>` already has.
         """
         assert not global_db_path().is_file()

@@ -26,7 +26,7 @@ class TestDbWorker:
     def test_runs_on_a_dedicated_thread_not_the_caller(self) -> None:
         """The callable runs on the worker's own thread, never the calling
         (event loop) thread -- the whole point of offloading blocking sqlite3
-        calls off the server's async loop (spec §10.1).
+        calls off the server's async loop (`mcp-process-model` spec).
         """
         worker = DbWorker()
         try:

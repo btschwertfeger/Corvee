@@ -180,7 +180,7 @@ class TaskRow:
     updated_at: str
     assigned_to: str | None = None
     scope: Scope = "local"
-    # Derived, never persisted: ids of the open `blocks` predecessors (§4.5),
+    # Derived, never persisted: ids of the open `blocks` predecessors (`task-lifecycle` spec),
     # attached by the db layer on every read.
     blocked_by: tuple[int, ...] = ()
     # Advisory-only, never persisted: attached by the db layer to flag a

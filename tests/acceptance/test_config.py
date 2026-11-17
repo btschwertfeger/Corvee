@@ -261,7 +261,7 @@ class TestResolveProject:
 
 class TestGlobalDbPath:
     def test_is_fixed_under_the_home_directory(self, tmp_path: Path) -> None:
-        """The global database (§3.3) has one fixed path, no config file to look it up through."""
+        """The global database (`local-global-scope` spec) has one fixed path, no config file."""
         # $HOME is already isolated to tmp_path/home by the autouse _fake_home fixture.
         assert global_db_path() == Path.home() / CONFIG_DIRNAME / "corvee.db"
         assert global_db_path() == tmp_path / "home" / CONFIG_DIRNAME / "corvee.db"

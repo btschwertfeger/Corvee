@@ -24,8 +24,8 @@ _CLAIM_CONFLICT = "claim_conflict"
 _CLAIM_CONFLICT_HINT = "call task_claim(force=true) on this ref to steal the claim, then retry"
 UNCLAIM_CONFLICT_HINT = "call task_unclaim(force=true) on this ref to release the claim, then retry"
 
-# State-transition tools that deliberately do not declare `force` (spec
-# §10.4) but still accept and ignore it, so a caller passing it gets the
+# State-transition tools that deliberately do not declare `force` (see the
+# `mcp-tools` spec) but still accept and ignore it, so a caller passing it gets the
 # same claim conflict as one who never sent it.
 _FORCE_IGNORED_BY = frozenset(
     {"task_start", "task_done", "task_cancel", "task_review", "task_reopen", "task_block"}
@@ -35,7 +35,7 @@ _FORCE_IGNORED_BY = frozenset(
 def _schedule_exit(err: ConfigError) -> None:
     """Terminate the process shortly after the in-flight call's response is
     sent, rather than staying up to repeat the same `isError` for every
-    subsequent call for the rest of the process's life (spec §10.1): once a
+    subsequent call for the rest of the process's life (`mcp-process-model` spec): once a
     newer binary has migrated the schema out from under this still-running
     server, nothing this process does will ever succeed again, and a
     restart (which most MCP hosts already do on a crashed stdio server)
@@ -69,7 +69,7 @@ def _error_result(err: CorveeError, *, claim_conflict_hint: str) -> CallToolResu
     `exit_code`. The CLI signals severity through the process's own exit
     status; an MCP tool result has no equivalent, so this is the one
     addition needed for a caller to tell a claim conflict (4) from a guard
-    violation (5) without string-matching `code` (spec §10.2).
+    violation (5) without string-matching `code` (`mcp-results-and-errors` spec).
 
     A `claim_conflict` also gets a second addition, `hint`: `err.message`
     is the one shared string `db/tasks.py::_claim_conflict` builds for
@@ -124,7 +124,7 @@ async def run_tool(
     passes a returned `CallToolResult` through unchanged regardless of the
     function's declared type (`FuncMetadata.convert_result`), which is what
     every tool handler relies on for a clean, prefix-free `isError` result
-    (spec §10.2).
+    (`mcp-results-and-errors` spec).
     """
     try:
         return await worker.run(fn)
@@ -150,7 +150,7 @@ class CorveeMCPServer(MCPServer):
     against the tool's published input schema before the SDK validates
     anything, and answers a mismatch with corvee's own `isError` shape
     (`unknown_argument`, exit code 2) instead of the SDK's error. Nothing
-    runs and nothing is written for a rejected call (spec §10.2).
+    runs and nothing is written for a rejected call (`mcp-results-and-errors` spec).
     """
 
     async def call_tool(

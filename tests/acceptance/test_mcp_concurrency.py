@@ -25,8 +25,8 @@ class TestInProcessConcurrency:
         """Several tool calls fired concurrently at one server (the shape a
         single agent conversation making parallel calls, or several tools
         in flight at once, would produce) all serialize correctly on the
-        single DB worker thread (§10.1): no SQLITE_BUSY, no lost writes, no
-        interleaved corruption. The in-process analogue of §9's existing
+        single DB worker thread (`mcp-process-model` spec): no SQLITE_BUSY, no lost writes, no
+        interleaved corruption. The in-process analogue of the existing
         subprocess-based concurrency tests, which never share one process
         and so never exercise this failure mode.
         """

@@ -17,7 +17,9 @@ class TestTaskAddGlobal:
     def test_creates_a_task_with_the_global_id_prefix(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """`task add --global` files into the global database, TASK-GLOBAL-<n> id (§3.3)."""
+        """`task add --global` files into the global database, TASK-GLOBAL-<n> id
+        (`local-global-scope` spec).
+        """
         result = runner.invoke(
             cli, ["task", "add", "renew CA cert", "--description", "d", "--global", "-o", "json"]
         )
@@ -80,7 +82,9 @@ class TestTaskGlobalLifecycle:
     def test_show_on_missing_global_db_does_not_create_it(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """A read-only `task show TASK-GLOBAL-<n>` never materializes ~/.corvee/corvee.db (§3.3)."""
+        """A read-only `task show TASK-GLOBAL-<n>` never materializes ~/.corvee/corvee.db
+        (`local-global-scope` spec).
+        """
         assert not global_db_path().is_file()
         result = runner.invoke(cli, ["task", "show", "TASK-GLOBAL-5", "-o", "json"])
         assert result.exit_code == 3
@@ -137,7 +141,8 @@ class TestTaskListRefFiltersRespectScope:
     ) -> None:
         """A --parent TASK-GLOBAL-<n> ref must never match a local task whose bare
         id happens to be the same number -- local and global ids are independent
-        sequences (§3.3/§4.2), and cross-scope parent_of links are impossible.
+        sequences (`local-global-scope` and `identifiers` specs), and cross-scope
+        parent_of links are impossible.
         """
         # Local: id 1 is parent_of local id 2.
         runner.invoke(cli, ["task", "add", "local parent", "--description", "d", "-o", "json"])
@@ -217,7 +222,9 @@ class TestCrossScopeGuard:
     def test_link_across_scopes_is_a_guard_violation(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """Linking a local task to a global one is rejected, not silently applied (§3.3)."""
+        """Linking a local task to a global one is rejected, not silently applied
+        (`local-global-scope` spec).
+        """
         local_id = json.loads(
             runner.invoke(cli, ["task", "add", "local", "--description", "d", "-o", "json"]).output
         )[0]["id"]
@@ -235,7 +242,9 @@ class TestCrossScopeGuard:
     def test_add_with_parent_across_scopes_is_a_guard_violation(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """A new local task cannot --parent to a global one, or vice versa (§3.3)."""
+        """A new local task cannot --parent to a global one, or vice versa
+        (`local-global-scope` spec).
+        """
         global_parent = json.loads(
             runner.invoke(
                 cli,
@@ -262,7 +271,9 @@ class TestCrossScopeGuard:
     def test_mixed_scope_ids_in_one_show_call_is_a_usage_error(
         self, runner: CliRunner, project: ProjectConfig
     ) -> None:
-        """`task show` with both a local and a global id in one call exits 2 (§3.3)."""
+        """`task show` with both a local and a global id in one call exits 2
+        (`local-global-scope` spec).
+        """
         local_id = json.loads(
             runner.invoke(cli, ["task", "add", "local", "--description", "d", "-o", "json"]).output
         )[0]["id"]

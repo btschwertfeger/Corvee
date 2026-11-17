@@ -96,7 +96,7 @@ class TestFactOutputFormat:
 class TestClaimAssignOutputFormat:
     """`claim`/`unclaim`/`start`/`assign`/`unassign` set exactly the columns
     the narrow default drops (claimed_by/claimed_at/assigned_to), so unlike
-    other single-row echoes they accept `-o wide` too (§5).
+    other single-row echoes they accept `-o wide` too (`cli-conventions` spec).
     """
 
     def test_claim_table_default_hides_who_claimed_it(

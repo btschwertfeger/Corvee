@@ -65,12 +65,12 @@ def corvee_context(
     back to click's (thread-local) current context. The CLI itself never
     passes them — its global `--actor`/`--session-id` flags already work
     through that fallback path. They exist for a caller running outside a
-    click command on its own thread (the MCP server, §10 of the spec),
+    click command on its own thread (the MCP server, `mcp-process-model` spec),
     where relying on ambient click state would silently resolve to the
     wrong actor.
 
     `project_db_path`, given, is used verbatim instead of calling
-    `resolve_project()` (cwd-based) at all -- spec §10.1 already claims
+    `resolve_project()` (cwd-based) at all -- the `mcp-process-model` spec already claims
     the MCP server resolves and caches its project once at startup
     (`ServerConfig.project`, a full `ProjectConfig` including `db_path`);
     without this, every single tool call re-derived it anyway (a fresh

@@ -134,8 +134,9 @@ def project_exists(start: Path | None = None) -> bool:
     """Cheap existence check for the local project, mirroring `global_db_path().is_file()`.
 
     Lets a caller that only wants local data *if it happens to be there*
-    (§3.3's `--scope all`/`global` merge, `doctor`) skip it silently instead
-    of provoking `resolve_project`'s loud `ConfigError`.
+    (the `local-global-scope` spec's `--scope all`/`global` merge, `doctor`)
+    skip it silently instead of provoking `resolve_project`'s loud
+    `ConfigError`.
     """
     return _find_config_upward(start or Path.cwd()) is not None
 

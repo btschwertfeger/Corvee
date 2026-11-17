@@ -125,7 +125,7 @@ class TestListTasks:
         ]
 
     def test_orders_by_created_at_desc_before_id_desc(self, conn: sqlite3.Connection) -> None:
-        """created_at desc breaks a priority tie before id does, matching §5.1.1's
+        """created_at desc breaks a priority tie before id does, matching the `task-queries` spec's
         documented "fixed and total" order -- a lower id can still hold the later
         created_at, and that row must still sort first.
         """

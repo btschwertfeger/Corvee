@@ -43,7 +43,7 @@ class TestScopesFor:
     def test_all_includes_global_once_the_file_exists(
         self, project: ProjectConfig, tmp_path: Path
     ) -> None:
-        """Once ~/.corvee/corvee.db exists, --scope all merges both (§3.3)."""
+        """Once ~/.corvee/corvee.db exists, --scope all merges both (`local-global-scope` spec)."""
         global_dir = tmp_path / "home" / ".corvee"
         global_dir.mkdir(parents=True)
         (global_dir / "corvee.db").touch()
@@ -80,7 +80,7 @@ class TestScopesFor:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """An explicit `local_available=True` (the MCP surface's own
-        already-resolved project, spec §10.1) wins over cwd having no
+        already-resolved project, `mcp-process-model` spec) wins over cwd having no
         project at all — the override is used verbatim, never re-derived.
         """
         monkeypatch.chdir(tmp_path)

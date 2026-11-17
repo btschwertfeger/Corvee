@@ -19,7 +19,7 @@ class TestMcpServeStdioTransport:
         exits cleanly (not hanging, not crashing) once its stdin hits EOF --
         the same way a host closing the pipes on shutdown would end it. It
         prints exactly one startup line naming the resolved project to
-        stderr (spec §10.1) and nothing else -- stdout stays pure JSON-RPC
+        stderr (`mcp-process-model` spec) and nothing else -- stdout stays pure JSON-RPC
         framing throughout, never touched by that message.
         """
         bootstrap_project(tmp_path)

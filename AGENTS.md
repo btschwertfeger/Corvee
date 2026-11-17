@@ -124,7 +124,8 @@ transaction.
 **Concurrency.** No daemon. Every invocation opens, does its transaction, and
 closes. WAL mode + `busy_timeout=5000` handle contention. Claims are a single
 conditional `UPDATE` checked by rows-affected. Full reasoning in
-`docs/concurrency.md` and spec §3.2/§3.3. Read that before touching
+`docs/concurrency.md` and the `storage-concurrency` and `local-global-scope`
+specs. Read those before touching
 `cli/context.py` or `db/connection.py`.
 
 **Exit codes.** `errors.py` defines one exception subclass per documented

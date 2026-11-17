@@ -19,7 +19,7 @@ def complete_task_ids(
     ctx: click.Context, param: click.Parameter, incomplete: str
 ) -> list[click.shell_completion.CompletionItem]:
     """Shell-complete a TASK-<n>/TASK-GLOBAL-<n> argument against real ids,
-    merged across local and global (§3.3) the same way `--scope all` does.
+    merged across local and global (`local-global-scope` spec) the same way `--scope all` does.
 
     Outside a project (or with no global database yet), `scopes_for` drops
     both scopes before either connection opens, so there's nothing here to
@@ -65,7 +65,7 @@ def complete_labels(
 ) -> list[click.shell_completion.CompletionItem]:
     """Shell-complete a label name against the local project's real labels.
 
-    Labels aren't merged across scope (§3.3, like `task labels` itself), so
+    Labels aren't merged across scope (`local-global-scope` spec, like `task labels` itself), so
     this only ever looks at the local project, not `--scope all`.
     """
     del ctx, param

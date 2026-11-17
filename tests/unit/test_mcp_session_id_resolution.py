@@ -24,7 +24,7 @@ class TestResolveServerSessionId:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """No --session-id, no $CORVEE_SESSION_ID: the server still needs a
-        stable per-process id (spec §10.1's one-process-per-conversation
+        stable per-process id (the `mcp-process-model` spec's one-process-per-conversation
         model), so it mints one itself rather than leaving every write
         without any session id at all.
         """

@@ -113,7 +113,7 @@ def _local_stats(*, stale_before: str) -> dict[str, Any] | None:
     """The local project's own stats, or None if no project resolves from cwd.
 
     Checking existence rather than always resolving is what lets `doctor`
-    run from any directory (§3.3, mirroring the global side below) instead
+    run from any directory (`local-global-scope` spec, mirroring the global side below) instead
     of hard-failing outside a project.
     """
     if not project_exists():

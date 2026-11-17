@@ -25,7 +25,7 @@ class TestTaskRef:
         assert task_ref(14) == "TASK-14"
 
     def test_formats_global_task_prefix(self) -> None:
-        """task_ref renders a global-scoped id as TASK-GLOBAL-<n> (§3.3)."""
+        """task_ref renders a global-scoped id as TASK-GLOBAL-<n> (`local-global-scope` spec)."""
         assert task_ref(14, "global") == "TASK-GLOBAL-14"
 
 
@@ -40,7 +40,9 @@ class TestParseTaskRef:
 
     @pytest.mark.parametrize("value", ["TASK-GLOBAL-14", "task-global-14"])
     def test_accepts_the_global_form(self, value: str) -> None:
-        """TASK-GLOBAL-<n> normalizes to the integer id, scoped global (§3.3)."""
+        """TASK-GLOBAL-<n> normalizes to the integer id, scoped global
+        (`local-global-scope` spec).
+        """
         parsed = parse_task_ref(value)
         assert parsed.id == 14
         assert parsed.scope == "global"
@@ -97,7 +99,9 @@ class TestParseTaskRefs:
         assert scope == "local"
 
     def test_rejects_mixed_scope(self) -> None:
-        """Mixing a local and a global id in one call is a usage error (§3.3)."""
+        """Mixing a local and a global id in one call is a usage error
+        (`local-global-scope` spec).
+        """
         with pytest.raises(UsageError) as excinfo:
             parse_task_refs(["TASK-1", "TASK-GLOBAL-2"])
         assert excinfo.value.exit_code == 2
@@ -119,7 +123,7 @@ class TestFactRef:
         assert fact_ref(7) == "FACT-7"
 
     def test_formats_global_fact_prefix(self) -> None:
-        """fact_ref renders a global-scoped id as FACT-GLOBAL-<n> (§3.3)."""
+        """fact_ref renders a global-scoped id as FACT-GLOBAL-<n> (`local-global-scope` spec)."""
         assert fact_ref(7, "global") == "FACT-GLOBAL-7"
 
 
@@ -134,7 +138,9 @@ class TestParseFactRef:
 
     @pytest.mark.parametrize("value", ["FACT-GLOBAL-7", "fact-global-7"])
     def test_accepts_the_global_form(self, value: str) -> None:
-        """FACT-GLOBAL-<n> normalizes to the integer id, scoped global (§3.3)."""
+        """FACT-GLOBAL-<n> normalizes to the integer id, scoped global
+        (`local-global-scope` spec).
+        """
         parsed = parse_fact_ref(value)
         assert parsed.id == 7
         assert parsed.scope == "global"
@@ -187,7 +193,9 @@ class TestParseFactRefs:
         assert scope == "global"
 
     def test_rejects_mixed_scope(self) -> None:
-        """Mixing a local and a global id in one call is a usage error (§3.3)."""
+        """Mixing a local and a global id in one call is a usage error
+        (`local-global-scope` spec).
+        """
         with pytest.raises(UsageError) as excinfo:
             parse_fact_refs(["FACT-1", "FACT-GLOBAL-2"])
         assert excinfo.value.exit_code == 2
@@ -230,7 +238,9 @@ class TestTaskRow:
         }
 
     def test_to_dict_uses_the_global_task_ref_id_when_scoped_global(self) -> None:
-        """A global-scoped row renders id as TASK-GLOBAL-<n> and scope as "global" (§3.3)."""
+        """A global-scoped row renders id as TASK-GLOBAL-<n> and scope as "global"
+        (`local-global-scope` spec).
+        """
         row = TaskRow(
             id=14,
             title="t",
@@ -279,7 +289,9 @@ class TestFactRow:
         }
 
     def test_to_dict_uses_the_global_fact_ref_id_when_scoped_global(self) -> None:
-        """A global-scoped row renders id as FACT-GLOBAL-<n> and scope as "global" (§3.3)."""
+        """A global-scoped row renders id as FACT-GLOBAL-<n> and scope as "global"
+        (`local-global-scope` spec).
+        """
         row = FactRow(
             id=7,
             claim="c",

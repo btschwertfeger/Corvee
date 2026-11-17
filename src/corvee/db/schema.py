@@ -116,7 +116,7 @@ MIGRATIONS: list[tuple[int, list[str]]] = [
         [
             # The 'todo' state was renamed to 'open'; existing rows carry the
             # old literal on disk and need this data migration, unlike a new
-            # value being added to the enum (see docs/spec.md §4.1).
+            # value being added to the enum (see the `data-model` spec).
             "UPDATE tasks SET state = 'open' WHERE state = 'todo'",
         ],
     ),
