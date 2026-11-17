@@ -6,6 +6,7 @@
 
 import json
 import sqlite3
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ from corvee.cli.commands.doctor import _findings_lines
 from corvee.cli.main import cli
 from corvee.config import ProjectConfig, bootstrap_project
 from corvee.db.schema import CURRENT_SCHEMA_VERSION
+from corvee.timeutil import timestamp
 
 
 def _insert_blocks_cycle(runner: CliRunner, conn: sqlite3.Connection) -> tuple[str, str]:
@@ -70,6 +72,27 @@ class TestDoctor:
         assert result.exit_code == 0
         payload = json.loads(result.output)
         assert "stale" in payload["local"]["tasks"]
+
+    def test_stale_flag_sets_the_window_for_facts(
+        self, runner: CliRunner, project: ProjectConfig, conn: sqlite3.Connection
+    ) -> None:
+        """A fact verified two hours ago is stale for --stale 1h and fresh for the 4h default."""
+        runner.invoke(cli, ["fact", "add", "a fact", "--proof", "ran it", "-o", "json"])
+        two_hours_ago = timestamp(datetime.now(UTC) - timedelta(hours=2))
+        conn.execute("UPDATE facts SET verified_at = ?", (two_hours_ago,))
+        conn.commit()
+
+        narrow = json.loads(runner.invoke(cli, ["doctor", "--stale", "1h", "-o", "json"]).output)
+        default = json.loads(runner.invoke(cli, ["doctor", "-o", "json"]).output)
+        assert narrow["local"]["facts"]["stale"] == 1
+        assert default["local"]["facts"]["stale"] == 0
+
+    def test_table_output_prints_the_stale_facts_line(
+        self, runner: CliRunner, project: ProjectConfig
+    ) -> None:
+        """Non-JSON output carries a facts.stale line next to the other fact counts."""
+        result = runner.invoke(cli, ["doctor"])
+        assert "local.facts.stale: 0" in result.output
 
     def test_yields_one_object_not_an_array(
         self, runner: CliRunner, project: ProjectConfig

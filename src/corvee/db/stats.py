@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from typing import Any
 
 from corvee.constants import FACT_STATUSES, STATES, Scope
+from corvee.db.facts import FactFilter, list_facts
 from corvee.models import task_ref
 
 
@@ -37,6 +38,9 @@ def project_stats(conn: sqlite3.Connection, *, stale_before: str | None) -> dict
     by_status = dict.fromkeys(FACT_STATUSES, 0)
     for row in conn.execute("SELECT status, COUNT(*) FROM facts GROUP BY status"):
         by_status[row[0]] = row[1]
+    stale_facts = 0
+    if stale_before is not None:
+        stale_facts = len(list_facts(conn, FactFilter(stale_before=stale_before)))
 
     label_total = conn.execute("SELECT COUNT(*) FROM labels").fetchone()[0]
 
@@ -50,6 +54,7 @@ def project_stats(conn: sqlite3.Connection, *, stale_before: str | None) -> dict
         "facts": {
             "total": fact_total,
             "by_status": by_status,
+            "stale": stale_facts,
         },
         "labels": label_total,
     }

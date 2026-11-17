@@ -15,7 +15,7 @@ import click
 from corvee.actor import resolve_actor
 from corvee.cli.context import corvee_context
 from corvee.cli.params import output_option
-from corvee.cli.scope import fetch_merged, sort_tasks
+from corvee.cli.scope import fetch_merged, sort_facts, sort_tasks
 from corvee.config import project_exists
 from corvee.constants import (
     DEFAULT_STALE_DURATION,
@@ -28,12 +28,14 @@ from corvee.constants import (
     narrow_scope_filter,
 )
 from corvee.db.events import get_last_comment
+from corvee.db.facts import FactFilter, list_facts
 from corvee.db.labels import list_labels_with_counts
 from corvee.db.tasks import TaskFilter, TaskRow, list_tasks, mine_tasks, ready_tasks
-from corvee.output import render_table, task_plain_text_row
+from corvee.output import fact_table, render_table, task_plain_text_row
 from corvee.timeutil import parse_duration, timestamp
 
 READY_LIMIT = 5
+FACTS_LIMIT = 5
 
 EPILOG = """\
 \b
@@ -137,6 +139,28 @@ def stale_section(
     return [t.to_dict() for t in tasks]
 
 
+def facts_section(
+    scope_filter: ScopeFilter,
+    *,
+    actor: str | None = None,
+    project_db_path: Path | None = None,
+    local_available: bool | None = None,
+) -> list[dict[str, Any]]:
+    """Up to `FACTS_LIMIT` newest non-retracted facts. See `mine_section`
+    for the `actor`/`project_db_path`/`local_available` parameters.
+    """
+    facts = sort_facts(
+        fetch_merged(
+            scope_filter,
+            lambda conn, s: list_facts(conn, FactFilter(), scope=s),
+            actor=actor,
+            project_db_path=project_db_path,
+            local_available=local_available,
+        )
+    )
+    return [f.to_dict() for f in facts[:FACTS_LIMIT]]
+
+
 def labels_section(
     *,
     actor: str | None = None,
@@ -167,10 +191,10 @@ def labels_section(
 @click.option("--scope", "-s", "scope_filter", type=click.Choice(SCOPE_FILTERS), default="all")
 @output_option(wide=True)
 def brief(scope_filter: str, output_format: str) -> None:
-    """Session-start snapshot: what's claimed, what's ready, what's gone stale.
+    """Session-start snapshot: claimed and ready tasks, stale claims, newest facts, labels.
 
-    Combines `task mine`, `task ready` and `task list --stale` into one
-    read-only call.
+    Combines `task mine`, `task ready`, `task list --stale`, the newest
+    `fact list` rows and `task labels` into one read-only call.
     """
     output = narrow_output_format(output_format)
     scope = narrow_scope_filter(scope_filter)
@@ -178,6 +202,7 @@ def brief(scope_filter: str, output_format: str) -> None:
         "mine": mine_section(scope),
         "ready": ready_section(scope),
         "stale": stale_section(scope),
+        "facts": facts_section(scope),
         "labels": labels_section(),
     }
     if output == "json":
@@ -186,9 +211,11 @@ def brief(scope_filter: str, output_format: str) -> None:
     task_columns = LIST_TABLE_WIDE_FIELDS if output == "wide" else LIST_TABLE_DEFAULT_FIELDS
     blocks = [
         f"{name}:\n{render_table(plain_rows, default_fields=task_columns)}"
-        for name, rows in sections.items()
-        if name != "labels" and (plain_rows := [task_plain_text_row(row) for row in rows])
+        for name in ("mine", "ready", "stale")
+        if (plain_rows := [task_plain_text_row(row) for row in sections[name]])
     ]
+    if sections["facts"]:
+        blocks.append(f"facts:\n{fact_table(sections['facts'], output=output)}")
     if sections["labels"]:
         blocks.append(f"labels:\n{render_table(sections['labels'], fields=('name', 'task_count'))}")
     click.echo("\n\n".join(blocks))

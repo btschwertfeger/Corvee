@@ -42,7 +42,7 @@ resumability and independent-completion value — no way to tell which
 piece is actually done, no way to split the batch across agents.
 
 Resuming beats starting something new:
-  corvee brief -o json                          # mine + ready + stale in one call
+  corvee brief -o json                          # mine + ready + stale + facts + labels
   corvee task mine -o json                      # what am I already working on?
 
 Check before you file, and see what's startable right now:
@@ -88,11 +88,22 @@ FACTS
 
 Facts are a separate, standalone store for checked-true claims with proof —
 not tasks, and not linked to them by the schema. Connect the two by
-convention if useful, e.g. mentioning a fact id in a task comment:
+convention if useful, e.g. mentioning a fact id in a task comment.
+
+Check for a fact before asserting or re-deriving something uncertain: rely
+only on a `verified` one and treat an `unverified` one as not yet checked.
+`corvee brief` lists the newest facts, and search finds the rest:
+  corvee fact search "license" -o json          # does a fact for this exist already?
+
+Record what you establish, with proof someone else could rerun:
   corvee fact add "requests is Apache-2.0 licensed" -o json --proof \\
     "pip download requests --no-deps -d /tmp && unzip -q /tmp/requests-*.whl -d /tmp/requests-whl \\
     && grep -i '^License:' /tmp/requests-whl/*/METADATA"
-  corvee fact search "license" -o json          # does a fact for this exist already?
+  corvee fact verify FACT-3 -o json --proof "pip show requests | grep -i '^License:'"
+
+A verified fact ages. List the ones nobody re-checked in a month, rerun the
+proof, and verify them again:
+  corvee fact list --stale 30d -o json
 
 GENERAL
 

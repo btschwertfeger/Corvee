@@ -81,6 +81,33 @@ class TestProjectStats:
         assert stats["facts"]["by_status"]["retracted"] == 1
         assert stats["facts"]["by_status"]["unverified"] == 1
 
+    def test_counts_stale_facts_against_the_given_cutoff(self, conn: sqlite3.Connection) -> None:
+        """facts.stale counts verified facts whose verified_at is older than stale_before."""
+        old = insert_fact(conn, claim="old", actor=ACTOR, proof="ran it")
+        conn.execute(
+            "UPDATE facts SET verified_at = '2020-01-01T00:00:00.000Z' WHERE id = ?", (old.id,)
+        )
+        insert_fact(conn, claim="fresh", actor=ACTOR, proof="ran it")
+
+        stats = project_stats(conn, stale_before="2021-01-01T00:00:00.000Z")
+        assert stats["facts"]["stale"] == 1
+
+    def test_unverified_and_retracted_facts_are_never_stale(self, conn: sqlite3.Connection) -> None:
+        """Only a verified fact can go stale, matching `fact list --stale`."""
+        insert_fact(conn, claim="unchecked", actor=ACTOR)
+        retracted = insert_fact(conn, claim="withdrawn", actor=ACTOR, proof="ran it")
+        retract_fact(conn, retracted.id, ACTOR)
+
+        stats = project_stats(conn, stale_before=timestamp())
+        assert stats["facts"]["stale"] == 0
+
+    def test_fact_stale_is_zero_when_no_cutoff_given(self, conn: sqlite3.Connection) -> None:
+        """stale_before=None reports 0 for facts too, not every verified fact."""
+        insert_fact(conn, claim="checked", actor=ACTOR, proof="ran it")
+
+        stats = project_stats(conn, stale_before=None)
+        assert stats["facts"]["stale"] == 0
+
     def test_counts_distinct_labels(self, conn: sqlite3.Connection) -> None:
         """labels counts distinct label names in the project, not label attachments."""
         task = insert_task(conn, title="task")
