@@ -40,6 +40,10 @@ The block SHALL list the commands needed most of the time with one example each,
 - **WHEN** `corvee explain` runs
 - **THEN** the `brief` example appears before the `task add` example, and `task search` appears before `task add`
 
+#### Scenario: Brief example names facts
+- **WHEN** `corvee explain` runs
+- **THEN** the comment on the `brief` example names facts
+
 ### Requirement: Track work as it happens
 The block SHALL state as a rule, separate from the example flow, that nontrivial work is tracked as it happens and never after the fact. It SHALL say to `task add` with a description and `task claim` before starting, and to record a fact when it is established. It SHALL state that `task claim` alone leaves the task `open` and that `task start` moves it to `in_progress`, claiming first if needed.
 
@@ -67,6 +71,28 @@ The block SHALL show a `fact add` and `fact verify` example and say facts are no
 #### Scenario: Global note
 - **WHEN** `corvee explain` runs
 - **THEN** the text states that `--global` is needed only on `add`
+
+#### Scenario: Verify example
+- **WHEN** `corvee explain` runs
+- **THEN** the `FACTS` section contains a `corvee fact verify` example
+
+### Requirement: Facts are consulted before asserting
+The `FACTS` section SHALL tell the reader to run `fact search` before asserting or re-deriving something uncertain, to rely only on a `verified` fact, and to treat an `unverified` one as unchecked. It SHALL say `brief` lists the newest facts and `fact search` finds the rest.
+
+The rule repeats the fact discipline in the `init` pointer blocks (`agent-integration`) on purpose, so an agent that never received the pasted block still sees it. The two wordings stay aligned.
+
+#### Scenario: Read-side rule
+- **WHEN** `corvee explain` runs
+- **THEN** the `FACTS` section tells the reader to check `fact search` before asserting something uncertain and names `brief` as listing the newest facts
+
+### Requirement: Stale facts are re-verified
+The `FACTS` section SHALL say `fact list --stale <duration>` shows verified facts whose verification is older than the duration, SHALL show it with a long duration such as `30d`, and SHALL say `fact verify` with fresh proof re-checks one.
+
+The default `4h` window is shorter than most facts live, so the example gives a longer one.
+
+#### Scenario: Stale pointer
+- **WHEN** `corvee explain` runs
+- **THEN** the `FACTS` section shows `fact list --stale` with a duration of days and mentions re-verifying with `fact verify`
 
 ### Requirement: Claims and output conventions
 The block SHALL say a claim goes stale after 4h of silence and that re-running `task claim` refreshes it. It SHALL state that `-o json` is always passed and yields an array on stdout or an `{"error": {"code": ...}}` object on stderr, and SHALL point to `corvee <command> --help` for flags.

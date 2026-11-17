@@ -51,11 +51,11 @@ Without them a subagent handed "work on TASK-14" can read it only if `brief` hap
 - **THEN** only events from the last hour are returned
 
 ### Requirement: `brief` takes only a scope
-`brief` SHALL accept an optional `scope` and nothing else, and SHALL behave as `corvee brief` (see `session-brief`), including its cap of 5 `ready` rows.
+`brief` SHALL accept an optional `scope` and nothing else, and SHALL behave as `corvee brief` (see `session-brief`), including its caps of 5 `ready` rows and 5 `facts` rows.
 
 #### Scenario: No arguments
 - **WHEN** `brief` is called with no arguments
-- **THEN** it returns the `mine`, `ready`, `stale`, and `labels` sections
+- **THEN** it returns the `mine`, `ready`, `stale`, `facts`, and `labels` sections
 
 ### Requirement: Search tools default to 20 results after merging
 `task_search` and `fact_search` SHALL take a `scope` (default `all`) and a `limit` (default 20, validated `>= 1`), applied to the merged and sorted result and never per database, so a row that belongs in the merged top 20 is never dropped. The default cap keeps a broad query from dumping an unbounded list into the caller's context.
