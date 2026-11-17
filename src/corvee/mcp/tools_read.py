@@ -36,7 +36,7 @@ from corvee.timeutil import parse_duration, timestamp
 
 def register_read_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the read-only tools: `task_show`, `brief`, `fact_search`,
-    `task_search` (spec §10.3). None of these accept `session_id` -- they
+    `task_search` (`mcp-tools` spec). None of these accept `session_id` -- they
     write no events.
     """
 

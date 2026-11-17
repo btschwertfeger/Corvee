@@ -44,7 +44,7 @@ END, created_at DESC, id DESC
 # Ids bound per query, well under SQLite's 999-variable limit on older builds.
 _MAX_BOUND_IDS = 500
 
-# A task with an open `blocks` predecessor (§4.5); used against the `tasks` table.
+# A task with an open `blocks` predecessor (`task-lifecycle` spec); used against the `tasks` table.
 _HAS_OPEN_BLOCKER = (
     "EXISTS ("
     "SELECT 1 FROM task_links l JOIN tasks blocker ON blocker.id = l.source_id"
@@ -55,7 +55,7 @@ _HAS_OPEN_BLOCKER = (
 
 
 def _displayed_state_condition(state: State) -> tuple[str, list[str]]:
-    """SQL and params matching tasks whose displayed state is `state` (§4.5): a
+    """SQL and params matching tasks whose displayed state is `state` (`task-lifecycle` spec): a
     stored `open` task with an open blocker displays as `blocked`.
     """
     if state == "open":
@@ -100,7 +100,10 @@ def insert_task(
 def _task_rows(
     conn: sqlite3.Connection, rows: Sequence[sqlite3.Row], scope: Scope
 ) -> list[TaskRow]:
-    """`TaskRow`s for `rows`, each carrying its open `blocks` predecessors (§4.5)."""
+    """`TaskRow`s for `rows`, each carrying its open `blocks` predecessors.
+
+    See the `task-lifecycle` spec.
+    """
     blockers: dict[int, list[int]] = {}
     ids = [row["id"] for row in rows]
     for start in range(0, len(ids), _MAX_BOUND_IDS):
@@ -222,8 +225,9 @@ def list_tasks(
         )
         params.append(filt.blocked_by_id)
     if filt.relates_to_id is not None:
-        # relates_to is symmetric and normalized to source_id < target_id (§4.3),
-        # so <id> can appear on either side of the stored row.
+        # relates_to is symmetric and normalized to source_id < target_id
+        # (`task-hierarchy-links` spec), so <id> can appear on either side of
+        # the stored row.
         conditions.append(
             "id IN (SELECT target_id FROM task_links"
             " WHERE source_id = ? AND relation = 'relates_to'"
@@ -376,7 +380,8 @@ def assign_task(
     scope: Scope = "local",
 ) -> TaskRow:
     """Route `task_id` to `target`, advisory only: not claim-gated, and does
-    not itself claim the task (§4.4). A no-op if already assigned to `target`.
+    not itself claim the task (`claims-and-assignment` spec). A no-op if
+    already assigned to `target`.
     """
     task = require_task(conn, task_id, scope=scope)
     if task.assigned_to == target:
@@ -421,8 +426,8 @@ def unassign_task(
 
 def purge_task(conn: sqlite3.Connection, task_id: int, *, scope: Scope = "local") -> TaskRow:
     """Permanently remove a cancelled, unlinked task and its entire task_events
-    history: the task analogue of `fact delete` (§4.6), and the one exception
-    to "no delete" for tasks (§2).
+    history: the task analogue of `fact delete` (`facts` spec), and the one exception
+    to "no delete" for tasks (`task-lifecycle` spec).
 
     Only works when the task's current state is 'cancelled' and it carries no
     `task_links` in either direction. Cancel is always the reversible first
@@ -764,7 +769,7 @@ def search_tasks(
 
 def mine_tasks(conn: sqlite3.Connection, actor: str, *, scope: Scope = "local") -> list[TaskRow]:
     """Open tasks claimed by `actor`, plus open tasks assigned to `actor` that
-    nobody has claimed yet (advisory routing, §4.4), most recently claimed
+    nobody has claimed yet (advisory routing, `claims-and-assignment` spec), most recently claimed
     first (assigned-but-unclaimed rows, with no `claimed_at`, sort last).
     """
     open_states = ",".join("?" for _ in OPEN_STATES)

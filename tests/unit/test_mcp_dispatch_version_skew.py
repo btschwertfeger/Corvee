@@ -49,8 +49,9 @@ class TestSchemaSkewSchedulesProcessExit:
     def test_schema_too_new_schedules_an_exit_with_the_error(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A schema-too-new ConfigError (§3.2/§10.1: a newer binary migrated
-        the file out from under this still-running server) schedules the
+        """A schema-too-new ConfigError (`storage-concurrency` and
+        `mcp-process-model` specs: a newer binary migrated the file out from
+        under this still-running server) schedules the
         process to exit, carrying the error itself (not just its exit
         code) so `_schedule_exit` can print `err.message` to stderr before
         the process dies, rather than staying up to repeat the same

@@ -80,8 +80,9 @@ corvee mcp serve --session-id session-42
 technically outlive one conversation, but everything it writes shares one
 actor identity for as long as it's alive — two unrelated conversations
 sharing a process share claim ownership, the same collision two people
-sharing one `$CORVEE_ACTOR` on a machine would hit (see
-[Specification §10.1](spec.md#101-process-model)). If your host restarts
+sharing one `$CORVEE_ACTOR` on a machine would hit (see the
+[process model spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/mcp-process-model/spec.md)).
+If your host restarts
 the server per conversation already, you get this for free.
 
 ### Working without a project
@@ -192,12 +193,14 @@ Set `--actor` to whatever is actually running your host. See
 
 Twenty-seven tools, each a fixed, individually named verb with its own
 closed set of named parameters, never a generic mechanism that takes a
-field name and a value as arguments (see [Specification
-§10.4](spec.md#104-trust-and-error-handling) for why that still gives a
-host's permission system something to reason about).
+field name and a value as arguments (see the [tools
+spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/mcp-tools/spec.md)
+for why that still gives a host's permission system something to reason
+about).
 Every tool that writes something accepts an optional `session_id`
 argument — a per-conversation token, distinct from the actor set at
-startup (see [Specification §10.1](spec.md#101-process-model)) — falling
+startup (see the [process model
+spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/mcp-process-model/spec.md)) — falling
 back to the server's own default (`--session-id`/`$CORVEE_SESSION_ID`, or
 a generated id) when a call leaves it out. If you do pass your own,
 keep it stable across your calls in one conversation.
@@ -205,7 +208,8 @@ keep it stable across your calls in one conversation.
 Every task result carries `blocked_by`, the ids of the task's open `blocks`
 predecessors. The CLI's `blocked*` table marker has no MCP equivalent, so a
 task with a non-empty `blocked_by` and `state: "open"` is waiting on those
-tasks. See [Specification §4.5](spec.md#45-state-transitions).
+tasks. See the [task lifecycle
+spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/task-lifecycle/spec.md).
 
 | Tool | Writes? | What it does |
 |---|---|---|
@@ -244,8 +248,9 @@ someone else's claim. Call `task_claim(force=true)` first if you need
 to take one over before using one of those.
 
 No `purge`, `delete`, `import`, or `export` on this surface — those stay
-CLI-only. See [Specification §10.3](spec.md#103-tool-list) for full
-argument shapes and the reasoning behind each tool.
+CLI-only. See the [tools
+spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/mcp-tools/spec.md)
+for full argument shapes.
 
 ## Responses
 
@@ -347,5 +352,8 @@ instead of releasing it:
 
 ## Learn the rest
 
-[Specification §10](spec.md#10-mcp-server) is the exact contract: process
-model, output shape, every tool's arguments, and the testing plan.
+The `mcp-process-model`, `mcp-results-and-errors`, `mcp-tools`, and
+`mcp-packaging`
+[specs](https://github.com/btschwertfeger/Corvee/tree/master/openspec/specs)
+are the exact contract: process model, output shape, and every tool's
+arguments.

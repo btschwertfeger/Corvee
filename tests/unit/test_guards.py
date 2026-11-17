@@ -177,11 +177,13 @@ class TestAssertNoOpenChildren:
 class TestAssertSameScope:
     @pytest.mark.parametrize("scope", ["local", "global"])
     def test_passes_when_scopes_match(self, scope: Scope) -> None:
-        """Two refs sharing one scope never raise (§3.3)."""
+        """Two refs sharing one scope never raise (`local-global-scope` spec)."""
         assert_same_scope(scope, scope)  # must not raise
 
     def test_raises_on_a_local_global_mismatch(self) -> None:
-        """Linking across the local/global split is a guard violation (§3.3)."""
+        """Linking across the local/global split is a guard violation
+        (`local-global-scope` spec).
+        """
         with pytest.raises(GuardViolationError) as excinfo:
             assert_same_scope("local", "global")
         assert excinfo.value.exit_code == 5

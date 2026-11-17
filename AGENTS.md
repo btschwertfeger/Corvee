@@ -6,12 +6,17 @@ own AGENTS.md.
 
 ## Source of truth
 
-- `docs/spec.md` is the technical specification: schema, CLI contract, exit
-  codes, concurrency model. Implementation must match it. If the two
-  disagree, update `docs/spec.md` rather than letting it drift. Any new
-  feature bumps the spec's own version and extends `docs/spec.md` first,
-  independent of when it gets implemented. The spec documents intended
-  design, not just shipped behavior.
+- `openspec/specs/<capability>/spec.md` is the technical specification:
+  schema, CLI contract, exit codes, concurrency model, MCP surface.
+  Implementation must match it. If the two disagree, fix the spec through an
+  OpenSpec change rather than letting it drift. Any new feature or behavior
+  change starts as a change under `openspec/changes/` that extends the specs
+  first, independent of when it gets implemented. The main specs describe
+  shipped behavior, and a change holds the intended design until it is
+  implemented and archived. Run `openspec validate --specs --strict` after
+  editing a spec.
+- `docs/` is a narrative companion to the specs and links to them for exact
+  behavior instead of repeating it.
 - `pyproject.toml`'s `[tool.hatch.envs.default.scripts]` is the source of
   truth for available dev commands. The list below covers the ones used
   constantly. Run `hatch env show` for the full, current set.
@@ -22,7 +27,8 @@ Python 3.11+, managed with Hatch (`uv` as the installer underneath). `src`
 layout: the package lives at `src/corvee/`, tests at `tests/`. click for the
 CLI, stdlib `sqlite3` for storage, no ORM. Every tool (pytest, ty, ruff,
 black, coverage) is configured in `pyproject.toml`, not in separate config
-files.
+files. The package version is derived from git tags by `hatch-vcs`, so never
+hand-edit it.
 
 ```bash
 hatch run test                  # pytest, parallel via pytest-xdist
@@ -118,7 +124,8 @@ transaction.
 **Concurrency.** No daemon. Every invocation opens, does its transaction, and
 closes. WAL mode + `busy_timeout=5000` handle contention. Claims are a single
 conditional `UPDATE` checked by rows-affected. Full reasoning in
-`docs/concurrency.md` and spec §3.2/§3.3. Read that before touching
+`docs/concurrency.md` and the `storage-concurrency` and `local-global-scope`
+specs. Read those before touching
 `cli/context.py` or `db/connection.py`.
 
 **Exit codes.** `errors.py` defines one exception subclass per documented
@@ -150,6 +157,14 @@ JSON-on-stderr shape and the process exit code.
   inside it, `CORVEE_ACTOR` set), `runner` (`CliRunner`), `conn` (direct
   connection to the project db), `add_task`/`add_fact` (create via CLI,
   return the id).
+- Group tests into classes per concern (one per guard, command, or db-layer
+  function group), and give every test a one-line docstring stating the
+  behavior it pins down.
+- A concurrency guarantee needs a test with real subprocesses against one
+  database file, such as two processes claiming one task with exactly one
+  winner. An argument that it holds is not a test.
+- `import mcp` stays inside `src/corvee/mcp/` and the tests that exercise
+  that code. The rest of the suite never imports it.
 - Never run `corvee ... --global` directly in a shell against this
   machine's real `~/.corvee/corvee.db` while manually poking at --global
   behavior. Set `CORVEE_GLOBAL_DB=/some/scratch/path` first. The pytest

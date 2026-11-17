@@ -70,7 +70,7 @@ class TestClosedChoiceEnumIsAdvisoryNotEnforced:
     """The `enum` in a closed-choice parameter's schema is a hint for a
     well-behaved host to validate against before sending a call; it must
     not become strict SDK-level validation, which would bypass this
-    surface's own clean `UsageError` JSON body (spec §10.2) in favor of a
+    surface's own clean `UsageError` JSON body (`mcp-results-and-errors` spec) in favor of a
     raw, differently-shaped protocol error.
     """
 

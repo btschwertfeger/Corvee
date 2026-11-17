@@ -29,7 +29,6 @@ nav:
   - Commands: commands.md
   - MCP server: mcp.md
   - Concurrency model: concurrency.md
-  - Specification: spec.md
 
 markdown_extensions:
   - admonition

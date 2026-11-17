@@ -19,13 +19,13 @@ class ServerConfig:
     """Resolved once at server launch, on the main thread, and threaded
     explicitly into every tool call from then on -- never re-derived from
     click's (thread-local) context or the process's cwd once a tool call's
-    DB work moves to the dedicated worker thread (spec §10.1).
+    DB work moves to the dedicated worker thread (`mcp-process-model` spec).
 
     `project` is `None` in global-only mode: no `--project-root` was given,
     so local scope is unavailable for the server's whole lifetime.
 
     `session_id` is the server's own default, used by any write tool call
-    that omits its own per-call `session_id` argument (§10.1) -- never
+    that omits its own per-call `session_id` argument (`mcp-process-model` spec) -- never
     silently unset, unlike the CLI's own `session_id: str | None = None`.
     """
 

@@ -228,8 +228,8 @@ class TestIntegrityFindings:
     def test_no_finding_for_a_bystander_comment_from_another_actor(
         self, conn: sqlite3.Connection
     ) -> None:
-        """Comments from a non-claimant are open to anyone (§4.4) and never count
-        toward the claimant's own session diversity.
+        """Comments from a non-claimant are open to anyone (`claims-and-assignment`
+        spec) and never count toward the claimant's own session diversity.
         """
         task = insert_task(conn, title="a")
         claim_task(conn, task.id, ACTOR, session_id="session-a")

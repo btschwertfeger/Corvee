@@ -24,8 +24,9 @@ class TestVersionSkewMidSession:
     def test_schema_migrated_ahead_by_a_newer_binary_gives_a_clean_isError_and_schedules_exit(
         self, project: ProjectConfig, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Simulates §3.2/§10.1's exact scenario: another (newer) corvee
-        process migrated this project's database past what the still-running
+        """Simulates the exact scenario of the `storage-concurrency` and
+        `mcp-process-model` specs: another (newer) corvee process migrated
+        this project's database past what the still-running
         server's binary understands. The next call must not crash with a
         raw exception, must come back as the documented exit-6 isError, and
         must schedule the process to exit rather than staying up to repeat

@@ -42,7 +42,8 @@ applies per database, never across both at once. A command that merges
 scopes (`task list --scope all`, the default) opens and closes one
 ordinary read-only connection per database in turn. A command that
 mutates always touches exactly one database, since a row's scope is fixed
-at creation. See [Specification §3.3](spec.md#33-local-and-global-scope).
+at creation. See the
+[scope spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/local-global-scope/spec.md).
 
 ## What a claim means
 
@@ -55,4 +56,8 @@ surfaced: `corvee task
 list --stale [<duration>]` (default `4h`) lists tasks whose claim has gone
 quiet, which is the input to a deliberate `corvee task claim --force`.
 
-See the [Specification](spec.md) for the full, exact rules.
+See the
+[storage and concurrency](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/storage-concurrency/spec.md)
+and
+[claims and assignment](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/claims-and-assignment/spec.md)
+specs for the full, exact rules.

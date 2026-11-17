@@ -39,8 +39,8 @@ def scopes_for(
     of the ambient, cwd-based `project_exists()` check — the MCP surface's
     own entry point (`mcp/scope.py::fetch_merged_for_config`) passes its
     already-resolved `ServerConfig.project is not None` here, since a worker
-    thread has no meaningful cwd of its own to re-derive from (spec
-    §10.1). Omitted (`None`, the CLI's own call), this checks ambiently,
+    thread has no meaningful cwd of its own to re-derive from (see the
+    `mcp-process-model` spec). Omitted (`None`, the CLI's own call), this checks ambiently,
     unchanged from before this parameter existed.
     """
     if scope_filter == "local":
@@ -126,8 +126,8 @@ def paginate_after(tasks: list[TaskRow], cursor: TaskRow) -> list[TaskRow]:
     order (priority desc, created_at desc, id desc), the keyset-pagination
     counterpart to `--limit` for paging through a large, `--scope all`-merged
     backlog: an offset alone is meaningless once results interleave two
-    independent id sequences (§3.3), but this order's own key compares fine
-    across them (§5.1.1). `cursor` does not need to appear in `tasks` itself
+    independent id sequences (`local-global-scope` spec), but this order's own key compares fine
+    across them (`task-queries` spec). `cursor` does not need to appear in `tasks` itself
     (it may not satisfy the same filters) — only its priority/created_at/id
     place it in the order.
     """
@@ -147,7 +147,7 @@ def paginate_after(tasks: list[TaskRow], cursor: TaskRow) -> list[TaskRow]:
 def resolve_cursor(after_ref: str) -> TaskRow:
     """The `--after <ref>` task, fetched from its own database regardless of
     the current `--scope` filter — a global cursor still orders a merged
-    `--scope all` query correctly (§5.1.1), since `created_at` is comparable
+    `--scope all` query correctly (`task-queries` spec), since `created_at` is comparable
     across scopes even though `id` alone is not.
     """
     ref = parse_task_ref(after_ref)

@@ -122,7 +122,7 @@ class TestTaskShow:
         self, app: MCPServer, project: ProjectConfig, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`ServerConfig.project` is already a fully-resolved `ProjectConfig`
-        (spec §10.1); a tool call's own `corvee_context` must reuse its
+        (`mcp-process-model` spec); a tool call's own `corvee_context` must reuse its
         `db_path` rather than re-deriving it via a fresh `resolve_project`
         filesystem walk + TOML re-parse (TASK-37). Proven by making
         `resolve_project` itself explode if called at all.

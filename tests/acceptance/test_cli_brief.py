@@ -123,7 +123,9 @@ class TestBrief:
     def test_labels_are_not_merged_across_scope(
         self, runner: CliRunner, project: ProjectConfig, add_task: Callable[[str], str]
     ) -> None:
-        """A global task's labels stay out of `labels`, regardless of --scope (§3.3)."""
+        """A global task's labels stay out of `labels`, regardless of --scope
+        (`local-global-scope` spec).
+        """
         global_result = runner.invoke(
             cli, ["task", "add", "global task", "--description", "d", "--global", "-o", "json"]
         )

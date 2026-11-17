@@ -49,7 +49,7 @@ class TestFetchMergedForConfig:
         self, project: ProjectConfig, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """`ServerConfig.project` is already a fully-resolved `ProjectConfig`
-        (spec §10.1: resolved once at launch); `fetch_merged_for_config`
+        (`mcp-process-model` spec: resolved once at launch); `fetch_merged_for_config`
         must pass its `db_path` straight through rather than re-deriving it
         via a fresh `resolve_project` filesystem walk + TOML re-parse per
         call (TASK-37). Proven by making `resolve_project` itself explode

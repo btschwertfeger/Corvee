@@ -82,6 +82,8 @@ See [Quickstart](quickstart.md) to get going, [Commands](commands.md) for
 the full command reference, and [Concurrency model](concurrency.md) for how
 multiple agents safely share one backlog. For a host that speaks Model
 Context Protocol natively instead of shelling out to the CLI, see the
-[MCP server](mcp.md). [Specification](spec.md) is the technical
-specification and the single source of truth for exact behavior. The rest
-of this site is a narrative companion to it, not a replacement.
+[MCP server](mcp.md). The
+[specifications](https://github.com/btschwertfeger/Corvee/tree/master/openspec/specs)
+are the technical reference and the single source of truth for exact
+behavior. The rest of this site is a narrative companion to them, not a
+replacement.

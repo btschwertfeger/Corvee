@@ -28,7 +28,7 @@ def _enum_field(description: str, choices: tuple[str, ...]) -> Any:
     valid values (`enum`), without pydantic enforcing it at the argument-
     parsing boundary the way a `Literal` type would. A bad value still
     reaches the tool's own handler and its existing `UsageError` (spec
-    §10.2's clean-error contract), rather than surfacing as a raw
+    the `mcp-results-and-errors` spec's clean-error contract), rather than surfacing as a raw
     protocol-level validation error the SDK raises before the handler
     ever runs. The `enum` is purely advisory: a well-behaved host can
     validate against it before a round trip.
@@ -104,7 +104,7 @@ def project_db_path(config: ServerConfig) -> Path | None:
 
 def session_id_for(config: ServerConfig, session_id: str | None) -> str:
     """A write tool's own `session_id` argument, if given, else the
-    server's default (§10.1) -- never `None`, unlike the CLI's own
+    server's default (`mcp-process-model` spec) -- never `None`, unlike the CLI's own
     optional `--session-id`. Falling all the way through to `None` here
     would make the argument's own default indistinguishable from a caller
     that genuinely wants no session id, and would defeat the server

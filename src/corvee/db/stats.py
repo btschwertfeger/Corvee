@@ -61,7 +61,7 @@ def _cycles_for_relation(conn: sqlite3.Connection, relation: str) -> list[list[i
     a gray node closes a cycle back to it).
 
     A cycle should never reach this point through normal use — `link`
-    itself is cycle-checked on insert (§4.3) — so this only ever fires
+    itself is cycle-checked on insert (`task-hierarchy-links` spec) — so this only ever fires
     against a database edited outside corvee. Iterative, with an explicit
     stack of (node, remaining-neighbors) frames instead of a recursive call
     per edge, the same shape `guards/ancestry.py:is_reachable` uses — a
@@ -108,12 +108,12 @@ def _cycles_for_relation(conn: sqlite3.Connection, relation: str) -> list[list[i
 def _shared_actor_session_findings(
     conn: sqlite3.Connection, *, scope: Scope, since: str
 ) -> list[dict[str, Any]]:
-    """Currently-claimed tasks whose claimant's own recent events (§4.4's stale
-    window) carry more than one distinct session id — the detectable
-    signature of two live sessions sharing one unconfigured actor identity
-    (§4.4's `CORVEE_ACTOR` guidance exists to prevent exactly this
-    collision, but has no way to *stop* it when skipped, only to surface
-    it, the same as claim staleness already does).
+    """Currently-claimed tasks whose claimant's own recent events (the stale
+    window of the `claims-and-assignment` spec) carry more than one distinct
+    session id — the detectable signature of two live sessions sharing one
+    unconfigured actor identity (the spec's `CORVEE_ACTOR` guidance exists to
+    prevent exactly this collision, but has no way to *stop* it when skipped,
+    only to surface it, the same as claim staleness already does).
     """
     sessions_by_task: dict[int, set[str]] = {}
     for task_id, session_id in conn.execute(

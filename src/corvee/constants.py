@@ -33,7 +33,7 @@ OUTPUT_FORMATS: tuple[OutputFormat, ...] = get_args(OutputFormat)
 # batch item already round-tripped through one of the other narrowers)
 # already restricts to the tuple checked here, so raising is a
 # should-never-happen backstop, not user-facing input validation. schema.py
-# has no CHECK constraint behind it (spec §4.1), so a hand-edited row
+# has no CHECK constraint behind it (`data-model` spec), so a hand-edited row
 # reaches it unchecked. MCP tool arguments get their own `UsageError`-raising
 # checks instead (`mcp/tools_common.py::validate_scope_filter`), since a
 # caller there can send any string.

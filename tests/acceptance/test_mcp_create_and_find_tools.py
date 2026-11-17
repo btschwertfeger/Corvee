@@ -57,7 +57,7 @@ class TestTaskAdd:
         assert result["scope"] == "global"
 
     def test_does_not_claim_the_created_task(self, app: MCPServer) -> None:
-        """Filing work and starting it are separate acts (§4.4), same as
+        """Filing work and starting it are separate acts (`claims-and-assignment` spec), same as
         the CLI's own `task add`.
         """
         result = _call(app, "task_add", title="t", description="d")
@@ -191,7 +191,7 @@ class TestFactShow:
 
     def test_wrong_id_namespace_is_rejected(self, app: MCPServer, project: ProjectConfig) -> None:
         """A task id handed to fact_show is rejected, not silently misread
-        (§4.2/§4.6) -- same guard the CLI's own id parsers already enforce.
+        (`identifiers` and `facts` specs) -- same guard the CLI's own id parsers already enforce.
         """
         with corvee_context(scope="local", actor="agent:test", session_id=None) as ctx:
             task = insert_task(ctx.conn, title="t", description="d")

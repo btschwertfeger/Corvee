@@ -15,13 +15,13 @@ T = TypeVar("T")
 class DbWorker:
     """One dedicated thread that every one of the MCP server's SQLite calls
     runs on, for the server process's whole lifetime -- never a
-    thread-per-call pool (spec §10.1).
+    thread-per-call pool (`mcp-process-model` spec).
 
     `open_connection` connects with sqlite3's default `check_same_thread=True`,
     so a connection must be created, used, and closed on the same thread; a
     thread-per-call pool would also reintroduce real SQLITE_BUSY/
     SQLITE_BUSY_SNAPSHOT contention between concurrent tool calls in the same
-    process, the exact case §3.2 only ever accepted `busy_timeout` as
+    process, the exact case the `storage-concurrency` spec only ever accepted `busy_timeout` as
     sufficient for at CLI-process granularity. A single worker thread makes
     both non-issues: two tool calls in the same session simply queue behind
     each other, which is cheap at this scale, and the server's own async

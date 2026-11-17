@@ -33,7 +33,7 @@ def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
 
 @pytest.fixture(autouse=True)
 def _fake_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Point $HOME at an isolated directory so the global database (§3.3) never
+    """Point $HOME at an isolated directory so the global database (`local-global-scope` spec) never
     touches the real ~/.corvee, in-process or in an e2e subprocess (which
     inherits os.environ).
     """

@@ -38,7 +38,7 @@ from corvee.models import parse_fact_ref
 
 def register_fact_tools(app: MCPServer, config: ServerConfig, worker: DbWorker) -> None:
     """Registers the fact tools: `fact_add`, `fact_verify`, `fact_revise`,
-    `fact_retract`, `fact_unverify`, `fact_show` (spec §10.3). `fact_add`/
+    `fact_retract`, `fact_unverify`, `fact_show` (`mcp-tools` spec). `fact_add`/
     `fact_verify`/`fact_revise`/`fact_retract`/`fact_unverify` write an
     event; `session_id` is optional on each, same default as the write
     tools above. `fact_show` is read-only and does not accept `session_id`

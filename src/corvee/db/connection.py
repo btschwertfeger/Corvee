@@ -41,9 +41,9 @@ def _set_wal_mode_with_retry(conn: sqlite3.Connection, *, attempts: int = 5) -> 
 # database": missing or unopenable, not a database at all, malformed, or not
 # writable (SQLITE_PERM is the Windows-ACL spelling of the same condition).
 # Deliberately absent: SQLITE_BUSY, which busy_timeout already retries and
-# whose exhaustion is still an open question (§3.2, TASK-68), and SQLITE_IOERR,
-# which covers a failing device as readily as a file that cannot be read, with
-# nothing here to tell those apart.
+# whose exhaustion is still an open question (`storage-concurrency` spec,
+# TASK-68), and SQLITE_IOERR, which covers a failing device as readily as a
+# file that cannot be read, with nothing here to tell those apart.
 _UNUSABLE_DB_CODES = frozenset(
     {
         sqlite3.SQLITE_CANTOPEN,
@@ -59,8 +59,8 @@ def unusable_database_error(error: sqlite3.Error, db_path: Path) -> ConfigError 
     """`error` as the ConfigError (exit 6) saying `db_path` cannot be used, or None.
 
     A database file that cannot be read, written or parsed as a schema is a
-    project problem (spec §5): no `corvee` command succeeds until the file or
-    its permissions change. Every other sqlite3 failure keeps its own shape, so
+    project problem (`cli-conventions` spec): no `corvee` command succeeds until
+    the file or its permissions change. Every other sqlite3 failure keeps its own shape, so
     a lock timeout or a bug in corvee never masquerades as something the user
     can fix in a file.
     """

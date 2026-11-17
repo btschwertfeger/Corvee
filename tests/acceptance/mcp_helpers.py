@@ -19,7 +19,7 @@ def call(app: MCPServer, name: str, **kwargs: Any) -> dict[str, Any]:
     """Call a tool and return its structured_content, asserting success.
 
     A `CorveeError` a handler raises never reaches the caller as a Python
-    exception: `run_tool` (§10.2) already converts it into a returned
+    exception: `run_tool` (`mcp-results-and-errors` spec) already converts it into a returned
     `CallToolResult(is_error=True, ...)`, which the SDK's own result
     conversion passes straight back from `call_tool()` -- so error paths
     are asserted with `call_error`, not `pytest.raises`.
