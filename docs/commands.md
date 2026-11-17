@@ -11,7 +11,7 @@ under `-o json`, since each returns a document rather than query results.
 `corvee <command> --help` shows runnable examples for any of them. This
 page covers usage and flags only. Standalone, checked-true (or
 not-yet-checked, or retracted) facts are not linked to tasks by the schema
-(see [Specification](spec.md#46-facts)).
+(see the [facts spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/facts/spec.md)).
 
 ::: mkdocs-click
     :module: corvee.cli.main
@@ -29,8 +29,8 @@ than silently misread.
 
 A task or fact filed with `--global` gets the `TASK-GLOBAL-<n>` /
 `FACT-GLOBAL-<n>` form instead, its own id space in the shared global
-database (`~/.corvee/corvee.db`) rather than the local project (see
-[Specification §3.3](spec.md#33-local-and-global-scope)). Every command
+database (`~/.corvee/corvee.db`) rather than the local project (see the
+[scope spec](https://github.com/btschwertfeger/Corvee/blob/master/openspec/specs/local-global-scope/spec.md)). Every command
 that takes an id infers local vs. global from the id itself. Only `add`
 needs the explicit `--global` flag, since there's no existing id to read
 it from.
@@ -48,4 +48,5 @@ it from.
 | 6 | Project/config problem: no or unreadable `.corvee/config.toml`, a database file that cannot be opened or written, a `.corvee/` or database directory that cannot be created, a schema newer than this binary, or a `corvee import` of a dump whose schema_version doesn't match this binary's |
 
 For the exact JSON shapes, filter semantics, and every edge case, see the
-[Specification](spec.md). This page is a summary, not the contract.
+[specifications](https://github.com/btschwertfeger/Corvee/tree/master/openspec/specs).
+This page is a summary, not the contract.

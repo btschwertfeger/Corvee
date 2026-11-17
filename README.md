@@ -40,7 +40,7 @@ other's edits.
 See the [documentation site](https://corvee.readthedocs.io/en/latest/) for
 the full pitch, the [Quickstart](docs/quickstart.md), the
 [Commands](docs/commands.md) reference, the
-[Specification](docs/spec.md), and the [MCP server](docs/mcp.md) for
+[Specifications](openspec/specs), and the [MCP server](docs/mcp.md) for
 hosts that speak Model Context Protocol natively instead of shelling out
 to the CLI.
 
@@ -86,9 +86,10 @@ task is any unit of work worth resuming.
 
 See [Use cases](docs/use-cases.md) for worked examples.
 
-corvee itself is built with spec-driven development: [`docs/spec.md`](docs/spec.md)
-is written and extended before any code, then implemented and refined
-across many iterations.
+corvee itself is built with spec-driven development using
+[OpenSpec](https://openspec.dev): the capability specs under
+[`openspec/specs/`](openspec/specs) are extended through a change before any
+code, then implemented and archived.
 
 ## Install
 
