@@ -1,0 +1,17 @@
+schema: spec-driven
+
+context: |
+  Specs under openspec/specs/ are the exact-behavior contract for the corvee
+  CLI, its SQLite schema and its MCP server. Docs under docs/ are narrative and
+  link here for precise rules.
+  Name exit codes and JSON error codes in scenarios, since agents branch on
+  them. Write scenarios an acceptance test can assert through the CLI.
+  Use American English spelling.
+
+rules:
+  specs:
+    - Describe the current behavior only. Put history in the change, not the spec.
+    - Keep rationale to one short paragraph per requirement, and only where the reason is not obvious.
+  tasks:
+    - Write the failing test first, then the code that makes it pass.
+    - Finish with `hatch run check` passing.
