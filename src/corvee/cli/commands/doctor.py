@@ -46,6 +46,7 @@ def _stats_lines(stats: dict[str, Any], *, prefix: str = "") -> list[str]:
             f"{prefix}facts.by_status.{status}: {count}"
             for status, count in stats["facts"]["by_status"].items()
         ),
+        f"{prefix}facts.stale: {stats['facts']['stale']}",
         f"{prefix}labels: {stats['labels']}",
     ]
 
