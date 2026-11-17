@@ -23,7 +23,7 @@ The SQLite database holding tasks and facts SHALL NOT be committed to git. Only 
 - **THEN** `.corvee/` is ignored, so neither the binding file nor the database is committed
 
 ### Requirement: No server, interface, or automation layer
-corvee SHALL NOT include a web UI, notifications, or built-in scheduling or automation. The CLI SHALL run each command as a single connect-do-work-close invocation with no background process. The MCP server (see `mcp-server`) is the one deliberate exception, a stdio subprocess a host opts into per session.
+corvee SHALL NOT include a web UI, notifications, or built-in scheduling or automation. The CLI SHALL run each command as a single connect-do-work-close invocation with no background process. The MCP server (see `mcp-process-model`) is the one deliberate exception, a stdio subprocess a host opts into per session.
 
 #### Scenario: CLI leaves nothing running
 - **WHEN** any `corvee task` or `corvee fact` command finishes
